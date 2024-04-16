@@ -3,11 +3,12 @@ import json
 from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.formatters import TerminalFormatter
+from core.modules.model_instrumentation import load_model
 
 logging.basicConfig(level=logging.INFO)
 
 
-class sdk:
+class SDK:
     """Main entrypoint into NeuralSignal SDK
     """
 
@@ -17,7 +18,7 @@ class sdk:
             "qb_model": "google/flan-t5-large",
             "zone_size:": 1024,
             "qb_batch_size": 1,
-            "quantization": "int8",
+            "quantization": "int8", # int4, int8, no_quantization
             "device": "cuda",
         },
         "save_scans": False,  # Save scans to backend
@@ -25,13 +26,31 @@ class sdk:
         "S1_model": None,  # S1 model can't be None
     }
 
-    def __init_qb():
-        pass
+    def __init_qb(self):
+        logging.info("Initializing NeuralSignal in QB mode")
+        model_cfg = {
+            "model_name": self.cfg["qb_config"]["qb_model"],
+            "device": self.cfg["qb_config"]["device"],
+            "quantization": self.cfg["qb_config"]["quantization"],
+        }
+        logging.info(
+            f"Loading model: {self.cfg['qb_config']['qb_model']}"
+            f" with config: {model_cfg}")
+
+        self.tokenizer, self.model = load_model(model_cfg)
 
     def __init__(self, config: dict) -> None:
+        """Initizalizes the NeuralSignal SDK
+
+        Args:
+            config (dict): Dictionary of configuration options.
+            Possible options:
+            [TODO: Add options here]
+        """
         json_str = json.dumps(config, indent=4, sort_keys=False)
         log_string = highlight(json_str, JsonLexer(), TerminalFormatter())
-        logging.info(log_string)
+        logging.info(
+            f"Initializing NeuralSignal SDK with config: {log_string}")
 
         self.cfg = config
         if config["evaluation_mode"] == "qb":
@@ -62,4 +81,7 @@ class sdk:
         Returns:
             list: _description_
         """
+        pass
+
+    def generate():
         pass

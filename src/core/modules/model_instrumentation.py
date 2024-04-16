@@ -3,6 +3,11 @@ import torch
 from transformers import AutoTokenizer
 from transformers import AutoModel
 from transformers import BitsAndBytesConfig
+from generation_instance import GenerationInstance
+from collector import Collector
+from transformers.models.t5.modeling_t5 import T5LayerFF
+from transformers.models.t5.modeling_t5 import T5LayerSelfAttention
+from transformers.models.t5.modeling_t5 import T5LayerCrossAttention
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,7 +23,7 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
             quantization: int4, int8, no_quantization
 
     Returns:
-        AutoModel: loaded model from HuggingFace    
+        AutoModel: loaded model from HuggingFace
     """
     logging.info(
         f"Loading model: {model_config['model_name']} with "
@@ -64,3 +69,542 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
         f"Loaded {model_config['model_name']} tokenizer")
 
     return (tokenizer, model)
+
+
+def generate_from_batch():
+    pass
+
+
+def generate_from_string(
+        input: str, model: AutoModel, tokenizer: AutoTokenizer,
+        instrumentation_cfg: dict = None, truncate: bool = False,
+        ) -> GenerationInstance:
+    """Generates a response from a model for a given string
+
+    Args:
+        input (str): input to the model
+        model (AutoModel): model to generate the response
+        tokenizer (AutoTokenizer): tokenizer to tokenize the input
+        (optional) instrumentation_cfg (dict): configuration for instrumenting
+            Should contain: instrument_encoder, instrument_decoder,
+            instrument_FF, instrument_attention, instrument_embedding and
+            collector_config dict. If ommited, default values are used:
+                "instrument_encoder": True,
+                "instrument_decoder": True,
+                "instrument_FF": True,
+                "instrument_attention": True,
+                "instrument_embedding": True,
+                "collector_config": {mode: "additive",
+                data_to_save: ["output", "module", "layer_info",
+                "topology"], zone_size: 512}
+
+    Returns:
+        str: generated response
+    """
+    logging.debug(f"Generating response for input: {input}")
+    # Setup for instrumenting model
+    # If collector exists, we're instrumenting
+    default_instrumentation_cfg = {
+            "instrument_encoder": True,
+            "instrument_decoder": True,
+            "instrument_FF": True,
+            "instrument_attention": True,
+            "instrument_embedding": True,
+            "collector_config": {
+                "mode": "additive",
+                "data_to_save": ["output", "module", "layer_info", "topology"],
+                "zone_size": 512,
+            },
+        }
+
+    model_instrumented = False
+    if instrumentation_cfg is not None:
+        instrumentation_cfg = {
+            **default_instrumentation_cfg, **instrumentation_cfg}
+
+        hc = Collector(instrumentation_cfg["collector_config"])
+        hndls = instrument_model(instrumentation_cfg, model, hc)
+        model_instrumented = True
+
+    # Generation
+    input_ids = tokenizer(input, return_tensors="pt", truncation=truncate)
+    if torch.cuda.is_available():
+        input_ids = input_ids.to("cuda")
+    output = model.generate(input_ids)
+    decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
+    logging.debug(
+        f"Generated response for input: {input} \n\n{decoded_output}")
+
+    retVal = GenerationInstance({
+        "input": input,
+        "output": decoded_output,
+        "model_name": model.name_or_path
+    })
+
+    if model_instrumented:
+        deinstrument_model(hndls)
+        data = hc.finish_and_get_data()
+        # Add data to return value
+        retVal.add_data(data)
+        model_instrumented = False
+
+    return retVal
+
+
+def get_model_type(model) -> str:
+    model_name = model.name_or_path
+    if "t5" in model_name:
+        return "t5"
+    if "flan" in model_name:
+        return "t5"
+    if "JudgeLM" in model:
+        return "llama2"
+    if model.startswith("meta-llama"):
+        return "llama2"
+    if "Mixtral-8x" in model:
+        return "mixtral8x"
+    if "Mistral-7B" in model:
+        return "mistral7b"
+    raise ValueError(f"Model type not implemented: {model_name}")
+
+
+def instrument_model(cfg, model, hc: Collector) -> list:
+    """Instruments a local model
+        Instrumentation config dictionary should include:
+        model_type: t5, llama2, mixtral8x, mistral7b
+        instrument_encoder: bool
+        instrument_decoder: bool
+        instrument_FF: bool
+        instrument_attention: bool
+        instrument_embedding: bool
+    Args:
+        cfg (dict): Instrumentation configuration
+        model (_type_): the model object
+        hc (Collector): collector object
+
+    Returns:
+        list: _description_
+    """
+    type = get_model_type(model)
+    logging.debug(f"Instrumenting model of type: {type}")
+
+    if type == "t5":
+        return instrument_t5(cfg, model, hc)
+    if type == "llama2":
+        return instrument_llama2(cfg, model, hc)
+    if type == "mixtral8x":
+        return instrument_mixtral_8x(cfg, model, hc)
+    if type == "mistral7b":
+        return instrument_mistral_7b(cfg, model, hc)
+    return None
+
+
+def deinstrument_model(registered_hooks: list) -> list:
+    for hook in registered_hooks:
+        hook.remove()
+    registered_hooks.clear()
+    logging.debug("Deinstrumented model")
+    return registered_hooks
+
+
+def add_hook(layer, hook_collector, registered_hooks) -> list:
+    """Adds a hook to a layer
+        returns a list with the hook handle added to it.
+        Callers to this method should pass in a list of previously
+        registered hooks
+
+    Args:
+        layer (model layer): layer from the model
+        hook_collector (Collector): hook collector
+        registered_hooks (list): previously registered hooks
+
+    Returns:
+        list: appends to the list of previously registered hooks
+    """
+    hook_handle = layer.register_forward_hook(hook_collector)
+    registered_hooks.append(hook_handle)
+    return registered_hooks
+
+
+def instrument_t5(cfg, model, hc: Collector) -> list:
+    """Instruments a T5 model. It returns the list of hook handles
+    that were added to the model. This list can be used to remove
+    the instrumentation later.
+
+    Args:
+        cfg (dict): should contain the following configs:
+        instrument_encoder, instrument_decoder, instrument_FF,
+        instrument_attention
+        model (HF model): HuggingFace model
+        hc (Collector): Initialized Collector
+
+    Returns:
+        list: List of hook handles to use later
+    """
+    # Keep a list of these so we can de-instrument the model later
+    registered_hooks = []
+    if cfg["instrument_encoder"]:
+        for block in model.encoder.block:
+            for layer in block.layer:
+                if isinstance(layer, T5LayerFF) and cfg["instrument_FF"]:
+                    try:
+                        add_hook(
+                            layer.DenseReluDense.wi, hc, registered_hooks)
+                        layer.DenseReluDense.wi.ns_name = "encoder." + \
+                            block._get_name() + "." + layer._get_name() + \
+                            ".DenseReluDense.wi"
+                    except AttributeError:
+                        add_hook(
+                            layer.DenseReluDense.wi_0, hc, registered_hooks)
+                        add_hook(
+                            layer.DenseReluDense.wi_1, hc, registered_hooks)
+                        layer.DenseReluDense.wi_0.ns_name = "encoder." + \
+                            block._get_name() + "." + layer._get_name() + \
+                            ".DenseReluDense.wi_0"
+                        layer.DenseReluDense.wi_1.ns_name = "encoder." + \
+                            block._get_name() + "." + layer._get_name() + \
+                            ".DenseReluDense.wi_1"
+                    add_hook(
+                        layer.DenseReluDense.wo, hc, registered_hooks)
+                    add_hook(
+                        layer.DenseReluDense.act, hc, registered_hooks)
+                    layer.DenseReluDense.wo.ns_name = "encoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".DenseReluDense.wo"
+                    layer.DenseReluDense.act.ns_name = "encoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".DenseReluDense.act"
+                if isinstance(layer, T5LayerSelfAttention) \
+                        and cfg["instrument_attention"]:
+                    add_hook(layer.SelfAttention.q, hc, registered_hooks)
+                    add_hook(layer.SelfAttention.k, hc, registered_hooks)
+                    add_hook(layer.SelfAttention.v, hc, registered_hooks)
+                    add_hook(layer.SelfAttention.o, hc, registered_hooks)
+                    add_hook(layer.layer_norm, hc, registered_hooks)
+                    layer.SelfAttention.q.ns_name = "encoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".SelfAttention.q"
+                    layer.SelfAttention.k.ns_name = "encoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".SelfAttention.k"
+                    layer.SelfAttention.v.ns_name = "encoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".SelfAttention.v"
+                    layer.SelfAttention.o.ns_name = "encoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".SelfAttention.o"
+                    layer.layer_norm.ns_name = "encoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".layer_norm"
+    if cfg["instrument_decoder"]:
+        for block in model.decoder.block:
+            for layer in block.layer:
+                if isinstance(layer, T5LayerFF) and cfg["instrument_FF"]:
+                    try:
+                        add_hook(
+                            layer.DenseReluDense.wi, hc, registered_hooks)
+                        layer.DenseReluDense.wi.ns_name = "decoder." + \
+                            block._get_name() + "." + layer._get_name() + \
+                            ".DenseReluDense.wi"
+                    except AttributeError:
+                        add_hook(
+                            layer.DenseReluDense.wi_0, hc, registered_hooks)
+                        add_hook(
+                            layer.DenseReluDense.wi_1, hc, registered_hooks)
+                        layer.DenseReluDense.wi_0.ns_name = "decoder." + \
+                            block._get_name() + "." + layer._get_name() + \
+                            ".DenseReluDense.wi_0"
+                        layer.DenseReluDense.wi_1.ns_name = "decoder." + \
+                            block._get_name() + "." + layer._get_name() + \
+                            ".DenseReluDense.wi_1"
+                    add_hook(
+                        layer.DenseReluDense.wo, hc, registered_hooks)
+                    add_hook(
+                        layer.DenseReluDense.act, hc, registered_hooks)
+                    layer.DenseReluDense.wo.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".DenseReluDense.wo"
+                    layer.DenseReluDense.act.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".DenseReluDense.act"
+                if isinstance(layer, T5LayerSelfAttention) \
+                        and cfg["instrument_attention"]:
+                    add_hook(layer.SelfAttention.q, hc, registered_hooks)
+                    add_hook(layer.SelfAttention.k, hc, registered_hooks)
+                    add_hook(layer.SelfAttention.v, hc, registered_hooks)
+                    add_hook(layer.SelfAttention.o, hc, registered_hooks)
+                    add_hook(layer.layer_norm, hc, registered_hooks)
+                    layer.SelfAttention.q.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".SelfAttention.q"
+                    layer.SelfAttention.k.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".SelfAttention.k"
+                    layer.SelfAttention.v.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".SelfAttention.v"
+                    layer.SelfAttention.o.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".SelfAttention.o"
+                    layer.layer_norm.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".layer_norm"
+                if isinstance(layer, T5LayerCrossAttention) \
+                        and cfg["instrument_attention"]:
+                    add_hook(
+                        layer.EncDecAttention.q, hc, registered_hooks)
+                    add_hook(
+                        layer.EncDecAttention.k, hc, registered_hooks)
+                    add_hook(
+                        layer.EncDecAttention.v, hc, registered_hooks)
+                    add_hook(
+                        layer.EncDecAttention.o, hc, registered_hooks)
+                    add_hook(
+                        layer.layer_norm, hc, registered_hooks)
+                    layer.EncDecAttention.q.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".T5LayerCrossAttention.q"
+                    layer.EncDecAttention.k.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".T5LayerCrossAttention.k"
+                    layer.EncDecAttention.v.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".T5LayerCrossAttention.v"
+                    layer.EncDecAttention.o.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".T5LayerCrossAttention.o"
+                    layer.layer_norm.ns_name = "decoder." + \
+                        block._get_name() + "." + layer._get_name() + \
+                        ".layer_norm"
+    add_hook(model.lm_head, hc, registered_hooks)
+    model.lm_head.ns_name = "decoder.output"
+    hc.last_layer = id(model.lm_head)
+    return registered_hooks
+
+
+def instrument_llama2(cfg, model, hc: Collector) -> list:
+    """Instruments a llama2 model. It returns the list of hook handles
+    that were added to the model. This list can be used to remove
+    the instrumentation later.
+
+    Args:
+        cfg (dict): should contain the following configs:
+        instrument_encoder, instrument_decoder, instrument_FF,
+        instrument_attention
+        model (HF model): HuggingFace model
+        hc (Collector): Initialized Collector
+
+    Returns:
+        list: List of hook handles to use later
+    """
+    # Keep a list of these so we can de-instrument the model later
+    registered_hooks = []
+    if cfg["instrument_embedding"]:
+        add_hook(model.model.embed_tokens, hc, registered_hooks)
+        model.model.embed_tokens.ns_name = "LlamaDecoder.embed_tokens"
+    if cfg["instrument_decoder"]:
+        for layer in model.model.layers:
+            if cfg["instrument_attention"]:
+                add_hook(
+                    layer.self_attn.q_proj, hc, registered_hooks)
+                layer.self_attn.q_proj.ns_name =\
+                    "LlamaDecoder.self_attn.q_proj"
+                add_hook(
+                    layer.self_attn.k_proj, hc, registered_hooks)
+                layer.self_attn.k_proj.ns_name =\
+                    "LlamaDecoder.self_attn.k_proj"
+                add_hook(
+                    layer.self_attn.v_proj, hc, registered_hooks)
+                layer.self_attn.v_proj.ns_name =\
+                    "LlamaDecoder.self_attn.v_proj"
+                add_hook(
+                    layer.self_attn.o_proj, hc, registered_hooks)
+                layer.self_attn.o_proj.ns_name =\
+                    "LlamaDecoder.self_attn.o_proj"
+            if cfg["instrument_FF"]:
+                add_hook(
+                    layer.mlp.gate_proj, hc, registered_hooks)
+                layer.mlp.gate_proj.ns_name =\
+                    "LlamaDecoder.mlp.gate_proj"
+                add_hook(layer.mlp.up_proj, hc, registered_hooks)
+                layer.mlp.up_proj.ns_name =\
+                    "LlamaDecoder.mlp.up_proj"
+                add_hook(
+                    layer.mlp.down_proj, hc, registered_hooks)
+                layer.mlp.down_proj.ns_name =\
+                    "LlamaDecoder.mlp.down_proj"
+                add_hook(
+                    layer.mlp.act_fn, hc, registered_hooks)
+                layer.mlp.act_fn.ns_name =\
+                    "LlamaDecoder.mlp.act_fn"
+    add_hook(model.model.norm, hc, registered_hooks)
+    model.model.norm.ns_name = "LlamaDecoder.norm"
+    add_hook(model.lm_head, hc, registered_hooks)
+    model.lm_head.ns_name = "LlamaDecoder.output"
+    hc.last_layer = id(model.lm_head)
+    return registered_hooks
+
+
+def instrument_mixtral_8x(cfg, model, hc: Collector) -> list:
+    """Instruments a mistralai/Mixtral-8x7B-Instruct-v0.1 model.
+    It returns the list of hook handles
+    that were added to the model. This list can be used to remove
+    the instrumentation later.
+
+    Args:
+        cfg (dict): should contain the following configs:
+        instrument_encoder, instrument_decoder, instrument_FF,
+        instrument_attention
+        model (HF model): HuggingFace model
+        hc (Collector): Initialized Collector
+
+    Returns:
+        list: List of hook handles to use later
+    """
+    # Keep a list of these so we can de-instrument the model later
+    registered_hooks = []
+    if cfg["instrument_embedding"]:
+        add_hook(model.model.embed_tokens, hc, registered_hooks)
+        model.model.embed_tokens.ns_name = "mixtral.embed_tokens"
+    if cfg["instrument_decoder"]:
+        for layer in model.model.layers:
+            if cfg["instrument_attention"]:
+                add_hook(
+                    layer.self_attn.q_proj, hc, registered_hooks)
+                layer.self_attn.q_proj.ns_name =\
+                    "mixtral.self_attn.q_proj"
+                add_hook(
+                    layer.self_attn.k_proj, hc, registered_hooks)
+                layer.self_attn.k_proj.ns_name =\
+                    "mixtral.self_attn.k_proj"
+                add_hook(
+                    layer.self_attn.v_proj, hc, registered_hooks)
+                layer.self_attn.v_proj.ns_name =\
+                    "mixtral.self_attn.v_proj"
+                add_hook(
+                    layer.self_attn.o_proj, hc, registered_hooks)
+                layer.self_attn.o_proj.ns_name =\
+                    "mixtral.self_attn.o_proj"
+                # add_hook(
+                #
+                #    layer.self_attn.rotary_emb, hc, registered_hooks)
+                # layer.self_attn.rotary_emb.ns_name =\
+                #    "mixtral.self_attn.rotary_emb"
+            if cfg["instrument_FF"]:
+                add_hook(
+                    layer.block_sparse_moe.gate, hc, registered_hooks)
+                layer.block_sparse_moe.gate.ns_name =\
+                    "mixtral.block_sparse_moe.gate"
+                for expert in layer.block_sparse_moe.experts:
+                    add_hook(
+                        expert.w1, hc, registered_hooks)
+                    expert.w1.ns_name =\
+                        "mixtral.expert.w1"
+                    add_hook(
+                        expert.w2, hc, registered_hooks)
+                    expert.w2.ns_name =\
+                        "mixtral.expert.w2"
+                    add_hook(
+                        expert.w3, hc, registered_hooks)
+                    expert.w3.ns_name =\
+                        "mixtral.expert.w3"
+                    add_hook(
+                        expert.act_fn, hc, registered_hooks)
+                    expert.act_fn.ns_name =\
+                        "mixtral.expert.act_fn_SiLU"
+
+                add_hook(
+                    layer.input_layernorm, hc, registered_hooks)
+                layer.input_layernorm.ns_name =\
+                    "mixtral.input_layernorm"
+                add_hook(
+                    layer.post_attention_layernorm, hc, registered_hooks)
+                layer.post_attention_layernorm.ns_name =\
+                    "mixtral.post_attention_layernorm"
+
+    add_hook(model.model.norm, hc, registered_hooks)
+    model.model.norm.ns_name = "mixtral.norm"
+    add_hook(model.lm_head, hc, registered_hooks)
+    model.lm_head.ns_name = "mixtral.lm_head"
+    hc.last_layer = id(model.lm_head)
+    return registered_hooks
+
+
+def instrument_mistral_7b(cfg, model, hc: Collector) -> list:
+    """Instruments a mistralai/Mixtral-8x7B-Instruct-v0.1 model.
+    It returns the list of hook handles
+    that were added to the model. This list can be used to remove
+    the instrumentation later.
+
+    Args:
+        cfg (dict): should contain the following configs:
+        instrument_encoder, instrument_decoder, instrument_FF,
+        instrument_attention
+        model (HF model): HuggingFace model
+        hc (Collector): Initialized Collector
+
+    Returns:
+        list: List of hook handles to use later
+    """
+    # Keep a list of these so we can de-instrument the model later
+    registered_hooks = []
+    if cfg["instrument_embedding"]:
+        add_hook(model.model.embed_tokens, hc, registered_hooks)
+        model.model.embed_tokens.ns_name = "mistral.embed_tokens"
+    if cfg["instrument_decoder"]:
+        for layer in model.model.layers:
+            if cfg["instrument_attention"]:
+                add_hook(
+                    layer.self_attn.q_proj, hc, registered_hooks)
+                layer.self_attn.q_proj.ns_name =\
+                    "mistral.self_attn.q_proj"
+                add_hook(
+                    layer.self_attn.k_proj, hc, registered_hooks)
+                layer.self_attn.k_proj.ns_name =\
+                    "mistral.self_attn.k_proj"
+                add_hook(
+                    layer.self_attn.v_proj, hc, registered_hooks)
+                layer.self_attn.v_proj.ns_name =\
+                    "mistral.self_attn.v_proj"
+                add_hook(
+                    layer.self_attn.o_proj, hc, registered_hooks)
+                layer.self_attn.o_proj.ns_name =\
+                    "mistral.self_attn.o_proj"
+                # add_hook(
+                #
+                #    layer.self_attn.rotary_emb, hc, registered_hooks)
+                # layer.self_attn.rotary_emb.ns_name =\
+                #    "mistral.self_attn.rotary_emb"
+            if cfg["instrument_FF"]:
+                add_hook(
+                    layer.mlp.gate_proj, hc, registered_hooks)
+                layer.mlp.gate_proj.ns_name =\
+                    "mistral.mlp.gate_proj"
+                add_hook(
+                    layer.mlp.up_proj, hc, registered_hooks)
+                layer.mlp.up_proj.ns_name =\
+                    "mistral.mlp.up_proj"
+                add_hook(
+                    layer.mlp.down_proj, hc, registered_hooks)
+                layer.mlp.down_proj.ns_name =\
+                    "mistral.mlp.down_proj"
+                add_hook(
+                    layer.mlp.act_fn, hc, registered_hooks)
+                layer.mlp.act_fn.ns_name =\
+                    "mistral.mlp.act_fn"
+
+                add_hook(
+                    layer.input_layernorm, hc, registered_hooks)
+                layer.input_layernorm.ns_name =\
+                    "mistral.input_layernorm"
+                add_hook(
+                    layer.post_attention_layernorm, hc, registered_hooks)
+                layer.post_attention_layernorm.ns_name =\
+                    "mistral.post_attention_layernorm"
+
+    add_hook(model.model.norm, hc, registered_hooks)
+    model.model.norm.ns_name = "mistral.norm"
+    add_hook(model.lm_head, hc, registered_hooks)
+    model.lm_head.ns_name = "mistral.lm_head"
+    hc.last_layer = id(model.lm_head)
+    return registered_hooks
