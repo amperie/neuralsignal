@@ -18,7 +18,7 @@ class SDK:
             "qb_model": "google/flan-t5-large",
             "zone_size:": 1024,
             "qb_batch_size": 1,
-            "quantization": "int8", # int4, int8, no_quantization
+            "quantization": "int8",  # int4, int8, no_quantization
             "device": "cuda",
         },
         "save_scans": False,  # Save scans to backend
