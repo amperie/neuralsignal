@@ -1,6 +1,6 @@
 from neuralsignal.sdk.neuralsignal import SDK
-from core.modules.model_instrumentation import generate_from_string
-from core.modules.model_instrumentation import load_model
+from neuralsignal.core.modules.model_instrumentation import generate_from_string
+from neuralsignal.core.modules.model_instrumentation import load_model
 
 cfg = {
     "evaluation_mode": "qb",  # qb or direct_instrument
@@ -19,7 +19,7 @@ cfg = {
 # s = SDK(cfg)
 # s.evaluate_single_output("Hello, world!")
 
-model, tokenizer = load_model({
+tokenizer, model = load_model({
     "model_name": "t5-small", "device": "cpu",
     "quantization": "no_quantization"
     })
