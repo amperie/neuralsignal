@@ -3,7 +3,7 @@ import json
 from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.formatters import TerminalFormatter
-from core.modules.model_instrumentation import load_model
+from neuralsignal.core.modules.model_instrumentation import load_model
 
 logging.basicConfig(level=logging.INFO)
 

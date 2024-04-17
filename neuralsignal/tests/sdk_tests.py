@@ -1,4 +1,4 @@
-from sdk.neuralsignal import SDK
+from neuralsignal.sdk.neuralsignal import SDK
 from core.modules.model_instrumentation import generate_from_string
 from core.modules.model_instrumentation import load_model
 

@@ -1,5 +1,5 @@
 import torch
-from tensors import process_tensor_dict_into_zones
+from neuralsignal.core.modules.tensors import process_tensor_dict_into_zones
 
 
 class Collector:

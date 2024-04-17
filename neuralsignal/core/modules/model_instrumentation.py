@@ -3,8 +3,8 @@ import torch
 from transformers import AutoTokenizer
 from transformers import AutoModel
 from transformers import BitsAndBytesConfig
-from generation_instance import GenerationInstance
-from collector import Collector
+from neuralsignal.core.modules.generation_instance import GenerationInstance
+from neuralsignal.core.modules.collector import Collector
 from transformers.models.t5.modeling_t5 import T5LayerFF
 from transformers.models.t5.modeling_t5 import T5LayerSelfAttention
 from transformers.models.t5.modeling_t5 import T5LayerCrossAttention
