@@ -13,7 +13,7 @@ class SDK:
     """
 
     default_config = {
-        "evaluation_mode": "qb",  # qb or direct_instrument
+        "evaluation_mode": "qb",  # qb or direct
         "qb_config": {
             "qb_model": "google/flan-t5-large",
             "zone_size:": 1024,
@@ -38,6 +38,9 @@ class SDK:
             f" with config: {model_cfg}")
 
         self.tokenizer, self.model = load_model(model_cfg)
+
+    def __init_direct(self):
+        pass
 
     def __init__(self, config: dict) -> None:
         """Initizalizes the NeuralSignal SDK

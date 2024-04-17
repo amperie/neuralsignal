@@ -1,6 +1,6 @@
 from neuralsignal.sdk.neuralsignal import SDK
 from neuralsignal.core.modules.model_instrumentation\
-    import generate_from_string
+    import generate_from_batch
 from neuralsignal.core.modules.model_instrumentation\
     import load_model
 
@@ -8,7 +8,7 @@ cfg = {
     "evaluation_mode": "qb",  # qb or direct_instrument
     "qb_config": {
         "qb_model": "t5-small",
-        "zone_size:": 1024,
+        "zone_size:": 512,
         "qb_batch_size": 1,
         "quantization": "no_quantization",
         "device": "cpu",
@@ -25,8 +25,8 @@ tokenizer, model = load_model({
     "model_name": "t5-small", "device": "cpu",
     "quantization": "no_quantization"
     })
-st = generate_from_string(
-    "what do you think of this?", model, tokenizer,
+st = generate_from_batch(
+    ["what do you think", "how about this?"], model, tokenizer,
     instrumentation_cfg={})
 
 print(st)

@@ -94,8 +94,95 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
     return (tokenizer, model)
 
 
-def generate_from_batch():
-    pass
+def generate_from_batch(
+        input: list[str], model: AutoModel, tokenizer: AutoTokenizer,
+        instrumentation_cfg: dict = None, truncate: bool = False,
+        ) -> GenerationInstance:
+    """Generates a response from a model for a given string
+
+    Args:
+        input (str): input to the model
+        model (AutoModel): model to generate the response
+        tokenizer (AutoTokenizer): tokenizer to tokenize the input
+        (optional) instrumentation_cfg (dict): configuration for instrumenting
+            To use default values, pass in an empty dict {}
+            Should contain: instrument_encoder, instrument_decoder,
+            instrument_FF, instrument_attention, instrument_embedding and
+            collector_config dict. If ommited, default values are used:
+                "instrument_encoder": True,
+                "instrument_decoder": True,
+                "instrument_FF": True,
+                "instrument_attention": True,
+                "instrument_embedding": True,
+                "collector_config": {mode: "additive",
+                data_to_save: ["output", "module", "layer_info",
+                "topology"], zone_size: 512}
+
+    Returns:
+        str: generated response
+    """
+    logging.debug(f"Generating response for input: {input}")
+    # Setup for instrumenting model
+    # If collector exists, we're instrumenting
+    default_instrumentation_cfg = {
+            "instrument_encoder": True,
+            "instrument_decoder": True,
+            "instrument_FF": True,
+            "instrument_attention": True,
+            "instrument_embedding": True,
+            "collector_config": {
+                "mode": "additive",
+                "data_to_save": ["outputs", "layer_info", "topology"],
+                "zone_size": 512,
+            },
+        }
+
+    batch_size = len(input)
+    model_instrumented = False
+    if instrumentation_cfg is not None:
+        instrumentation_cfg = {
+            **default_instrumentation_cfg, **instrumentation_cfg}
+
+        hc = Collector(instrumentation_cfg["collector_config"])
+        hndls = instrument_model(instrumentation_cfg, model, hc)
+        model_instrumented = True
+
+    # Generation
+    input_ids = tokenizer(
+        input, return_tensors="pt",
+        padding=True, truncation=truncate).input_ids
+
+    if torch.cuda.is_available():
+        input_ids = input_ids.to("cuda")
+    output = model.generate(input_ids, pad_token_id=tokenizer.eos_token_id)
+
+    if model_instrumented:
+        hc.finish_and_get_data()
+
+    retVal = []
+    for batch_idx in range(batch_size):
+        decoded_output = tokenizer.decode(
+            output[batch_idx], skip_special_tokens=True)
+        gi = GenerationInstance({
+            "input": input[batch_idx],
+            "output": decoded_output,
+            "model_name": model.name_or_path
+        })
+        if model_instrumented:
+            data = hc.get_data_by_batch_index(batch_idx)
+            # Add data to return value
+            gi.add_data(data)
+        retVal.append(gi)
+
+    if model_instrumented:
+        deinstrument_model(hndls)
+        model_instrumented = False
+
+    logging.debug(
+        f"Generated response for batch size {batch_size} "\
+        f"input: {input} \n\n{decoded_output}")
+
+    return retVal
 
 
 def generate_from_string(
