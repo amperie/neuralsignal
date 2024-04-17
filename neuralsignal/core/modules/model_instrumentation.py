@@ -179,7 +179,7 @@ def generate_from_batch(
         model_instrumented = False
 
     logging.debug(
-        f"Generated response for batch size {batch_size} "\
+        f"Generated response for batch size {batch_size} "
         f"input: {input} \n\n{decoded_output}")
 
     return retVal
@@ -212,56 +212,9 @@ def generate_from_string(
     Returns:
         str: generated response
     """
-    logging.debug(f"Generating response for input: {input}")
-    # Setup for instrumenting model
-    # If collector exists, we're instrumenting
-    default_instrumentation_cfg = {
-            "instrument_encoder": True,
-            "instrument_decoder": True,
-            "instrument_FF": True,
-            "instrument_attention": True,
-            "instrument_embedding": True,
-            "collector_config": {
-                "mode": "additive",
-                "data_to_save": ["outputs", "layer_info", "topology"],
-                "zone_size": 512,
-            },
-        }
-
-    model_instrumented = False
-    if instrumentation_cfg is not None:
-        instrumentation_cfg = {
-            **default_instrumentation_cfg, **instrumentation_cfg}
-
-        hc = Collector(instrumentation_cfg["collector_config"])
-        hndls = instrument_model(instrumentation_cfg, model, hc)
-        model_instrumented = True
-
-    # Generation
-    input_ids = tokenizer(
-        input, return_tensors="pt", truncation=truncate).input_ids
-
-    if torch.cuda.is_available():
-        input_ids = input_ids.to("cuda")
-    output = model.generate(input_ids, pad_token_id=tokenizer.eos_token_id)
-    decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
-    logging.debug(
-        f"Generated response for input: {input} \n\n{decoded_output}")
-
-    retVal = GenerationInstance({
-        "input": input,
-        "output": decoded_output,
-        "model_name": model.name_or_path
-    })
-
-    if model_instrumented:
-        deinstrument_model(hndls)
-        data = hc.finish_and_get_data()
-        # Add data to return value
-        retVal.add_data(data)
-        model_instrumented = False
-
-    return retVal
+    return generate_from_batch(
+        [input], model, tokenizer,
+        instrumentation_cfg, truncate)
 
 
 def get_model_type(model) -> str:

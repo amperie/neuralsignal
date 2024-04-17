@@ -10,6 +10,19 @@ logging.basicConfig(level=logging.INFO)
 
 class SDK:
     """Main entrypoint into NeuralSignal SDK
+    Configuration:
+        - evaluation_mode: qb or direct
+        - evaluators available: hallucination, bias, etc
+        - S1 models for each
+        - Prompts for each
+        - Thresholds for each
+        - Backend configuration
+    Interfaces:
+        - evaluate_output - qb evaluation of input/output
+            - parameters: input/output/context/metadata
+            - parameters: what detection to run (hallu/bias/etc)
+        - evaluate_direct: instrumentation and real-time evaluation
+            - wrap the generate function
     """
 
     default_config = {
