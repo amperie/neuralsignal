@@ -9,7 +9,7 @@ class Collector:
     default_config = {
         "mode": "additive",
         "data_to_save":
-            ["input", "output", "module", "layer_info", "topology"],
+            ["inputs", "outputs", "layer_info", "topology"],
         "zone_size": 512,
     }
 
@@ -117,3 +117,4 @@ class Collector:
             retVal['layer_id_to_name'] = self.layer_id_to_name
             retVal['layer_passes'] = self.layer_passes
             retVal['layer_passes_by_name'] = self.layer_passes_by_name
+        return retVal

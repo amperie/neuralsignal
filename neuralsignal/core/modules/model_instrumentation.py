@@ -8,6 +8,7 @@ from neuralsignal.core.modules.collector import Collector
 from transformers.models.t5.modeling_t5 import T5LayerFF
 from transformers.models.t5.modeling_t5 import T5LayerSelfAttention
 from transformers.models.t5.modeling_t5 import T5LayerCrossAttention
+from transformers import AutoModelForSeq2SeqLM, AutoModelForCausalLM
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,7 +28,8 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
     """
     logging.info(
         f"Loading model: {model_config['model_name']} with "
-        "config: {model_config}")
+        f"config: {model_config}")
+    model_type = get_model_type(model_config["model_name"])
 
     if model_config["quantization"] == "int4":
         bnb_config = BitsAndBytesConfig(
@@ -36,10 +38,18 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16
             )
-        model = AutoModel.from_pretrained(
-            model_config["model_name"],
-            device_map=model_config["device"],
-            quantization_config=bnb_config)
+
+        if model_type == "t5":
+            model = AutoModelForSeq2SeqLM.from_pretrained(
+                model_config["model_name"],
+                device_map=model_config["device"],
+                quantization_config=bnb_config)
+        else:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_config["model_name"],
+                device_map=model_config["device"],
+                quantization_config=bnb_config)
+
         logging.info(
             f"Loaded {model_config['model_name']} in 4 bit quantization")
 
@@ -50,17 +60,30 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
             bnb_8bit_quant_type="nf4",
             bnb_8bit_compute_dtype=torch.bfloat16
             )
-        model = AutoModel.from_pretrained(
-            model_config["model_name"],
-            device_map=model_config["device"],
-            quantization_config=bnb_config)
+
+        if model_type == "t5":
+            model = AutoModelForSeq2SeqLM.from_pretrained(
+                model_config["model_name"],
+                device_map=model_config["device"],
+                quantization_config=bnb_config)
+        else:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_config["model_name"],
+                device_map=model_config["device"],
+                quantization_config=bnb_config)
+
         logging.info(
             f"Loaded {model_config['model_name']} in 8 bit quantization")
 
     else:
-        model = AutoModel.from_pretrained(
-            model_config["model_name"],
-            device_map=model_config["device"])
+        if model_type == "t5":
+            model = AutoModelForSeq2SeqLM.from_pretrained(
+                model_config["model_name"],
+                device_map=model_config["device"])
+        else:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_config["model_name"],
+                device_map=model_config["device"])
         logging.info(
             f"Loaded {model_config['model_name']} unquantized")
 
@@ -86,6 +109,7 @@ def generate_from_string(
         model (AutoModel): model to generate the response
         tokenizer (AutoTokenizer): tokenizer to tokenize the input
         (optional) instrumentation_cfg (dict): configuration for instrumenting
+            To use default values, pass in an empty dict {}
             Should contain: instrument_encoder, instrument_decoder,
             instrument_FF, instrument_attention, instrument_embedding and
             collector_config dict. If ommited, default values are used:
@@ -112,7 +136,7 @@ def generate_from_string(
             "instrument_embedding": True,
             "collector_config": {
                 "mode": "additive",
-                "data_to_save": ["output", "module", "layer_info", "topology"],
+                "data_to_save": ["outputs", "layer_info", "topology"],
                 "zone_size": 512,
             },
         }
@@ -127,10 +151,12 @@ def generate_from_string(
         model_instrumented = True
 
     # Generation
-    input_ids = tokenizer(input, return_tensors="pt", truncation=truncate)
+    input_ids = tokenizer(
+        input, return_tensors="pt", truncation=truncate).input_ids
+
     if torch.cuda.is_available():
         input_ids = input_ids.to("cuda")
-    output = model.generate(input_ids)
+    output = model.generate(input_ids, pad_token_id=tokenizer.eos_token_id)
     decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
     logging.debug(
         f"Generated response for input: {input} \n\n{decoded_output}")
@@ -152,7 +178,10 @@ def generate_from_string(
 
 
 def get_model_type(model) -> str:
-    model_name = model.name_or_path
+    if isinstance(model, str):
+        model_name = model
+    else:
+        model_name = model.name_or_path
     if "t5" in model_name:
         return "t5"
     if "flan" in model_name:
