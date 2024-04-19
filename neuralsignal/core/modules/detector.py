@@ -20,12 +20,14 @@ class Detector:
         "mlflow_uri": None,
         "prompt": "",
         "behavior_name": "default",
+        "threshold": None,
     }
 
     def __init__(self, config: dict = None):
         if config is None:
             config = self.default_config
-        self.config = {**self.default_config, **config}
+        else:
+            self.config = {**self.default_config, **config}
         logging.debug(f"Initializing detector with config: {self.config}")
         if self.config["S1_model"] is not None:
             self.model = self.config["S1_model"]
@@ -37,3 +39,10 @@ class Detector:
                 self.config["mlflow_uri"], self.config["S1_model_path"])
         else:
             raise ValueError("S1_model or S1_model_path must be provided")
+
+    def detect(self, input_data) -> float:
+        """Detects behavior in input data
+        If a threshold is defined, returns a binary value of 0 or 1
+        If a threshold is not defined, returns a probability between 0 and 1
+        """
+        pass

@@ -97,7 +97,7 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
 def generate_from_batch(
         input: list[str], model: AutoModel, tokenizer: AutoTokenizer,
         instrumentation_cfg: dict = None, truncate: bool = False,
-        ) -> GenerationInstance:
+        ) -> list[GenerationInstance]:
     """Generates a response from a model for a given string
 
     Args:
@@ -188,7 +188,7 @@ def generate_from_batch(
 def generate_from_string(
         input: str, model: AutoModel, tokenizer: AutoTokenizer,
         instrumentation_cfg: dict = None, truncate: bool = False,
-        ) -> GenerationInstance:
+        ) -> list[GenerationInstance]:
     """Generates a response from a model for a given string
 
     Args:

@@ -101,6 +101,7 @@ class Collector:
     def finish_and_get_data(self) -> dict:
 
         retVal = {}
+        retVal['zone_size'] = self.zone_size
         retVal['batch_size'] = self.batch_size
         if self.mode == "additive":
             if self.config["zone_size"] > 1:
@@ -147,4 +148,5 @@ class Collector:
             retVal['layer_id_to_name'] = self.layer_id_to_name
             retVal['layer_passes'] = self.layer_passes
             retVal['layer_passes_by_name'] = self.layer_passes_by_name
+        retVal['zone_size'] = self.zone_size
         return retVal

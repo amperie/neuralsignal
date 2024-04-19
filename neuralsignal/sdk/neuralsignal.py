@@ -3,7 +3,8 @@ import json
 from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.formatters import TerminalFormatter
-from neuralsignal.core.modules.model_instrumentation import load_model
+from neuralsignal.core.modules.model_instrumentation\
+    import load_model, generate_from_batch
 
 logging.basicConfig(level=logging.INFO)
 
@@ -36,7 +37,7 @@ class SDK:
         },
         "save_scans": False,  # Save scans to backend
         "backend_config": {},  # Backend endpoint
-        "S1_model": None,  # S1 model can't be None
+        "detectors": [],  # detectors can't be empty
     }
 
     def __init_qb(self):
@@ -69,7 +70,8 @@ class SDK:
             f"Initializing NeuralSignal SDK with config: {log_string}")
 
         self.cfg = config
-        if config["evaluation_mode"] == "qb":
+        self.mode = config["evaluation_mode"] == "qb"
+        if self.mode == "qb":
             self.__init_qb()
 
     def evaluate_single_output(self, output: dict) -> dict:
@@ -84,20 +86,41 @@ class SDK:
                     metadata: dict of any fields that will pass through
 
         Returns:
-            dict: _description_
+            dict: Returns the same dictionary as the input with additional fields:
+                - behavior: name of the behavior detected
+                - score: score of the behavior detected
+                - judgement: 0 or 1 depending on the threshold and score
+                - correlation_id: unique id for the evaluation
         """
         logging.info(f"Evaluating single output: {output}")
 
     def evaluate_batch_output(self, outputs: list[dict]) -> list:
-        """_summary_
+        """Evaluates a batch of outputs
 
         Args:
-            outputs (dict]): _description_
+            output (dict): dictionary that contains the output to be evaluated.
+                keys should be:
+                    input: input to the model
+                    context: any context sent in with the input
+                    output: output of the model that is being evaluated
+                    metadata: dict of any fields that will pass through
 
         Returns:
-            list: _description_
+            dict: Returns the same dictionary as the input with additional fields:
+                - behavior: name of the behavior detected
+                - score: score of the behavior detected
+                - judgement: 0 or 1 depending on the threshold and score
+                - correlation_id: unique id for the evaluation
         """
-        pass
+        if self.mode != "qb":
+            raise ValueError(
+                "Evaluate_batch_output is only available in QB mode")
+        logging.debug(f"Evaluating batch output: {outputs}")
+        # Generate activity in qb
+        gi = generate_from_batch(
+            outputs, self.model, self.tokenizer)
+
+        # Run the detectors on the activity
 
     def generate():
         pass
