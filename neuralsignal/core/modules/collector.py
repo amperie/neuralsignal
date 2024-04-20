@@ -27,6 +27,7 @@ class Collector:
         # Configuration variables
         self.mode = self.config['mode']
         self.data_to_save = self.config['data_to_save']
+        self.zone_size = self.config['zone_size']
 
         # Additive mode
         if self.mode == "additive":

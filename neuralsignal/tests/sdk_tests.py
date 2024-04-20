@@ -72,7 +72,41 @@ def test_sdk():
         "output": "This is a test output",
         "metadata": "This is a test metadata",
     }
-    s.evaluate_batch_output("Hello, world!")
+    eval2 = {
+        "input": "Hello, world 2!",
+        "context": "This is a test2",
+        "output": "This is a test output2",
+        "metadata": "This is a test metadata2",
+    }
+    ins = [eval, eval2]
 
-test_detector_creation()
-test_generation()
+
+    d1 = {
+        "S1_model": None,  
+        # Either pass the model directly or specify its path
+        "S1_model_path": "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1",
+        # If both are present S1_model is used
+        "mlflow_uri": "http://z600.lan:8000",
+        "prompt": "Test",
+        "behavior_name": "hallucination",
+    }
+    d1 = Detector(d1)
+    d2 = {
+        "S1_model": None,  
+        # Either pass the model directly or specify its path
+        "S1_model_path": "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1",
+        # If both are present S1_model is used
+        "mlflow_uri": "http://z600.lan:8000",
+        "prompt": "Test",
+        "behavior_name": "toxicity",
+    }
+    d2 = Detector(d2)
+
+    gis = s.evaluate_batch_output(ins, [d1, d2])
+
+    print(gis)
+
+
+# test_detector_creation()
+# test_generation()
+test_sdk()

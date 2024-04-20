@@ -11,6 +11,18 @@ Wraps an S1 model plus all the settings needed for real time evaluation:
 """
 
 
+class DetectionResults:
+    """Results of a detection
+    """
+    def __init__(self, behavior_name: str, score: float):
+        self.behavior_name = behavior_name
+        self.score = score
+        self.threshold = None
+
+    def __str__(self):
+        return f"DetectionResults: {self.behavior_name} - {self.score}"
+
+
 class Detector:
     """Class for attaching detectors to evaluation methods
     """
@@ -40,9 +52,10 @@ class Detector:
         else:
             raise ValueError("S1_model or S1_model_path must be provided")
 
-    def detect(self, input_data) -> float:
+    def detect(self, input_data) -> DetectionResults:
         """Detects behavior in input data
         If a threshold is defined, returns a binary value of 0 or 1
         If a threshold is not defined, returns a probability between 0 and 1
         """
-        pass
+        retVal = DetectionResults(self.config["behavior_name"], 0.5)
+        return retVal

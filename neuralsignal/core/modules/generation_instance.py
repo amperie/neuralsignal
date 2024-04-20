@@ -1,4 +1,5 @@
 import logging
+from neuralsignal.core.modules.detector import DetectionResults
 
 logging.basicConfig(level=logging.INFO)
 
@@ -34,6 +35,7 @@ class GenerationInstance:
             "data_run_name": self.config["data_run_name"],
             "model_name": self.config["model_name"],
         }
+        self.detections = {}
 
     def add_data(self, data: dict) -> None:
         """Adds data to the instance
@@ -42,3 +44,11 @@ class GenerationInstance:
             data (dict): Dictionary of data to add
         """
         self.data = {**self.data, **data}
+
+    def add_detection(self, detection: DetectionResults):
+        """Adds detections to the instance
+
+        Args:
+            detections (DetectionResults): Detection Results to add
+        """
+        self.detections[detection.behavior_name] = detection

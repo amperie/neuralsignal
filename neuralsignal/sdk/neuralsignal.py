@@ -5,6 +5,8 @@ from pygments.lexers import JsonLexer
 from pygments.formatters import TerminalFormatter
 from neuralsignal.core.modules.model_instrumentation\
     import load_model, generate_from_batch
+from neuralsignal.core.modules.detector import Detector
+from neuralsignal.core.modules.generation_instance import GenerationInstance
 
 logging.basicConfig(level=logging.INFO)
 
@@ -37,8 +39,19 @@ class SDK:
         },
         "save_scans": False,  # Save scans to backend
         "backend_config": {},  # Backend endpoint
-        "detectors": [],  # detectors can't be empty
     }
+    default_qb_instrumentation_cfg = {
+            "instrument_encoder": True,
+            "instrument_decoder": True,
+            "instrument_FF": True,
+            "instrument_attention": True,
+            "instrument_embedding": True,
+            "collector_config": {
+                "mode": "additive",
+                "data_to_save": ["outputs", "layer_info", "topology"],
+                "zone_size": 512,
+            },
+        }
 
     def __init_qb(self):
         logging.info("Initializing NeuralSignal in QB mode")
@@ -47,9 +60,6 @@ class SDK:
             "device": self.cfg["qb_config"]["device"],
             "quantization": self.cfg["qb_config"]["quantization"],
         }
-        logging.info(
-            f"Loading model: {self.cfg['qb_config']['qb_model']}"
-            f" with config: {model_cfg}")
 
         self.tokenizer, self.model = load_model(model_cfg)
 
@@ -70,7 +80,7 @@ class SDK:
             f"Initializing NeuralSignal SDK with config: {log_string}")
 
         self.cfg = config
-        self.mode = config["evaluation_mode"] == "qb"
+        self.mode = config["evaluation_mode"]
         if self.mode == "qb":
             self.__init_qb()
 
@@ -94,7 +104,9 @@ class SDK:
         """
         logging.info(f"Evaluating single output: {output}")
 
-    def evaluate_batch_output(self, outputs: list[dict]) -> list:
+    def evaluate_batch_output(
+            self, outputs: list[dict], detectors: list[Detector]
+            ) -> list[GenerationInstance]:
         """Evaluates a batch of outputs
 
         Args:
@@ -106,7 +118,8 @@ class SDK:
                     metadata: dict of any fields that will pass through
 
         Returns:
-            dict: Returns the same dictionary as the input with additional fields:
+            dict: Returns the same dictionary as the input with
+            additional fields:
                 - behavior: name of the behavior detected
                 - score: score of the behavior detected
                 - judgement: 0 or 1 depending on the threshold and score
@@ -117,10 +130,20 @@ class SDK:
                 "Evaluate_batch_output is only available in QB mode")
         logging.debug(f"Evaluating batch output: {outputs}")
         # Generate activity in qb
-        gi = generate_from_batch(
-            outputs, self.model, self.tokenizer)
+        gis = generate_from_batch(
+            outputs, self.model, self.tokenizer,
+            instrumentation_cfg=self.default_qb_instrumentation_cfg
+            )
 
         # Run the detectors on the activity
+        for batch_idx in range(len(gis)):
+            for detector in detectors:
+                d = detector.detect(gis[batch_idx].data['outputs'])
+                gis[batch_idx].add_detection(d)
+
+        # Setup the results to include the list of outputs
+        # with the behavior, score, judgement, and correlation_id
+        return None
 
     def generate():
         pass

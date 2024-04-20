@@ -119,7 +119,8 @@ def generate_from_batch(
                 "topology"], zone_size: 512}
 
     Returns:
-        str: generated response
+        [GenerationInstance]: Returns a list of GenerationInstance objects
+        that contain all the details collected for each input
     """
     logging.debug(f"Generating response for input: {input}")
     # Setup for instrumenting model
@@ -148,8 +149,13 @@ def generate_from_batch(
         model_instrumented = True
 
     # Generation
+
+    input_list = []
+    for i in input:
+        input_list.append(i['input'])
+
     input_ids = tokenizer(
-        input, return_tensors="pt",
+        input_list, return_tensors="pt",
         padding=True, truncation=truncate).input_ids
 
     if torch.cuda.is_available():
