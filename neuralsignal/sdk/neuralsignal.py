@@ -7,58 +7,51 @@ from neuralsignal.core.modules.model_instrumentation\
     import load_model, generate_from_batch
 from neuralsignal.core.modules.detector import Detector
 from neuralsignal.core.modules.generation_instance import GenerationInstance
+import yaml
 
 logging.basicConfig(level=logging.INFO)
+
+
+class DetectionResults:
+    """Main container to provide detection results back
+    to the user of the SDK. Only contains data, no methods
+    """
+    def __init__(self):
+        self.input = None
+        self.output = None
+        self.ground_truth = None
+        self.metadata = None
+        self.detections = []
+
+    def __str__(self):
+        retVal = f"DetectionResults: {self.input} - {self.output}"\
+                f"- {self.ground_truth} - {self.metadata} - {self.detections}"
+        return retVal
 
 
 class SDK:
     """Main entrypoint into NeuralSignal SDK
     Configuration:
-        - evaluation_mode: qb or direct
+        - evaluation_mode: indirect or direct
         - evaluators available: hallucination, bias, etc
         - S1 models for each
         - Prompts for each
         - Thresholds for each
         - Backend configuration
     Interfaces:
-        - evaluate_output - qb evaluation of input/output
+        - evaluate_output - indirect evaluation of input/output
             - parameters: input/output/context/metadata
             - parameters: what detection to run (hallu/bias/etc)
         - evaluate_direct: instrumentation and real-time evaluation
             - wrap the generate function
     """
 
-    default_config = {
-        "evaluation_mode": "qb",  # qb or direct
-        "qb_config": {
-            "qb_model": "google/flan-t5-large",
-            "zone_size:": 1024,
-            "qb_batch_size": 1,
-            "quantization": "int8",  # int4, int8, no_quantization
-            "device": "cuda",
-        },
-        "save_scans": False,  # Save scans to backend
-        "backend_config": {},  # Backend endpoint
-    }
-    default_qb_instrumentation_cfg = {
-            "instrument_encoder": True,
-            "instrument_decoder": True,
-            "instrument_FF": True,
-            "instrument_attention": True,
-            "instrument_embedding": True,
-            "collector_config": {
-                "mode": "additive",
-                "data_to_save": ["outputs", "layer_info", "topology"],
-                "zone_size": 512,
-            },
-        }
-
-    def __init_qb(self):
-        logging.info("Initializing NeuralSignal in QB mode")
+    def __init_indirect(self):
+        logging.info("Initializing NeuralSignal in indirect mode")
         model_cfg = {
-            "model_name": self.cfg["qb_config"]["qb_model"],
-            "device": self.cfg["qb_config"]["device"],
-            "quantization": self.cfg["qb_config"]["quantization"],
+            "model_name": self.cfg["indirect_config"]["indirect_model"],
+            "device": self.cfg["indirect_config"]["device"],
+            "quantization": self.cfg["indirect_config"]["quantization"],
         }
 
         self.tokenizer, self.model = load_model(model_cfg)
@@ -74,6 +67,10 @@ class SDK:
             Possible options:
             [TODO: Add options here]
         """
+
+        default_config = yaml.safe_load(open("sdk/neuralsignal_sdk.yaml"))
+        config = {**default_config, **config}
+
         json_str = json.dumps(config, indent=4, sort_keys=False)
         log_string = highlight(json_str, JsonLexer(), TerminalFormatter())
         logging.info(
@@ -81,29 +78,8 @@ class SDK:
 
         self.cfg = config
         self.mode = config["evaluation_mode"]
-        if self.mode == "qb":
-            self.__init_qb()
-
-    def evaluate_single_output(self, output: dict) -> dict:
-        """Evaluates a single output
-
-        Args:
-            output (dict): dictionary that contains the output to be evaluated.
-                keys should be:
-                    input: input to the model
-                    context: any context sent in with the input
-                    output: output of the model that is being evaluated
-                    metadata: dict of any fields that will pass through
-
-        Returns:
-            dict: Returns the same dictionary as the input with
-            additional fields:
-                - behavior: name of the behavior detected
-                - score: score of the behavior detected
-                - judgement: 0 or 1 depending on the threshold and score
-                - correlation_id: unique id for the evaluation
-        """
-        logging.info(f"Evaluating single output: {output}")
+        if self.mode == "indirect":
+            self.__init_indirect()
 
     def evaluate_batch_output(
             self, outputs: list[dict], detectors: list[Detector]
@@ -126,14 +102,14 @@ class SDK:
                 - judgement: 0 or 1 depending on the threshold and score
                 - correlation_id: unique id for the evaluation
         """
-        if self.mode != "qb":
+        if self.mode != "indirect":
             raise ValueError(
-                "Evaluate_batch_output is only available in QB mode")
+                "Evaluate_batch_output is only available in indirect mode")
         logging.debug(f"Evaluating batch output: {outputs}")
-        # Generate activity in qb
+        # Generate activity in indirect
         gis = generate_from_batch(
             outputs, self.model, self.tokenizer,
-            instrumentation_cfg=self.default_qb_instrumentation_cfg
+            instrumentation_cfg=self.default_indirect_instrumentation_cfg
             )
 
         # Run the detectors on the activity
@@ -145,7 +121,23 @@ class SDK:
 
         # Setup the results to include the list of outputs
         # with the behavior, score, judgement, and correlation_id
-        return None
+        return gis
+
+    def evaluate_indirect_output(
+            self, outputs: list[dict], detectors: list[Detector]
+            ) -> list[DetectionResults]:
+
+        gis = self.evaluate_batch_output(outputs, detectors)
+        retVal = []
+        for gi in gis:
+            dr = DetectionResults()
+            dr.input = gi.data['input']
+            dr.output = gi.data['output']
+            dr.ground_truth = gi.data['ground_truth']
+            dr.metadata = gi.data['metadata']
+            dr.detections = gi.detections
+            retVal.append(dr)
+        return retVal
 
     def generate():
         pass

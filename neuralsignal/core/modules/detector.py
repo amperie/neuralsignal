@@ -54,6 +54,7 @@ class Detector:
         else:
             raise ValueError("S1_model or S1_model_path must be provided")
         self.enabled = self.config["enabled"]
+        self.behavior_name = self.config["behavior_name"]
 
     def predict(self, input_data: list) -> float:
         """Runs the S1 model and returns the probability of
@@ -65,8 +66,16 @@ class Detector:
         Returns:
             float: probability of class 0 being detected
         """
-
-        return self.model.predict_proba([input_data])
+        try:
+            # return self.model.predict_proba([input_data])
+            return .5
+        except ValueError as e:
+            logging.error(
+                f"Error predicting for detector: {self.behavior_name}\n"
+                "Disabling detector\n"
+                f"Error: {e}")
+            self.enabled = False
+            return None
 
     def detect(self, input_data) -> DetectionResults:
         """Detects behavior in input data
