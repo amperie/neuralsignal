@@ -59,7 +59,7 @@ class SDK:
     def __init_direct(self):
         pass
 
-    def __init__(self, config: dict) -> None:
+    def __init__(self, config: dict = None) -> None:
         """Initizalizes the NeuralSignal SDK
 
         Args:
@@ -68,8 +68,12 @@ class SDK:
             [TODO: Add options here]
         """
 
-        default_config = yaml.safe_load(open("sdk/neuralsignal_sdk.yaml"))
-        config = {**default_config, **config}
+        default_config = yaml.safe_load(
+            open("neuralsignal/sdk/neuralsignal_sdk.yaml"))
+        if config is None:
+            config = default_config
+        else:
+            config = {**default_config, **config}
 
         json_str = json.dumps(config, indent=4, sort_keys=False)
         log_string = highlight(json_str, JsonLexer(), TerminalFormatter())
@@ -80,6 +84,8 @@ class SDK:
         self.mode = config["evaluation_mode"]
         if self.mode == "indirect":
             self.__init_indirect()
+        self.default_indirect_instrumentation_cfg =\
+            config["indirect_instrumentation_config"]
 
     def evaluate_batch_output(
             self, outputs: list[dict], detectors: list[Detector]

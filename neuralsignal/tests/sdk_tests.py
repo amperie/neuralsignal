@@ -38,21 +38,8 @@ def test_detector_creation():
 
 
 def test_sdk():
-    cfg = {
-        "evaluation_mode": "indirect",  # indirect or direct_instrument
-        "indirect_config": {
-            "indirect_model": "t5-small",
-            "zone_size:": 512,
-            "indirect_batch_size": 1,
-            "quantization": "no_quantization",
-            "device": "cpu",
-        },
-        "save_scans": False,  # Save scans to backend
-        "backend_config": {},  # Backend endpoint
-        "S1_model": None,  # S1 model can't be None
-    }
 
-    s = SDK(cfg)
+    s = SDK()
     eval = {
         "input": "Hello, world!",
         "context": "This is a test",

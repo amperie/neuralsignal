@@ -150,6 +150,9 @@ def generate_from_batch(
 
     # Generation
 
+    # TODO: for indirect mode, need to replace the prompt
+    # with each detector's prompt
+    
     input_list = []
     for i in input:
         input_list.append(i['input'])
