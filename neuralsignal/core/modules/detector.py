@@ -1,5 +1,6 @@
 import logging
 from neuralsignal.core.modules.s1_models import load_model_from_mlflow
+from neuralsignal.core.modules.tensors import featurize_tensor_dict
 
 logging.basicConfig(level=logging.INFO)
 
@@ -33,6 +34,7 @@ class Detector:
         "prompt": "",
         "behavior_name": "default",
         "threshold": None,
+        "enabled": False,
     }
 
     def __init__(self, config: dict = None):
@@ -51,11 +53,29 @@ class Detector:
                 self.config["mlflow_uri"], self.config["S1_model_path"])
         else:
             raise ValueError("S1_model or S1_model_path must be provided")
+        self.enabled = self.config["enabled"]
+
+    def predict(self, input_data: list) -> float:
+        """Runs the S1 model and returns the probability of
+        class 0 being detected
+
+        Args:
+            input_data (list): Featurized list of zones
+
+        Returns:
+            float: probability of class 0 being detected
+        """
+
+        return self.model.predict_proba([input_data])
 
     def detect(self, input_data) -> DetectionResults:
         """Detects behavior in input data
         If a threshold is defined, returns a binary value of 0 or 1
         If a threshold is not defined, returns a probability between 0 and 1
         """
-        retVal = DetectionResults(self.config["behavior_name"], 0.5)
+        if not self.enabled:
+            return None
+        fd = featurize_tensor_dict(input_data, 1, 1)
+        prob_class_0 = self.predict(fd[0])
+        retVal = DetectionResults(self.config["behavior_name"], prob_class_0)
         return retVal

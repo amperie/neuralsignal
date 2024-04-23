@@ -116,9 +116,13 @@ class Collector:
                 if "outputs" in self.data_to_save:
                     retVal["outputs"] = {}
                     for batch_idx in range(self.batch_size):
-                        retVal["outputs"][batch_idx] =\
-                            process_tensor_dict_into_zones(
+                        rv = process_tensor_dict_into_zones(
                             self.outputs[batch_idx], self.config["zone_size"])
+                        # TODO: Possibly convert tensors to lists
+                        # instead of storing them as tensors
+                        # So it's easier to search in storage and
+                        # use as vectors
+                        retVal["outputs"][batch_idx] = rv
                     self.outputs = retVal["outputs"]
 
         if "topology" in self.data_to_save:

@@ -89,6 +89,7 @@ def test_sdk():
         "mlflow_uri": "http://z600.lan:8000",
         "prompt": "Test",
         "behavior_name": "hallucination",
+        "enabled": "True",
     }
     d1 = Detector(d1)
     d2 = {
@@ -99,6 +100,7 @@ def test_sdk():
         "mlflow_uri": "http://z600.lan:8000",
         "prompt": "Test",
         "behavior_name": "toxicity",
+        "enabled": "True",
     }
     d2 = Detector(d2)
 

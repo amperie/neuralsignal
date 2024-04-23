@@ -96,7 +96,8 @@ class SDK:
                     metadata: dict of any fields that will pass through
 
         Returns:
-            dict: Returns the same dictionary as the input with additional fields:
+            dict: Returns the same dictionary as the input with
+            additional fields:
                 - behavior: name of the behavior detected
                 - score: score of the behavior detected
                 - judgement: 0 or 1 depending on the threshold and score
@@ -138,8 +139,9 @@ class SDK:
         # Run the detectors on the activity
         for batch_idx in range(len(gis)):
             for detector in detectors:
-                d = detector.detect(gis[batch_idx].data['outputs'])
-                gis[batch_idx].add_detection(d)
+                if detector.enabled:
+                    d = detector.detect(gis[batch_idx].data['outputs'])
+                    gis[batch_idx].add_detection(d)
 
         # Setup the results to include the list of outputs
         # with the behavior, score, judgement, and correlation_id

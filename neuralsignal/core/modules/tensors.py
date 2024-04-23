@@ -68,17 +68,17 @@ def featurize_tensor_dict(
         if len(t.shape) > 1:
             t = torch.mean(t, dim=0)
         t = t.tolist()
-        zone_index = 0
+        zone_count = 0
         for val in t:
-            zone_index = f"z{layer_index}_{zone_index}"
+            zone_index = f"z{layer_index}_{zone_count}"
             if layer_id_to_name is not None:
                 layer_name = layer_id_to_name[layer]
             else:
                 layer_name = "layer"
             zone_values.append(val)
             zone_indexes.append(zone_index)
-            zone_names.append(f"{layer_name}_{zone_index}")
+            zone_names.append(f"{layer_name}_{layer_index}")
 
-            zone_index += 1
+            zone_count += 1
         layer_index += 1
     return (zone_values, zone_indexes, zone_names)
