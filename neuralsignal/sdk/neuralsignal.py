@@ -9,6 +9,7 @@ from neuralsignal.core.modules.detector import Detector
 from neuralsignal.core.modules.generation_instance import GenerationInstance
 from neuralsignal.core.modules.prompting import wrap_with_prompt
 from neuralsignal.core.modules.utils import generate_uuid
+from neuralsignal.backend.ns_backend import NSBackend
 import yaml
 
 logging.basicConfig(level=logging.INFO)
@@ -84,6 +85,12 @@ class SDK:
             f"Initializing NeuralSignal SDK with config: {log_string}")
 
         self.cfg = config
+
+        # If we're saving scans, initialize backend
+        self.save_scans = config["save_scans"]
+        if self.save_scans:
+            self.backend = NSBackend(config["backend_config"])
+
         self.mode = config["evaluation_mode"]
         if self.mode == "indirect":
             self.__init_indirect()
@@ -133,51 +140,63 @@ class SDK:
             )
 
         # Unpack the outputs in the same order and run the detectors on each
-        # Then consolidate into the original GenerationInstance object, 
-        # cleaned up
+        # We need to make two data structures:
+        # RetVal - return value with the results of the evaluation for each
+        # but it doesn't contain internal data like the tensors
+        # gis - contains all the data, including internal. This is
+        # used for saving to the backend if required
+
+        # Make them both simultaneously
+        # Build retVal from scratch with only the data that is going
+        # back to the user/caller
+        # gis styas the same, just need to add the relevant detections
+
         batch_idx = 0
         retVal = []
+
         for output in outputs:
-            gi = gis[batch_idx]
-            # Restore the original values before prompting
-            # And insert metadata 
-            gi.data['input'] = output['input']
-            gi.data['output'] = output['output']
+            rgi = GenerationInstance()
+            rgi.data['input'] = output['input']
+            rgi.data['output'] = output['output']
             if 'ground_truth' in output:
-                gi.data['ground_truth'] = output['ground_truth']
+                rgi.data['ground_truth'] = output['ground_truth']
+                gis[batch_idx].data['ground_truth'] = output['ground_truth']
             else:
-                gi.data['ground_truth'] = None
+                rgi.data['ground_truth'] = None
+                gis[batch_idx].data['ground_truth'] = None
             if 'metadata' in output:
-                gi.data['metadata'] = output['metadata']
+                rgi.data['metadata'] = output['metadata']
+                gis[batch_idx].data['metadata'] = output['metadata']
             else:
-                gi.data['metadata'] = None
+                rgi.data['metadata'] = None
+                gis[batch_idx].data['metadata'] = None
             if 'context' in output:
-                gi.data['context'] = output['context']
+                rgi.data['context'] = output['context']
+                gis[batch_idx].data['context'] = output['context']
             else:
-                gi.data['context'] = None
-            gi.data['correlation_id'] = generate_uuid()
+                rgi.data['context'] = None
+                gis[batch_idx].data['context'] = None
+            rgi.data['correlation_id'] = generate_uuid()
+            gis[batch_idx].data['correlation_id'] = rgi.data['correlation_id']
             for d in detectors:
                 curr = gis[batch_idx]
                 if d.enabled:
+                    # If the detector is enabled, run it on the output tensor
                     detection = d.detect(curr.data['outputs'])
-                    gi.add_detection(detection)
+                    rgi.add_detection(detection)
+                    gis[batch_idx].add_detection(detection)
                 batch_idx += 1
-            retVal.append(gi)
+            retVal.append(rgi)
 
         # At this point gis contains the consistent data for each detector run
         # gis should be used for the purposes of saving to the backend
         # retVal's readings are only for the first detector
-        """
-        # Run the detectors on the activity
-        for batch_idx in range(len(gis)):
-            for detector in detectors:
-                if detector.enabled:
-                    d = detector.detect(gis[batch_idx].data['outputs'])
-                    gis[batch_idx].add_detection(d)
-        """
 
-        # Setup the results to include the list of outputs
-        # with the behavior, score, judgement, and correlation_id
+        # Save to the backend if required
+        if self.save_scans:
+            for gi in gis:
+                self.backend.save_scan(gi)
+
         return retVal
 
     def evaluate_indirect_output(

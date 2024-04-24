@@ -24,7 +24,7 @@ class NSBackend:
 
     def __init__(self, config: dict = None) -> None:
         self.backend_type = config["backend_type"]
-        self.backend_config = config["backend_config"]
+        self.backend_config = config
         if self.backend_type == "noop":
             self.backend = NoopBackend(self.backend_config)
         elif self.backend_type == "mongo":
@@ -53,4 +53,7 @@ class NoopBackend:
         pass
 
     def query(self, query: dict) -> list:
+        pass
+
+    def load_s1_model(self, model_id: str):
         pass

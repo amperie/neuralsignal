@@ -24,11 +24,12 @@ indirect_instrumentation_config:
     zone_size: 512
 
 # Backend config
-save_scans: false
+save_scans: True
 backend_config:
-  type: empty
-  url: empty
-  token: empty
+  backend_type: mongo
+  mongo_url: mongodb://hp.lan:27017/
+  db: sdk_testing
+  col: col
 
 # Detectors available
 detectors:

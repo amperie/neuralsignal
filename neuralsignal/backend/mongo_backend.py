@@ -15,13 +15,18 @@ class MongoBackend:
         - collection: collection name
     """
     def __init__(self, config: dict) -> None:
-        self.config = config
-        self.mongo_url = config['url']
-        self.db = config['db']
-        self.col = config['collection']
-        self.client = pymongo.MongoClient(self.mongo_url)
-        self.db = self.client[self.db]
-        self.col = self.db[self.col]
+        try:
+            self.config = config
+            self.mongo_url = config['mongo_url']
+            self.db = config['db']
+            self.col = config['col']
+            self.client = pymongo.MongoClient(self.mongo_url)
+            self.db = self.client[self.db]
+            self.col = self.db[self.col]
+        except KeyError as e:
+            raise ValueError(f"Missing configuration parameter {e}")
+        except Exception as e:
+            raise ValueError(f"Error connecting to Mongo: {e}")
 
     def write_dict_to_mongo(self, dict_in) -> ObjectId:
         x = self.col.insert_one(dict_in)

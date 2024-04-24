@@ -36,8 +36,17 @@ class GenerationInstance:
             "model_name": self.config["model_name"],
         }
         self.detections = {}
+        self.data_to_save = {}
 
     def add_data(self, data: dict) -> None:
+        """Adds data to the instance
+
+        Args:
+            data (dict): Dictionary of data to add
+        """
+        self.data = {**self.data, **data}
+
+    def add_data_to_save(self, data: dict) -> None:
         """Adds data to the instance
 
         Args:
@@ -69,7 +78,7 @@ class GenerationInstance:
             "layer_passes": self.data["layer_passes"],
             "topology": self.data["topology"],
         }
-        return flat_data
+        return {**flat_data, **self.data_to_save}
 
     def add_detection(self, detection: DetectionResults):
         """Adds detections to the instance
