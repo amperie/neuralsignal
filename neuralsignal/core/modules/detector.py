@@ -55,6 +55,7 @@ class Detector:
             raise ValueError("S1_model or S1_model_path must be provided")
         self.enabled = self.config["enabled"]
         self.behavior_name = self.config["behavior_name"]
+        self.prompt = self.config["prompt"]
 
     def predict(self, input_data: list) -> float:
         """Runs the S1 model and returns the probability of
@@ -68,6 +69,9 @@ class Detector:
         """
         try:
             # return self.model.predict_proba([input_data])
+            # for testing
+            if self.behavior_name == "toxicity":
+                return .1
             return .5
         except ValueError as e:
             logging.error(

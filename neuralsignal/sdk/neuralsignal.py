@@ -7,6 +7,8 @@ from neuralsignal.core.modules.model_instrumentation\
     import load_model, generate_from_batch
 from neuralsignal.core.modules.detector import Detector
 from neuralsignal.core.modules.generation_instance import GenerationInstance
+from neuralsignal.core.modules.prompting import wrap_with_prompt
+from neuralsignal.core.modules.utils import generate_uuid
 import yaml
 
 logging.basicConfig(level=logging.INFO)
@@ -21,6 +23,7 @@ class DetectionResults:
         self.output = None
         self.ground_truth = None
         self.metadata = None
+        self.correlation_id = None
         self.detections = []
 
     def __str__(self):
@@ -95,7 +98,7 @@ class SDK:
         Args:
             output (dict): dictionary that contains the output to be evaluated.
                 keys should be:
-                    input: input to the model
+                    input: input to the model (user's query)
                     context: any context sent in with the input
                     output: output of the model that is being evaluated
                     metadata: dict of any fields that will pass through
@@ -112,22 +115,70 @@ class SDK:
             raise ValueError(
                 "Evaluate_batch_output is only available in indirect mode")
         logging.debug(f"Evaluating batch output: {outputs}")
+
+        # TODO: for indirect mode, need to replace the prompt
+        # with each detector's prompt so we need to explode the outputs
+        # and run each detector on each output in a batch
+        # ie: 2 outputs and 3 detectors=6 total evaluations and batch size=6
+        prompted_outputs = []
+        for output in outputs:
+            for d in detectors:
+                prompt = wrap_with_prompt(d.prompt, output)
+                prompted_outputs.append(prompt)
+
         # Generate activity in indirect
         gis = generate_from_batch(
-            outputs, self.model, self.tokenizer,
+            prompted_outputs, self.model, self.tokenizer,
             instrumentation_cfg=self.default_indirect_instrumentation_cfg
             )
 
+        # Unpack the outputs in the same order and run the detectors on each
+        # Then consolidate into the original GenerationInstance object, 
+        # cleaned up
+        batch_idx = 0
+        retVal = []
+        for output in outputs:
+            gi = gis[batch_idx]
+            # Restore the original values before prompting
+            # And insert metadata 
+            gi.data['input'] = output['input']
+            gi.data['output'] = output['output']
+            if 'ground_truth' in output:
+                gi.data['ground_truth'] = output['ground_truth']
+            else:
+                gi.data['ground_truth'] = None
+            if 'metadata' in output:
+                gi.data['metadata'] = output['metadata']
+            else:
+                gi.data['metadata'] = None
+            if 'context' in output:
+                gi.data['context'] = output['context']
+            else:
+                gi.data['context'] = None
+            gi.data['correlation_id'] = generate_uuid()
+            for d in detectors:
+                curr = gis[batch_idx]
+                if d.enabled:
+                    detection = d.detect(curr.data['outputs'])
+                    gi.add_detection(detection)
+                batch_idx += 1
+            retVal.append(gi)
+
+        # At this point gis contains the consistent data for each detector run
+        # gis should be used for the purposes of saving to the backend
+        # retVal's readings are only for the first detector
+        """
         # Run the detectors on the activity
         for batch_idx in range(len(gis)):
             for detector in detectors:
                 if detector.enabled:
                     d = detector.detect(gis[batch_idx].data['outputs'])
                     gis[batch_idx].add_detection(d)
+        """
 
         # Setup the results to include the list of outputs
         # with the behavior, score, judgement, and correlation_id
-        return gis
+        return retVal
 
     def evaluate_indirect_output(
             self, outputs: list[dict], detectors: list[Detector]
@@ -141,6 +192,7 @@ class SDK:
             dr.output = gi.data['output']
             dr.ground_truth = gi.data['ground_truth']
             dr.metadata = gi.data['metadata']
+            dr.correlation_id = gi.data['correlation_id']
             dr.detections = gi.detections
             retVal.append(dr)
         return retVal

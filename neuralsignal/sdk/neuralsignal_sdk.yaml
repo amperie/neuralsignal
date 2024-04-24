@@ -4,11 +4,12 @@ evaluation_mode: indirect
 
 # Evaluation mode config
 indirect_config:
-  indirect_model: "google/flan-t5-large"
+  indirect_model: "t5-small"
   zone_size: 512
   indirect_batch_size: 1
-  quantization: "int8"
-  devide: "cuda"
+  # no_quantization, int8 or int4
+  quantization: "no_quantization"
+  device: "cpu"
 
 # indirect instrumentation config
 indirect_instrumentation_config:
@@ -34,10 +35,10 @@ detectors:
   - behavior_name: "hallucination"
     S1_model: "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1"
     mlflow_uri: "http://z600.lan:8000"
-    prompt: "test"
+    prompt: "testing hallucination prompt {input} thanks"
     enabled: false
   - behavior_name: "bias"
     S1_model: "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1"
     mlflow_uri: "http://z600.lan:8000"
-    prompt: "bias test"
+    prompt: "bias testing of prompt input: {input} thanks"
     enabled: false

@@ -41,16 +41,16 @@ def test_sdk():
 
     s = SDK()
     eval = {
-        "input": "Hello, world!",
-        "context": "This is a test",
-        "output": "This is a test output",
-        "metadata": "This is a test metadata",
+        "input": "input1",
+        "context": "context1",
+        "output": "output1",
+        "metadata": "metadata1",
     }
     eval2 = {
-        "input": "Hello, world 2!",
-        "context": "This is a test2",
-        "output": "This is a test output2",
-        "metadata": "This is a test metadata2",
+        "input": "input2",
+        "context": "context2",
+        "output": "output2",
+        "metadata": "metadata2",
     }
     ins = [eval, eval2]
 
@@ -60,7 +60,7 @@ def test_sdk():
         "S1_model_path": "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1",
         # If both are present S1_model is used
         "mlflow_uri": "http://z600.lan:8000",
-        "prompt": "Test",
+        "prompt": "testing hallucination prompt {input} thanks {context}",
         "behavior_name": "hallucination",
         "enabled": "True",
     }
@@ -71,7 +71,7 @@ def test_sdk():
         "S1_model_path": "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1",
         # If both are present S1_model is used
         "mlflow_uri": "http://z600.lan:8000",
-        "prompt": "Test",
+        "prompt": "testing bias prompt {input} thanks {output}",
         "behavior_name": "toxicity",
         "enabled": "True",
     }
