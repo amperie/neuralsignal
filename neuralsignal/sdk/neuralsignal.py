@@ -196,6 +196,8 @@ class SDK:
                     gis[batch_idx].data['context'] = None
                 gis[batch_idx].data['generation_correlation_id'] =\
                     rgi.data['generation_correlation_id']
+                gis[batch_idx].add_data_to_save(
+                    {"evaluation_method": "indirect"})
                 batch_idx += 1
             retVal.append(rgi)
 
@@ -222,7 +224,7 @@ class SDK:
             dr.output = gi.data['output']
             dr.ground_truth = gi.data['ground_truth']
             dr.metadata = gi.data['metadata']
-            dr.correlation_id = gi.data['correlation_id']
+            dr.correlation_id = gi.data['generation_correlation_id']
             dr.detections = gi.detections
             retVal.append(dr)
         return retVal

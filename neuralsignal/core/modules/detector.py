@@ -1,7 +1,7 @@
 import logging
-from neuralsignal.core.modules.s1_models import load_model_from_mlflow
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
 from neuralsignal.core.modules.utils import generate_uuid
+from neuralsignal.backend.ns_backend import NSBackend
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,6 +25,14 @@ class DetectionResults:
     def __str__(self):
         return f"DetectionResults: {self.behavior_name} - {self.score}"
 
+    def get_data(self) -> dict:
+        return {
+            "behavior_name": self.behavior_name,
+            "score": self.score,
+            "threshold": self.threshold,
+            "correlation_id": self.correlation_id
+        }
+
 
 class Detector:
     """Class for attaching detectors to evaluation methods
@@ -32,14 +40,13 @@ class Detector:
     default_config = {
         "S1_model": None,  # Either pass the model directly or specify its path
         "S1_model_path": None,  # If both are present S1_model is used
-        "mlflow_uri": None,
         "prompt": "",
         "behavior_name": "default",
         "threshold": None,
         "enabled": False,
     }
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: dict = None, be: NSBackend = None) -> None:
         if config is None:
             config = self.default_config
         else:
@@ -48,11 +55,10 @@ class Detector:
         if self.config["S1_model"] is not None:
             self.model = self.config["S1_model"]
         elif self.config["S1_model_path"] is not None:
-            if self.config["mlflow_uri"] is None:
+            if be is None:
                 raise ValueError(
-                    "mlflow_uri must be provided if S1_model_path is used")
-            self.model = load_model_from_mlflow(
-                self.config["mlflow_uri"], self.config["S1_model_path"])
+                    "Backend must be provided if S1_model_path is used")
+            self.model = be.load_s1_model(self.config["S1_model_path"])
         else:
             raise ValueError("S1_model or S1_model_path must be provided")
         self.enabled = self.config["enabled"]

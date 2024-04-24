@@ -34,6 +34,7 @@ class MongoBackend:
         - collection: collection name
     """
     def __init__(self, config: dict) -> None:
+        self.config = config
         try:
             self.config = config
             self.mongo_url = config['mongo_url']
@@ -51,8 +52,37 @@ class MongoBackend:
         x = self.col.insert_one(dict_in)
         return x.inserted_id
 
+    def write_file_to_GridFS(self, file_path):
+        fs = gridfs.GridFS(self.db)
+        with open(file_path, "rb") as f:
+            id = fs.put(f, filename=file_path)
+            return id
+
+    def read_file_from_GridFS(self, id):
+        fs = gridfs.GridFS(self.db)
+        return fs.get(id).read()
+
+    def write_serialized_to_GridFS(self, obj):
+        fs = gridfs.GridFS(self.db)
+        id = fs.put(obj)
+        return id
+
+    def read_serialized_from_GridFS(self, id):
+        fs = gridfs.GridFS(self.db)
+        f = fs.get(id).read()
+        try:
+            return pickle.loads(f)
+        except RuntimeError:
+            return loads(f)
+
+    # Interface methods
+
     def save_scan(self, scan: GenerationInstance) -> ObjectId:
-        self.write_dict_to_mongo(scan.get_flattened_data())
+        data = scan.get_flattened_data()
+        if "outputs" in data:
+            data["outputs"] =\
+                self.write_serialized_to_GridFS(serialize(data["outputs"]))
+        return self.write_dict_to_mongo(data)
 
     def load_scan(self, scan_id: str) -> GenerationInstance:
         pass

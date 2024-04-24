@@ -26,10 +26,11 @@ indirect_instrumentation_config:
 # Backend config
 save_scans: True
 backend_config:
-  backend_type: mongo
+  backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
   db: sdk_testing
   col: col
+  mlflow_uri: "http://z600.lan:8000"
 
 # Detectors available
 detectors:

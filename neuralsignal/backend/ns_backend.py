@@ -1,6 +1,7 @@
 import logging
 from neuralsignal.core.modules.generation_instance import GenerationInstance
 from neuralsignal.backend.mongo_backend import MongoBackend
+from neuralsignal.backend.ns_be_impl_v1 import NSBackendImplV1
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,7 +18,7 @@ class NSBackend:
     The specific implementation of the backend is connected
     as a plugin.
     Configuration options:
-        - backend_type: noop, mongo
+        - backend_type: noop, mongo, neuralsignal_v1
         - backend_config: configuration for the backend.
             Configuration specific to the backend type
     """
@@ -29,6 +30,8 @@ class NSBackend:
             self.backend = NoopBackend(self.backend_config)
         elif self.backend_type == "mongo":
             self.backend = MongoBackend(self.backend_config)
+        elif self.backend_type == "neuralsignal_v1":
+            self.backend = NSBackendImplV1(self.backend_config)
         else:
             raise ValueError(f"Backend type {self.backend_type} not supported")
 
@@ -40,6 +43,9 @@ class NSBackend:
 
     def query(self, query: dict) -> list:
         return self.backend.query(query)
+
+    def load_s1_model(self, model_id: str):
+        pass
 
 
 class NoopBackend:

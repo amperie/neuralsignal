@@ -59,7 +59,6 @@ def test_sdk():
         # Either pass the model directly or specify its path
         "S1_model_path": "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1",
         # If both are present S1_model is used
-        "mlflow_uri": "http://z600.lan:8000",
         "prompt": "testing hallucination prompt {input} thanks {context}",
         "behavior_name": "hallucination",
         "enabled": "True",
@@ -70,7 +69,6 @@ def test_sdk():
         # Either pass the model directly or specify its path
         "S1_model_path": "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1",
         # If both are present S1_model is used
-        "mlflow_uri": "http://z600.lan:8000",
         "prompt": "testing bias prompt {input} thanks {output}",
         "behavior_name": "toxicity",
         "enabled": "True",

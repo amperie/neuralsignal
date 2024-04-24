@@ -47,7 +47,7 @@ class GenerationInstance:
         self.data = {**self.data, **data}
 
     def add_data_to_save(self, data: dict) -> None:
-        """Adds data to the instance
+        """Adds  arbitrary data to the instance
 
         Args:
             data (dict): Dictionary of data to add
@@ -61,22 +61,45 @@ class GenerationInstance:
             dict: Flattened version of the data
         """
         # TODO: redo this since some of these fields may not be there
-        flat_data = {
-            "ground_truth": self.data["ground_truth"],
-            "input": self.data["input"],
-            "output": self.data["output"],
-            "data_run_name": self.data["data_run_name"],
-            "model_name": self.data["model_name"],
-            "context": self.data["context"],
-            "metadata": self.data["metadata"],
-            "zone_size": self.data["zone_size"],
-            "layer_names": self.data["layer_names"],
-            "layer_order": self.data["layer_order"],
-            "layer_id_to_name": self.data["layer_id_to_name"],
-            "layer_passes_by_name": self.data["layer_passes_by_name"],
-            "layer_passes": self.data["layer_passes"],
-            "topology": self.data["topology"],
-        }
+        flat_data = {}
+        if "ground_truth" in self.data:
+            flat_data["ground_truth"] = self.data["ground_truth"]
+        if "input" in self.data:
+            flat_data["input"] = self.data["input"]
+        if "output" in self.data:
+            flat_data["output"] = self.data["output"]
+        if "data_run_name" in self.data:
+            flat_data["data_run_name"] = self.data["data_run_name"]
+        if "model_name" in self.data:
+            flat_data["model_name"] = self.data["model_name"]
+        if "context" in self.data:
+            flat_data["context"] = self.data["context"]
+        if "metadata" in self.data:
+            flat_data["metadata"] = self.data["metadata"]
+        if "zone_size" in self.data:
+            flat_data["zone_size"] = self.data["zone_size"]
+        if "layer_names" in self.data:
+            flat_data["layer_names"] = self.data["layer_names"]
+        if "layer_order" in self.data:
+            flat_data["layer_order"] = self.data["layer_order"]
+        if "layer_id_to_name" in self.data:
+            flat_data["layer_id_to_name"] = self.data["layer_id_to_name"]
+        if "layer_passes_by_name" in self.data:
+            flat_data["layer_passes_by_name"] =\
+                self.data["layer_passes_by_name"]
+        if "layer_passes" in self.data:
+            flat_data["layer_passes"] = self.data["layer_passes"]
+        if "topology" in self.data:
+            flat_data["topology"] = self.data["topology"]
+        if "outputs" in self.data:
+            flat_data["outputs"] = self.data["outputs"]
+        if "generation_correlation_id" in self.data:
+            flat_data["generation_correlation_id"] =\
+                self.data["generation_correlation_id"]
+        detections = {}
+        for d in self.detections.keys():
+            detections[d] = self.detections[d].get_data()
+        flat_data["detections"] = detections
         return {**flat_data, **self.data_to_save}
 
     def add_detection(self, detection: DetectionResults):
