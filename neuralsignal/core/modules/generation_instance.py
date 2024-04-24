@@ -69,7 +69,6 @@ class GenerationInstance:
             "model_name": self.data["model_name"],
             "context": self.data["context"],
             "metadata": self.data["metadata"],
-            "correlation_id": self.data["correlation_id"],
             "zone_size": self.data["zone_size"],
             "layer_names": self.data["layer_names"],
             "layer_order": self.data["layer_order"],

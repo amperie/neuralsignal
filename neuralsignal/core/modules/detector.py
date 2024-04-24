@@ -1,6 +1,7 @@
 import logging
 from neuralsignal.core.modules.s1_models import load_model_from_mlflow
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
+from neuralsignal.core.modules.utils import generate_uuid
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,6 +20,7 @@ class DetectionResults:
         self.behavior_name = behavior_name
         self.score = score
         self.threshold = None
+        self.correlation_id = generate_uuid()
 
     def __str__(self):
         return f"DetectionResults: {self.behavior_name} - {self.score}"

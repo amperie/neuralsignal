@@ -1,9 +1,28 @@
 import logging
 import pymongo
 from bson.objectid import ObjectId
+import gridfs
+import pickle
+import io
+import torch
 from neuralsignal.core.modules.generation_instance import GenerationInstance
+from neuralsignal.core.modules.utils import serialize
 
 logging.basicConfig(level=logging.INFO)
+
+
+class CPU_Unpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        if module == 'torch.storage' and name == '_load_from_bytes':
+            return lambda b: torch.load(io.BytesIO(b), map_location='cpu')
+        else:
+            return super().find_class(module, name)
+
+
+def loads(x):
+    bs = io.BytesIO(x)
+    unpickler = CPU_Unpickler(bs)
+    return unpickler.load()
 
 
 class MongoBackend:

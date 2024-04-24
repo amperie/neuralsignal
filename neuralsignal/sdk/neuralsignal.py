@@ -160,24 +160,17 @@ class SDK:
             rgi.data['output'] = output['output']
             if 'ground_truth' in output:
                 rgi.data['ground_truth'] = output['ground_truth']
-                gis[batch_idx].data['ground_truth'] = output['ground_truth']
             else:
                 rgi.data['ground_truth'] = None
-                gis[batch_idx].data['ground_truth'] = None
             if 'metadata' in output:
                 rgi.data['metadata'] = output['metadata']
-                gis[batch_idx].data['metadata'] = output['metadata']
             else:
                 rgi.data['metadata'] = None
-                gis[batch_idx].data['metadata'] = None
             if 'context' in output:
                 rgi.data['context'] = output['context']
-                gis[batch_idx].data['context'] = output['context']
             else:
                 rgi.data['context'] = None
-                gis[batch_idx].data['context'] = None
-            rgi.data['correlation_id'] = generate_uuid()
-            gis[batch_idx].data['correlation_id'] = rgi.data['correlation_id']
+            rgi.data['generation_correlation_id'] = generate_uuid()
             for d in detectors:
                 curr = gis[batch_idx]
                 if d.enabled:
@@ -185,6 +178,24 @@ class SDK:
                     detection = d.detect(curr.data['outputs'])
                     rgi.add_detection(detection)
                     gis[batch_idx].add_detection(detection)
+                # Update all the individual gis entries
+                gis[batch_idx].data['input'] = output['input']
+                gis[batch_idx].data['output'] = output['output']
+                if 'ground_truth' in output:
+                    gis[batch_idx].data['ground_truth'] =\
+                        output['ground_truth']
+                else:
+                    gis[batch_idx].data['ground_truth'] = None
+                if 'metadata' in output:
+                    gis[batch_idx].data['metadata'] = output['metadata']
+                else:
+                    gis[batch_idx].data['metadata'] = None
+                if 'context' in output:
+                    gis[batch_idx].data['context'] = output['context']
+                else:
+                    gis[batch_idx].data['context'] = None
+                gis[batch_idx].data['generation_correlation_id'] =\
+                    rgi.data['generation_correlation_id']
                 batch_idx += 1
             retVal.append(rgi)
 
