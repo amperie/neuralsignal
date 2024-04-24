@@ -1,7 +1,7 @@
 import logging
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
 from neuralsignal.core.modules.utils import generate_uuid
-from neuralsignal.backend.ns_backend import NSBackend
+# from neuralsignal.backend.ns_backend import NSBackend
 
 logging.basicConfig(level=logging.INFO)
 
@@ -46,7 +46,7 @@ class Detector:
         "enabled": False,
     }
 
-    def __init__(self, config: dict = None, be: NSBackend = None) -> None:
+    def __init__(self, config: dict = None, be=None) -> None:
         if config is None:
             config = self.default_config
         else:
