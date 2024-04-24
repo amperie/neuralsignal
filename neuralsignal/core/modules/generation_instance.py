@@ -45,6 +45,32 @@ class GenerationInstance:
         """
         self.data = {**self.data, **data}
 
+    def get_flattened_data(self) -> dict:
+        """Returns a flattened version of the data
+
+        Returns:
+            dict: Flattened version of the data
+        """
+        # TODO: redo this since some of these fields may not be there
+        flat_data = {
+            "ground_truth": self.data["ground_truth"],
+            "input": self.data["input"],
+            "output": self.data["output"],
+            "data_run_name": self.data["data_run_name"],
+            "model_name": self.data["model_name"],
+            "context": self.data["context"],
+            "metadata": self.data["metadata"],
+            "correlation_id": self.data["correlation_id"],
+            "zone_size": self.data["zone_size"],
+            "layer_names": self.data["layer_names"],
+            "layer_order": self.data["layer_order"],
+            "layer_id_to_name": self.data["layer_id_to_name"],
+            "layer_passes_by_name": self.data["layer_passes_by_name"],
+            "layer_passes": self.data["layer_passes"],
+            "topology": self.data["topology"],
+        }
+        return flat_data
+
     def add_detection(self, detection: DetectionResults):
         """Adds detections to the instance
 
