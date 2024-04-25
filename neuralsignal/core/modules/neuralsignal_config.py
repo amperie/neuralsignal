@@ -27,7 +27,7 @@ class NeuralSignalConfig:
 
     def refresh(self, config_file: str = None) -> None:
         self._initialize(config_file)
-  
+
     def get_backend(self) -> NSBackend:
         return NSBackend(self.config["backend_config"])
 
