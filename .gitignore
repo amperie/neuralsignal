@@ -1,5 +1,9 @@
 .DS_store
 
+# NeuralSignal specific
+sdk_home/
+sdk_home/*
+
 *.csv
 mlruns/
 *.png
