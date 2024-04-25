@@ -1,4 +1,5 @@
 # NeuralSignal SDK configuration
+home: ./sdk_home
 # Evaluation mode can be indirect or direct
 evaluation_mode: indirect
 

@@ -2,7 +2,7 @@ import logging
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
 from neuralsignal.core.modules.utils import generate_uuid
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
-# from neuralsignal.backend.ns_backend import NSBackend
+from neuralsignal.backend.ns_backend import NSBackend
 
 logging.basicConfig(level=logging.INFO)
 
@@ -53,7 +53,8 @@ class Detector:
         else:
             self.config = {**self.default_config, **config}
         logging.debug(f"Initializing detector with config: {self.config}")
-        self.backend = sdk_config.get_backend()
+        self.backend = sdk_config.get_backend_config()
+        self.backend = NSBackend(self.backend)
         if self.config["S1_model"] is not None:
             self.model = self.config["S1_model"]
         elif self.config["S1_model_path"] is not None:
