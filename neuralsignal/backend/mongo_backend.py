@@ -5,7 +5,6 @@ import gridfs
 import pickle
 import io
 import torch
-from neuralsignal.core.modules.generation_instance import GenerationInstance
 from neuralsignal.core.modules.utils import serialize
 
 logging.basicConfig(level=logging.INFO)
@@ -77,15 +76,18 @@ class MongoBackend:
 
     # Interface methods
 
-    def save_scan(self, scan: GenerationInstance) -> ObjectId:
+    def save_scan(self, scan) -> ObjectId:
         data = scan.get_flattened_data()
         if "outputs" in data:
             data["outputs"] =\
                 self.write_serialized_to_GridFS(serialize(data["outputs"]))
         return self.write_dict_to_mongo(data)
 
-    def load_scan(self, scan_id: str) -> GenerationInstance:
-        pass
+    def load_scan(self, scan_id: str):
+        raise NotImplementedError
 
     def query(self, query: dict) -> list:
-        pass
+        raise NotImplementedError
+
+    def load_s1_model(self, model_id: str):
+        raise NotImplementedError

@@ -1,7 +1,8 @@
 import yaml
+from neuralsignal.backend.ns_backend import NSBackend
 
 
-class Config:
+class NeuralSignalConfig:
     def __init__(self, config_file: str = None) -> None:
         if config_file is None:
             config_file = "neuralsignal/sdk/neuralsignal_sdk.yaml"
@@ -26,3 +27,15 @@ class Config:
 
     def refresh(self, config_file: str = None) -> None:
         self._initialize(config_file)
+  
+    def get_backend(self) -> NSBackend:
+        return NSBackend(self.config["backend_config"])
+
+
+try:
+    sdk_config
+except NameError:
+    sdk_config = None
+
+if sdk_config is None:
+    sdk_config = NeuralSignalConfig()

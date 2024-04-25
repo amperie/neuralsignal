@@ -1,5 +1,4 @@
 import logging
-from neuralsignal.core.modules.generation_instance import GenerationInstance
 from neuralsignal.backend.mongo_backend import MongoBackend
 from neuralsignal.backend.ns_be_impl_v1 import NSBackendImplV1
 
@@ -35,27 +34,29 @@ class NSBackend:
         else:
             raise ValueError(f"Backend type {self.backend_type} not supported")
 
-    def save_scan(self, scan: GenerationInstance) -> None:
+    def save_scan(self, scan) -> None:
+        """Save a scan to the backend.
+        scan is a GenerationInstance object"""
         return self.backend.save_scan(scan)
 
-    def load_scan(self, scan_id: str) -> GenerationInstance:
+    def load_scan(self, scan_id: str):
         return self.backend.load_scan(scan_id)
 
     def query(self, query: dict) -> list:
         return self.backend.query(query)
 
     def load_s1_model(self, model_id: str):
-        pass
+        return self.backend.load_s1_model(model_id)
 
 
 class NoopBackend:
     def __init__(self, config: dict) -> None:
         pass
 
-    def save_scan(self, scan: GenerationInstance) -> None:
+    def save_scan(self, scan) -> None:
         pass
 
-    def load_scan(self, scan_id: str) -> GenerationInstance:
+    def load_scan(self, scan_id: str):
         pass
 
     def query(self, query: dict) -> list:

@@ -1,6 +1,7 @@
 import logging
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
 from neuralsignal.core.modules.utils import generate_uuid
+from neuralsignal.core.modules.neuralsignal_config import sdk_config
 # from neuralsignal.backend.ns_backend import NSBackend
 
 logging.basicConfig(level=logging.INFO)
@@ -46,19 +47,18 @@ class Detector:
         "enabled": False,
     }
 
-    def __init__(self, config: dict = None, be=None) -> None:
+    def __init__(self, config: dict = None) -> None:
         if config is None:
-            config = self.default_config
+            config = sdk_config.get_config()
         else:
             self.config = {**self.default_config, **config}
         logging.debug(f"Initializing detector with config: {self.config}")
+        self.backend = sdk_config.get_backend()
         if self.config["S1_model"] is not None:
             self.model = self.config["S1_model"]
         elif self.config["S1_model_path"] is not None:
-            if be is None:
-                raise ValueError(
-                    "Backend must be provided if S1_model_path is used")
-            self.model = be.load_s1_model(self.config["S1_model_path"])
+            self.model =\
+                self.backend.load_s1_model(self.config["S1_model_path"])
         else:
             raise ValueError("S1_model or S1_model_path must be provided")
         self.enabled = self.config["enabled"]

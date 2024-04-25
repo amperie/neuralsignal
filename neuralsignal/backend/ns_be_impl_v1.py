@@ -1,7 +1,6 @@
 import logging
 import mlflow
 from neuralsignal.backend.mongo_backend import MongoBackend
-from neuralsignal.core.modules.generation_instance import GenerationInstance
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,11 +16,11 @@ class NSBackendImplV1:
         mlflow.set_tracking_uri(config['mlflow_uri'])
 
     # Interface methods
-    def save_scan(self, scan: GenerationInstance) -> None:
-        return self.mng.write_dict_to_mongo(scan.data)
+    def save_scan(self, scan) -> None:
+        return self.mng.save_scan(scan)
 
-    def load_scan(self, scan_id: str) -> GenerationInstance:
-        return self.mng.read_dict_from_mongo(scan_id)
+    def load_scan(self, scan_id: str):
+        raise NotImplementedError
 
     def query(self, query: dict) -> list:
         return self.mng.query(query)
