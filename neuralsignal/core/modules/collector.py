@@ -1,5 +1,7 @@
 import torch
 from neuralsignal.core.modules.tensors import process_tensor_dict_into_zones
+from neuralsignal.core.modules.tensors import process_tensor_dict_to_lists
+from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 
 class Collector:
@@ -109,19 +111,15 @@ class Collector:
                 if "inputs" in self.data_to_save:
                     retVal["inputs"] = {}
                     for batch_idx in range(self.batch_size):
-                        retVal["inputs"][batch_idx] =\
-                            process_tensor_dict_into_zones(
+                        rv = process_tensor_dict_into_zones(
                             self.inputs[batch_idx], self.config["zone_size"])
+                        retVal["inputs"][batch_idx] = rv
                     self.inputs = retVal["inputs"]
                 if "outputs" in self.data_to_save:
                     retVal["outputs"] = {}
                     for batch_idx in range(self.batch_size):
                         rv = process_tensor_dict_into_zones(
                             self.outputs[batch_idx], self.config["zone_size"])
-                        # TODO: Possibly convert tensors to lists
-                        # instead of storing them as tensors
-                        # So it's easier to search in storage and
-                        # use as vectors
                         retVal["outputs"][batch_idx] = rv
                     self.outputs = retVal["outputs"]
 

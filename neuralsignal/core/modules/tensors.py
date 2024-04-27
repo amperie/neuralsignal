@@ -39,6 +39,15 @@ def process_tensor_dict_into_zones(
     return retVal
 
 
+def process_tensor_dict_to_lists(dict_in: dict) -> dict:
+    """Takes a dict of layer -> tensor and converts it to a dict of
+    layer -> list"""
+    retVal = {}
+    for key in dict_in.keys():
+        retVal[key] = dict_in[key].tolist()
+    return retVal
+
+
 def reduce_tensor_into_zones(
         t_in: torch.Tensor, zone_size: int,
         current_zone_size: int)\

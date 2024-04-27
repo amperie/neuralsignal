@@ -26,6 +26,7 @@ indirect_instrumentation_config:
 
 # Backend config
 save_scans: True
+save_as_tensors: False
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
