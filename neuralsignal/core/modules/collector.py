@@ -1,7 +1,5 @@
 import torch
 from neuralsignal.core.modules.tensors import process_tensor_dict_into_zones
-from neuralsignal.core.modules.tensors import process_tensor_dict_to_lists
-from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 
 class Collector:

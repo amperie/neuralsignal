@@ -1,5 +1,5 @@
 import random
-from neuralsignal.data_definitions.dataset import dataset
+from neuralsignal.datasets.dataset import NSDataset
 
 
 # TODO: Add this dataset: hotpot_qa
@@ -12,7 +12,7 @@ def add_to_dataset_dictionary(dataset_dict, cfg, dataset_list, include):
                 and include) or \
             (ds_name not in dataset_list
                 and not include):
-        dataset_dict[ds_name] = dataset(cfg)
+        dataset_dict[ds_name] = NSDataset(cfg)
 
 
 def datasets_dictionary(

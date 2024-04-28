@@ -1,0 +1,27 @@
+from neuralsignal.sdk.neuralsignal import SDK
+from neuralsignal.datasets.dataset import NSDataset
+from neuralsignal.core.modules.detector import Detector
+from neuralsignal.datasets.dataset_definitions import datasets_dictionary
+
+
+class DatasetRunner:
+    """Loads a dataset and runs data collection for it
+    """
+    def __init__(self, config: dict):
+        """
+        Config should contain general configs:
+        {
+            "dataset": "name",
+            "row_limit": 0,
+        }
+        """
+        self.sdk = None
+        self.dataset = None
+        self.detectors = None
+
+    def initialize(self, dataset_name, detectors: list):
+        """Initializes the dataset and the SDK
+        """
+        self.sdk = SDK()
+        self.dataset = NSDataset(datasets_dictionary[dataset_name])
+        self.detectors = detectors

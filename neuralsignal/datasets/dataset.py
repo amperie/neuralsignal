@@ -14,7 +14,7 @@ def change_gt(val):
     return "positive"
 
 
-class dataset:
+class NSDataset:
 
     # dataset_type: can be hf, local_json_one_per_line
     default_config = {
