@@ -12,6 +12,7 @@ class DatasetRunner:
         {
             "dataset": "name",
             "row_limit": 0,
+            "batch_size": 1,
         }
         """
         self.sdk = None
@@ -22,6 +23,7 @@ class DatasetRunner:
         """Initializes the dataset and the SDK
         """
         self.sdk = SDK()
+        self.sdk.set_config("save_scans", True)
         self.dataset = NSDataset(datasets_dictionary[dataset_name])
         self.dataset.load()
         self.detectors = detectors
@@ -29,5 +31,14 @@ class DatasetRunner:
     def run(self):
         """Runs the data collection for all required rows in the dataset
         """
+        size = 0
+        batch = []
+
+        # Batch up the inputs
         for row in self.dataset:
-            self.sdk.evaluate_indirect_output(row, self.detectors)
+            batch.append(row)
+            size += 1
+            if size == self.batch_size:
+                self.sdk.evaluate_indirect_output(batch, self.detectors)
+                batch = []
+                size = 0

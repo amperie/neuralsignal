@@ -21,44 +21,28 @@ class NSDataset:
         "dataset_type": "hf",
         "local_path": None,
         "dataset_variant": None,
-        "gt_processor": None,
         "input_processor": None,
-        "column_map": {
-            "input_column": "input",
-            "gt_column": "ground_truth"
-        },
-        "prompt": "",
         "split": "train+test+validation",
         "config_name": None,
         "row_limit": 0,
         "starting_row": 0,
-        "truncate_input": 0,
-        "truncation_start": 0,
     }
 
     def __init__(self, config) -> None:
         """wrapper for HF datasets. Config should contain:
         dataset_name: str, name of the dataset
         hf_token: str, huggingface token
-        column_map: dict, maps the names of the dataset columns 
-            to the names the code expects. Should contain:
-            input_column: str, name of the input column
-            gt_column: str, name of the ground truth column
-            row_limit: limit of how many rows. 0 for no limit
-        gt_processor: function, optional. funciton to change
-            the ground truth to what is expected by the model.
-            Input is a string, output is a string. 
-            ie: change 1 -> positive and 0 -> negative
-        input_processor: function, optional. function to process
-            the input. The argument into it is the dataset itself
-            The return value should be the list of inputs
-        prompt: str, optional. Prompt to prepend to the input
+        input_processor: function that takes a row and returns a dict:
+            input: input to the model (user's query)
+            context: any context sent in with the input
+            output: output of the model that is being evaluated
+            ground_truth: if there is one
+            metadata: dict of any fields that will pass through
+
         config_name: dataset HF config
         row_limit: how many rows to load. 0 for no limit
         starting_row: int, row to start from
         split: str, HF split(s) to load
-        truncate_input: limit length of input string
-            0 -> don't truncate
 
         Args:
             config (dict): config dictionary
@@ -78,8 +62,6 @@ class NSDataset:
                 self.load_hf_dataset()
             case "local_json_one_per_line":
                 self.load_local_json_one_per_line_dataset()
-            case "hf_exploded":
-                self.load_hf_exploded_dataset()
             case _:
                 raise ValueError(
                     "Dataset type "
@@ -120,5 +102,10 @@ class NSDataset:
         Yields:
             Tuple(str,str): Tuple of input and ground truth
         """
+        # Make sure the dataset is loaded first
+        # This should only run once with the yield statement
+        if not self.loaded:
+            self.load()
+
         for row in self.rows:
             yield row
