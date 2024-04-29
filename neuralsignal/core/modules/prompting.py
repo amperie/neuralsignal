@@ -9,6 +9,9 @@ def wrap_with_prompt(prompt_template: str, values: dict) -> str:
         placeholders for values in the form of {name}
         values (dict): contains the values to replace the placeholders.
         Should be of the form {"name": value}
+        Example:
+        "prompt": "From this question {input} tell me if this
+            output is correct: {output}"
 
     Returns:
         str: fully formed prompt

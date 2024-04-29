@@ -63,17 +63,24 @@ class SDK:
     def __init_direct(self):
         pass
 
-    def __init__(self, config: dict = None) -> None:
+    def __init__(
+            self, config: dict = None,
+            default_config_path: str = None) -> None:
         """Initizalizes the NeuralSignal SDK
 
         Args:
             config (dict): Dictionary of configuration options.
             Possible options:
             [TODO: Add options here]
+            default_config_path: alternative path to config file
         """
+        if default_config_path is None:
+            default_config = yaml.safe_load(
+                open("neuralsignal/sdk/neuralsignal_sdk.yaml"))
+        else:
+            default_config = yaml.safe_load(
+                open(default_config_path))
 
-        default_config = yaml.safe_load(
-            open("neuralsignal/sdk/neuralsignal_sdk.yaml"))
         if config is None:
             config = default_config
         else:
@@ -96,6 +103,15 @@ class SDK:
             self.__init_indirect()
         self.default_indirect_instrumentation_cfg =\
             config["indirect_instrumentation_config"]
+
+    def set_config(self, key: str, value: str):
+        """Sets a configuration value
+
+        Args:
+            key (str): key to set
+            value (str): value to set
+        """
+        self.cfg[key] = value
 
     def evaluate_batch_output(
             self, outputs: list[dict], detectors: list[Detector]

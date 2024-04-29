@@ -1,6 +1,5 @@
 from neuralsignal.sdk.neuralsignal import SDK
 from neuralsignal.datasets.dataset import NSDataset
-from neuralsignal.core.modules.detector import Detector
 from neuralsignal.datasets.dataset_definitions import datasets_dictionary
 
 
@@ -24,4 +23,11 @@ class DatasetRunner:
         """
         self.sdk = SDK()
         self.dataset = NSDataset(datasets_dictionary[dataset_name])
+        self.dataset.load()
         self.detectors = detectors
+
+    def run(self):
+        """Runs the data collection for all required rows in the dataset
+        """
+        for row in self.dataset:
+            self.sdk.evaluate_indirect_output(row, self.detectors)

@@ -88,8 +88,7 @@ class NSDataset:
     def load_local_json_one_per_line_dataset(self):
         f = open(self.config["local_path"], "r", encoding="utf8")
         self.dataset = []
-        self.inputs = []
-        self.ground_truth = []
+        self.rows = []
         self.line_number = []
         i = 1
         for line in f:
@@ -97,30 +96,16 @@ class NSDataset:
                 row = json.loads(line)
                 self.dataset.append(row)
 
-                if self.config["input_processor"] is None:
-                    input_value =\
-                        row[self.config["column_map"]["input_column"]]
-                else:
-                    input_value = self.config["input_processor"](row)
+                row_dict = self.config["input_processor"](row)
 
-                if self.config["truncate_input"] > 0:
-                    start = self.config["truncation_start"]
-                    end = start + self.config["truncate_input"]
-                    input_value = input_value[start:min(len(input_value), end)]
-
-                self.inputs.append(input_value)
-
-                if self.config["gt_processor"] is None:
-                    self.ground_truth.append(
-                        row[self.config["column_map"]["gt_column"]])
-                else:
-                    self.ground_truth.append(self.config["gt_processor"](
-                        row[self.config["column_map"]["gt_column"]]))
+                self.rows.append(row_dict)
                 self.line_number.append(i)
+
             i += 1
             if i - self.config["starting_row"] > self.config["row_limit"]\
                     and self.config["row_limit"] > 0:
                 break
+
         self.loaded = True
 
     def load_hf_exploded_dataset(self):
@@ -128,43 +113,8 @@ class NSDataset:
             "load_hf_exploded_dataset not implemented")
 
     def load_hf_dataset(self):
-        split = self.config["split"]
-        if self.config["row_limit"] > 0:
-            sr = self.config["starting_row"]
-            rl = int(self.config["row_limit"]/(split.count("+")+1))
-            split = \
-                f'{split.replace("+", f"[{sr}:{rl}]+")}[{sr}:{rl}]'
-        self.dataset = load_dataset(
-            self.config["dataset_name"], self.config["config_name"],
-            split=split)
-        self.column_map = self.config["column_map"]
-        self.gt_processor = self.config["gt_processor"]
-
-        if self.config["input_processor"] is None:
-            self.inputs = self.dataset[self.column_map["input_column"]]
-        else:
-            # This function is used to process the input
-            # with anything in the dataset
-            self.inputs = list(map(
-                self.config["input_processor"],
-                self.dataset))
-        if self.config["truncate_input"] > 0:
-            start = self.config["truncation_start"]
-            end = start + self.config["truncate_input"]
-            self.inputs = [
-                elem[start:min(len(elem), end)]
-                for elem in self.inputs]
-        if self.gt_processor is not None:
-            self.ground_truth = list(map(
-                self.gt_processor,
-                self.dataset[self.column_map["gt_column"]]))
-        else:
-            self.ground_truth = self.dataset[self.column_map["gt_column"]]
-
-        self.line_number = list(range(
-            self.config["starting_row"],
-            len(self.inputs)+self.config["starting_row"]))
-        self.loaded = True
+        raise NotImplementedError(
+            "load_hf_dataset not implemented")
 
     def __iter__(self):
         """returns a tuple with prompt+input and ground truth
@@ -172,6 +122,6 @@ class NSDataset:
         Yields:
             Tuple(str,str): Tuple of input and ground truth
         """
-        for input, gt, line_number in zip(
-                self.inputs, self.ground_truth, self.line_number):
-            yield self.config["prompt"] + input, gt, line_number
+        for row, line_number in zip(
+                self.rows, self.line_number):
+            yield row, line_number
