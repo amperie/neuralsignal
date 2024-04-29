@@ -1,4 +1,3 @@
-from datasets import load_dataset
 import logging
 import json
 
@@ -87,10 +86,6 @@ class NSDataset:
                 break
 
         self.loaded = True
-
-    def load_hf_exploded_dataset(self):
-        raise NotImplementedError(
-            "load_hf_exploded_dataset not implemented")
 
     def load_hf_dataset(self):
         raise NotImplementedError(

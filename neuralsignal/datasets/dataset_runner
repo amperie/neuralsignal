@@ -31,14 +31,13 @@ class DatasetRunner:
     def run(self):
         """Runs the data collection for all required rows in the dataset
         """
-        size = 0
         batch = []
 
         # Batch up the inputs
+        # TODO: put logic in here to catch the last batch
+        # since that may not run if the batch size doesn't divide evenly
         for row in self.dataset:
             batch.append(row)
-            size += 1
-            if size == self.batch_size:
+            if len(batch) == self.batch_size:
                 self.sdk.evaluate_indirect_output(batch, self.detectors)
                 batch = []
-                size = 0
