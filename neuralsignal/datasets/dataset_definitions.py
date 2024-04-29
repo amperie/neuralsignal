@@ -50,7 +50,7 @@ def datasets_dictionary(
             ground_truth = "skip_row"
 
         return {
-                "question": question,
+                "input": question,
                 "context": context,
                 "output": output,
                 "ground_truth": ground_truth,
@@ -61,6 +61,27 @@ def datasets_dictionary(
         "dataset_name": "diagram_hivemapper",
         "dataset_type": "local_json_one_per_line",
         "local_path": "/data/nfs-data/diagram/diagram_dataset.json",
+        "input_processor": input_processor,
+        "hf_token": "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",
+        "row_limit": row_limit,
+    }
+
+    add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
+
+    # allenai toxicity test
+    def input_processor(row):
+        return {
+                "input": row["prompt"],
+                "context": "",
+                "output": "",
+                "ground_truth": row["ground_truth"],
+                "metadata": {}
+                }
+
+    cfg = {
+        "dataset_type": "local_json_one_per_line",
+        "dataset_name": "allenai_toxicity",
+        "local_path": "//data/nfs-data/allenai_toxicity.json",
         "input_processor": input_processor,
         "hf_token": "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",
         "row_limit": row_limit,

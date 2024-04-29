@@ -9,6 +9,8 @@ logging.basicConfig(level=logging.INFO)
 """
 Wraps an S1 model plus all the settings needed for real time evaluation:
 - S1 model
+TODO: S1 Model should have been trained on the same prompt. 
+So need to track this as well
 - Prompt
 - Metadata/Name of the behavior it's detecting
 """
