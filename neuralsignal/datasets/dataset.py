@@ -87,19 +87,17 @@ class NSDataset:
 
     def load_local_json_one_per_line_dataset(self):
         f = open(self.config["local_path"], "r", encoding="utf8")
-        self.dataset = []
         self.rows = []
         self.line_number = []
         i = 1
         for line in f:
             if i >= self.config["starting_row"]:
                 row = json.loads(line)
-                self.dataset.append(row)
 
                 row_dict = self.config["input_processor"](row)
+                row_dict["line_number"] = i
 
                 self.rows.append(row_dict)
-                self.line_number.append(i)
 
             i += 1
             if i - self.config["starting_row"] > self.config["row_limit"]\
@@ -122,6 +120,5 @@ class NSDataset:
         Yields:
             Tuple(str,str): Tuple of input and ground truth
         """
-        for row, line_number in zip(
-                self.rows, self.line_number):
-            yield row, line_number
+        for row in self.rows:
+            yield row
