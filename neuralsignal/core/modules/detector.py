@@ -24,6 +24,7 @@ class DetectionResults:
         self.score = score
         self.threshold = None
         self.correlation_id = generate_uuid()
+        self.prompted_input = None
 
     def __str__(self):
         return f"DetectionResults: {self.behavior_name} - {self.score}"
@@ -33,7 +34,8 @@ class DetectionResults:
             "behavior_name": self.behavior_name,
             "score": self.score,
             "threshold": self.threshold,
-            "correlation_id": self.correlation_id
+            "correlation_id": self.correlation_id,
+            "prompted_input": self.prompted_input,
         }
 
 
@@ -44,6 +46,7 @@ class Detector:
         "S1_model": None,  # Either pass the model directly or specify its path
         "S1_model_path": None,  # If both are present S1_model is used
         "prompt": "",
+        "input_prompt": "",
         "behavior_name": "default",
         "threshold": None,
         "enabled": False,

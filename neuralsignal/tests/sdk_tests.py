@@ -4,6 +4,7 @@ from neuralsignal.core.modules.model_instrumentation\
 from neuralsignal.core.modules.model_instrumentation\
     import load_model
 from neuralsignal.core.modules.detector import Detector
+from neuralsignal.datasets.dataset_runner import DatasetRunner
 
 
 def test_generation():
@@ -80,6 +81,30 @@ def test_sdk():
     print(gis)
 
 
+def test_ds_runner():
+
+    d1 = {
+        "S1_model": None,
+        # Either pass the model directly or specify its path
+        "S1_model_path": "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1",
+        # If both are present S1_model is used
+        "prompt":
+            "----- input:{input}---output----{output}---context---{context}",
+        "behavior_name": "hallucination",
+        "enabled": "True",
+    }
+    d1 = Detector(d1)
+    cfg = {
+        "dataset": "diagram_hivemapper",
+        "detectors": [d1],
+    }
+    dsr = DatasetRunner(cfg)
+    dsr.run()
+
+    print("")
+
+
 # test_detector_creation()
 # test_generation()
-test_sdk()
+# test_sdk()
+test_ds_runner()

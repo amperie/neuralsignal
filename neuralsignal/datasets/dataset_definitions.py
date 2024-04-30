@@ -14,6 +14,12 @@ def add_to_dataset_dictionary(dataset_dict, cfg, dataset_list, include):
         dataset_dict[ds_name] = NSDataset(cfg)
 
 
+def get_dataset(dataset_name: str):
+    """Returns the dataset object for the given dataset name
+    """
+    return datasets_dictionary(dataset_list=[dataset_name])[dataset_name]
+
+
 def datasets_dictionary(
         row_limit=0, dataset_list=[], include=True, dataset_variant=None)\
         -> dict:
@@ -39,8 +45,14 @@ def datasets_dictionary(
     def input_processor(row):
         context = row['question_and_context']
         output = row['answer']
-        # TODO: split up context into question and context
-        question = None
+        # Split up context into question and context
+        q_start = 10
+        q_end = context.index("\n=========\nContent: ")
+        c_start = q_end + 20
+        c_end = context.rindex("\n=========\n")
+        question = context[q_start:q_end]
+        context = context[c_start:c_end]
+
         ground_truth = row['judgement']
         if ground_truth == "yes":
             ground_truth = True
@@ -60,7 +72,7 @@ def datasets_dictionary(
     cfg = {
         "dataset_name": "diagram_hivemapper",
         "dataset_type": "local_json_one_per_line",
-        "local_path": "/data/nfs-data/diagram/diagram_dataset.json",
+        "local_path": "/Users/pablo/nfs/diagram/diagram_dataset_2nd_edit.json",
         "input_processor": input_processor,
         "hf_token": "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",
         "row_limit": row_limit,
