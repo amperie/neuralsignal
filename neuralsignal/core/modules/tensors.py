@@ -91,3 +91,7 @@ def featurize_tensor_dict(
             zone_count += 1
         layer_index += 1
     return (zone_values, zone_indexes, zone_names)
+
+
+def tensor_mean(t_in: torch.Tensor, dim=0) -> torch.Tensor:
+    return torch.mean(t_in, dim=dim)

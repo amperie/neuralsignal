@@ -45,10 +45,11 @@ class DatasetRunner:
         batch = []
 
         # Batch up the inputs
-        # TODO: put logic in here to catch the last batch
-        # since that may not run if the batch size doesn't divide evenly
         for row in self.dataset:
             batch.append(row)
             if len(batch) == self.batch_size:
                 self.sdk.evaluate_indirect_output(batch, self.detectors)
                 batch = []
+        # Catch the last batch
+        if len(batch) > 0:
+            self.sdk.evaluate_indirect_output(batch, self.detectors)
