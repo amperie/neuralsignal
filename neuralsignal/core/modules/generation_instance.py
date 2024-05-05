@@ -52,7 +52,7 @@ class GenerationInstance:
         Args:
             data (dict): Dictionary of data to add
         """
-        self.data = {**self.data, **data}
+        self.data_to_save = {**self.data_to_save, **data}
 
     def get_flattened_data(self) -> dict:
         """Returns a flattened version of the data

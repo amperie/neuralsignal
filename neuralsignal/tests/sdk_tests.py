@@ -94,7 +94,7 @@ def test_ds_runner():
         "enabled": "True",
     }
     d1 = Detector(d1)
-    
+
     d2 = {
         "S1_model": None,
         # Either pass the model directly or specify its path
@@ -105,7 +105,7 @@ def test_ds_runner():
         "enabled": "True",
     }
     d2 = Detector(d2)
-    
+
     cfg = {
         "dataset": "diagram_hivemapper",
         "detectors": [d1, d2],

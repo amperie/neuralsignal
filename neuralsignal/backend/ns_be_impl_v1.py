@@ -6,7 +6,7 @@ from neuralsignal.backend.mongo_backend import MongoBackend
 from neuralsignal.core.modules.utils import string_to_filename
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=sdk_config.logging_level())
 
 
 class NSBackendImplV1:

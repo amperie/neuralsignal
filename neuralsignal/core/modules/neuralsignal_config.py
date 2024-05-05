@@ -1,9 +1,18 @@
 import yaml
 import os
+import logging
 # from neuralsignal.backend.ns_backend import NSBackend
 
 
 class NeuralSignalConfig:
+    """
+    Configuration class for the NeuralSignal SDK
+    Used as a semi-static class. Usage:
+
+    from neuralsignal.core.modules.neuralsignal_config import sdk_config
+    sdk_config.get(...)
+    """
+
     def __init__(self, config_file: str = None) -> None:
         if config_file is None:
             config_file = "neuralsignal/sdk/neuralsignal_sdk.yaml"
@@ -31,6 +40,21 @@ class NeuralSignalConfig:
 
     def get_backend_config(self) -> dict:
         return self.config["backend_config"]
+
+    def logging_level(self):
+        ll = self.get("logging_level").upper()
+        if ll == "DEBUG":
+            return logging.DEBUG
+        if ll == "INFO":
+            return logging.INFO
+        if ll == "WARN":
+            return logging.WARN
+        if ll == "ERROR":
+            return logging.ERROR
+        if ll == "CRITICAL":
+            return logging.CRITICAL
+        # If none of the above, return default INFO
+        return logging.INFO
 
 
 try:
