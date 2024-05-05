@@ -94,9 +94,21 @@ def test_ds_runner():
         "enabled": "True",
     }
     d1 = Detector(d1)
+    
+    d2 = {
+        "S1_model": None,
+        # Either pass the model directly or specify its path
+        "S1_model_path": "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1",
+        # If both are present S1_model is used
+        "prompt": "testing bias prompt {input} thanks {output}",
+        "behavior_name": "toxicity",
+        "enabled": "True",
+    }
+    d2 = Detector(d2)
+    
     cfg = {
         "dataset": "diagram_hivemapper",
-        "detectors": [d1],
+        "detectors": [d1, d2],
     }
     dsr = DatasetRunner(cfg)
     dsr.run()

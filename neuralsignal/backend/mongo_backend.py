@@ -6,8 +6,6 @@ import pickle
 import io
 import torch
 from neuralsignal.core.modules.utils import serialize
-from neuralsignal.core.modules.neuralsignal_config import sdk_config
-from neuralsignal.core.modules.tensors import process_tensor_dict_to_lists
 
 logging.basicConfig(level=logging.INFO)
 
@@ -81,17 +79,11 @@ class MongoBackend:
     def save_scan(self, scan) -> ObjectId:
         data = scan.get_flattened_data()
         if "outputs" in data:
-            if sdk_config.get("save_as_tensors"):
-                data["outputs"] =\
-                    self.write_serialized_to_GridFS(serialize(data["outputs"]))
-            else:
-                data["outputs"] = process_tensor_dict_to_lists(data["outputs"])
+            data["outputs"] =\
+                self.write_serialized_to_GridFS(serialize(data["outputs"]))
         if "inputs" in data:
-            if sdk_config.get("save_as_tensors"):
-                data["inputs"] =\
-                    self.write_serialized_to_GridFS(serialize(data["inputs"]))
-            else:
-                data["inputs"] = process_tensor_dict_to_lists(data["inputs"])
+            data["inputs"] =\
+                self.write_serialized_to_GridFS(serialize(data["inputs"]))
         return self.write_dict_to_mongo(data)
 
     def load_scan(self, scan_id: str):

@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 class NSBackendImplV1:
 
     """Implements the dev version of the NS backend.
-    Mongo for storage, mlflow for models
+    Mongo for storage, mlflow for models, elastic for vectors
     """
     def __init__(self, config: dict) -> None:
         self.config = config
@@ -21,6 +21,7 @@ class NSBackendImplV1:
 
     # Interface methods
     def save_scan(self, scan) -> None:
+        # TODO: functionality to save vector
         return self.mng.save_scan(scan)
 
     def load_scan(self, scan_id: str):

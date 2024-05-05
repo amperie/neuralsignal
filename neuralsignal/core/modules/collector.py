@@ -1,6 +1,5 @@
 import torch
 from neuralsignal.core.modules.tensors import process_tensor_dict_into_zones
-from neuralsignal.core.modules.tensors import tensor_mean
 
 
 class Collector:
@@ -54,25 +53,24 @@ class Collector:
         self.batch_size = batch_size
         for batch_idx in range(batch_size):
             if "inputs" in dts:
-                # Pre-process tensor matrix to 1d
-                t = tensor_mean(module_in[0][batch_idx], dim=0)
-                self.store_inputs(mod_id, t, batch_idx)
+                self.store_inputs(mod_id, module_in[0], batch_idx)
             if "outputs" in dts:
                 # Pre-process tensor matrix to 1d
-                t = tensor_mean(module_out[0][batch_idx], dim=0)
-                self.store_outputs(mod_id, t, batch_idx)
+                # t = tensor_mean(module_out[0][batch_idx], dim=0)
+                self.store_outputs(mod_id, module_out, batch_idx)
         if "layer_info" in dts:
             self.store_layer_info(mod_id, module, module_in)
 
     def store_inputs(self, mod_id, module_in, batch_idx):
         if self.mode == "additive":
-            if batch_idx in self.outputs and mod_id in self.inputs[batch_idx]:
+            if batch_idx in self.inputs and mod_id in self.inputs[batch_idx]:
                 self.inputs[batch_idx][mod_id] =\
-                    torch.add(self.inputs[batch_idx][mod_id], module_in[0])
+                    torch.add(self.inputs[batch_idx][mod_id],
+                              module_in[batch_idx])
             else:
-                if batch_idx not in self.outputs:
-                    self.outputs[batch_idx] = {}
-                self.inputs[batch_idx][mod_id] = module_in
+                if batch_idx not in self.inputs:
+                    self.inputs[batch_idx] = {}
+                self.inputs[batch_idx][mod_id] = module_in[batch_idx]
         else:
             raise NotImplementedError("Only additive mode is supported")
 
@@ -80,11 +78,12 @@ class Collector:
         if self.mode == "additive":
             if batch_idx in self.outputs and mod_id in self.outputs[batch_idx]:
                 self.outputs[batch_idx][mod_id] =\
-                    torch.add(self.outputs[batch_idx][mod_id], module_out[0])
+                    torch.add(self.outputs[batch_idx][mod_id],
+                              module_out[batch_idx])
             else:
                 if batch_idx not in self.outputs:
                     self.outputs[batch_idx] = {}
-                self.outputs[batch_idx][mod_id] = module_out
+                self.outputs[batch_idx][mod_id] = module_out[batch_idx]
         else:
             raise NotImplementedError("Only additive mode is supported")
 
