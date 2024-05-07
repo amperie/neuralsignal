@@ -64,7 +64,8 @@ class SDK:
         pass
 
     def __init__(
-            self, config: dict = None,
+            self, application_name, sub_application_name,
+            config: dict = None,
             default_config_path: str = None) -> None:
         """Initizalizes the NeuralSignal SDK
 
@@ -74,6 +75,9 @@ class SDK:
             [TODO: Add options here]
             default_config_path: alternative path to config file
         """
+        self.application_name = application_name
+        self.sub_application_name = sub_application_name
+
         if default_config_path is None:
             default_config = yaml.safe_load(
                 open("neuralsignal/sdk/neuralsignal_sdk.yaml"))
@@ -96,6 +100,10 @@ class SDK:
         # If we're saving scans, initialize backend
         self.save_scans = config["save_scans"]
         if self.save_scans:
+            config["backend_config"]["application_name"] =\
+                self.application_name
+            config["backend_config"]["sub_application_name"] =\
+                self.sub_application_name
             self.backend = NSBackend(config["backend_config"])
 
         self.mode = config["evaluation_mode"]

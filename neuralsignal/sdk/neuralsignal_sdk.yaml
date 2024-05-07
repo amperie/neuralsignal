@@ -3,6 +3,8 @@ home: ./sdk_home
 logging_level: INFO
 # Evaluation mode can be indirect or direct
 evaluation_mode: indirect
+application_name: default # Needs to be defined when initializing
+sub_application_name: default # Needs to be defined when initializing
 
 # Evaluation mode config
 indirect_config:

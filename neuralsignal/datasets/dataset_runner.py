@@ -12,14 +12,17 @@ class DatasetRunner:
             "detectors": [],
         }
 
-    def _initialize(self, dataset_name, detectors: list):
+    def _initialize(self, config: dict):
         """Initializes the dataset and the SDK
         """
-        self.sdk = SDK()
+        self.sdk = SDK(
+            config['application_name'],
+            config['sub_application_name'])
         self.sdk.set_config("save_scans", True)
-        self.dataset = get_dataset(dataset_name)
+        self.dataset = get_dataset(
+            config['dataset'])
         self.dataset.load()
-        self.detectors = detectors
+        self.detectors = config['detectors']
 
     def __init__(self, config: dict):
         """
@@ -37,7 +40,7 @@ class DatasetRunner:
             raise ValueError("Dataset name must be provided")
         if len(config["detectors"]) == 0:
             raise ValueError("Detectors must be provided")
-        self._initialize(config["dataset"], config["detectors"])
+        self._initialize(config)
 
     def run(self):
         """Runs the data collection for all required rows in the dataset

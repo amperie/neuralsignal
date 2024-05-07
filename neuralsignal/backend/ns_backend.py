@@ -20,9 +20,16 @@ class NSBackend:
         - backend_type: noop, mongo, neuralsignal_v1
         - backend_config: configuration for the backend.
             Configuration specific to the backend type
+        - backend_config should always contain:
+            - application_name
+            - sub_application_name
     """
 
     def __init__(self, config: dict = None) -> None:
+        if "application_name" not in config:
+            raise ValueError("Missing application_name in config")
+        if "sub_application_name" not in config:
+            raise ValueError("Missing sub_application_name in config")
         self.backend_type = config["backend_type"]
         self.backend_config = config
         if self.backend_type == "noop":

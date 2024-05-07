@@ -16,6 +16,9 @@ class NSBackendImplV1:
     """
     def __init__(self, config: dict) -> None:
         self.config = config
+        # Set the DB and Collection based on application_name
+        config['db'] = config['application_name']
+        config['col'] = config['sub_application_name']
         self.mng = MongoBackend(config)
         mlflow.set_tracking_uri(config['mlflow_uri'])
 

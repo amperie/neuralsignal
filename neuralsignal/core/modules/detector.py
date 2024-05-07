@@ -1,4 +1,5 @@
 import logging
+import copy
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
 from neuralsignal.core.modules.utils import generate_uuid
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
@@ -53,12 +54,43 @@ class Detector:
     }
 
     def __init__(self, config: dict = None) -> None:
+        """Initialize a detector
+
+        Args:
+            config (dict, optional): Should contain these setting:
+            S1_model: S1Model object of a loaded model 
+            OR:
+            S1_model_path (str, optional): URI of the model
+            prompt: detector specific prompt for indirect mode
+            behavior_name: name of the behavior to detect
+            threshold: threshold for the detector
+            enabled: whether the detector is enabled
+            application_name: name of the application
+            sub_application_name: name of the sub application
+
+            Defaults to None, in which case the default config
+            from the config file is used
+
+        Raises:
+            ValueError: If application_name of sub_application name is missing
+            ValueError: If S1 model or model path is not provided
+        """
+        if "application_name" not in config:
+            raise ValueError("Missing application_name in config")
+        if "sub_application_name" not in config:
+            raise ValueError("Missing sub_application_name in config")
         if config is None:
             config = sdk_config.get_config()
         else:
             self.config = {**self.default_config, **config}
         logging.debug(f"Initializing detector with config: {self.config}")
-        self.backend = sdk_config.get_backend_config()
+        self.backend = copy.deepcopy(
+            sdk_config.get_backend_config())
+
+        self.backend["application_name"] =\
+            self.config["application_name"]
+        self.backend["sub_application_name"] =\
+            self.config["sub_application_name"]
         self.backend = NSBackend(self.backend)
         if self.config["S1_model"] is not None:
             self.model = self.config["S1_model"]

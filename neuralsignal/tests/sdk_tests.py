@@ -92,6 +92,8 @@ def test_ds_runner():
             "----- input:{input}---output----{output}---context---{context}",
         "behavior_name": "hallucination",
         "enabled": "True",
+        "application_name": "sdk_diagram",
+        "sub_application_name": "hivemapper",
     }
     d1 = Detector(d1)
 
@@ -103,12 +105,16 @@ def test_ds_runner():
         "prompt": "testing bias prompt {input} thanks {output}",
         "behavior_name": "toxicity",
         "enabled": "True",
+        "application_name": "sdk_diagram",
+        "sub_application_name": "hivemapper",
     }
     d2 = Detector(d2)
 
     cfg = {
         "dataset": "diagram_hivemapper",
         "detectors": [d1, d2],
+        "application_name": "sdk_diagram",
+        "sub_application_name": "hivemapper",
     }
     dsr = DatasetRunner(cfg)
     dsr.run()
