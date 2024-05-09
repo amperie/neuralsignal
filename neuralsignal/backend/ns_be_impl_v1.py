@@ -28,7 +28,10 @@ class NSBackendImplV1:
         return self.mng.save_scan(scan)
 
     def load_scan(self, scan_id: str):
-        raise NotImplementedError
+        return self.mng.load_scan(scan_id)
+
+    def deserialize_scan(self, doc):
+        return self.mng.deserialize_scan(doc)
 
     def query(self, query: dict) -> list:
         return self.mng.query(query)
@@ -40,8 +43,14 @@ class NSBackendImplV1:
         file_name = f"{sdk_config.get('home')}/s1/{file_name}"
         exists = os.path.isfile(file_name)
         if exists:
+            logging.info(
+                f"Loading model {model_id} locally from {file_name}")
             return pickle.load(open(file_name, "rb"))
         else:
+            logging.info(
+                f"Model {model_id} not found locally. "
+                "Downloading from backend."
+            )
             model = mlflow.sklearn.load_model(model_id)
             with open(file_name, 'wb') as handle:
                 pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)

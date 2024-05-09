@@ -94,6 +94,7 @@ class Detector:
         self.backend = NSBackend(self.backend)
         if self.config["S1_model"] is not None:
             self.model = self.config["S1_model"]
+            logging.info(f"Loaded S1 model directly: {self.model}")
         elif self.config["S1_model_path"] is not None:
             self.model =\
                 self.backend.load_s1_model(self.config["S1_model_path"])

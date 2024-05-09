@@ -72,7 +72,8 @@ def datasets_dictionary(
     cfg = {
         "dataset_name": "diagram_hivemapper",
         "dataset_type": "local_json_one_per_line",
-        # "local_path": "/Users/pablo/nfs/diagram/diagram_dataset_2nd_edit.json",
+        # "local_path": 
+        # "/Users/pablo/nfs/diagram/diagram_dataset_2nd_edit.json",
         "local_path": "Y:/diagram/diagram_dataset_2nd_edit.json",
         "input_processor": input_processor,
         "hf_token": "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",

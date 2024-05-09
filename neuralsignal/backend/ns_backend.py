@@ -1,6 +1,7 @@
 import logging
 from neuralsignal.backend.mongo_backend import MongoBackend
 from neuralsignal.backend.ns_be_impl_v1 import NSBackendImplV1
+from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=logging.INFO)
 
@@ -30,6 +31,9 @@ class NSBackend:
             raise ValueError("Missing application_name in config")
         if "sub_application_name" not in config:
             raise ValueError("Missing sub_application_name in config")
+        if "backend_type" not in config:
+            be = sdk_config.get_backend_config()
+            config = {**config, **be}
         self.backend_type = config["backend_type"]
         self.backend_config = config
         if self.backend_type == "noop":
@@ -48,6 +52,9 @@ class NSBackend:
 
     def load_scan(self, scan_id: str):
         return self.backend.load_scan(scan_id)
+
+    def deserialize_scan(self, doc):
+        return self.backend.deserialize_scan(doc)
 
     def query(self, query: dict) -> list:
         return self.backend.query(query)

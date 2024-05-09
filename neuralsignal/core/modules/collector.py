@@ -65,8 +65,9 @@ class Collector:
         if self.mode == "additive":
             if batch_idx in self.inputs and mod_id in self.inputs[batch_idx]:
                 self.inputs[batch_idx][mod_id] =\
-                    torch.add(self.inputs[batch_idx][mod_id],
-                              module_in[batch_idx])
+                    torch.add(
+                        self.inputs[batch_idx][mod_id],
+                        module_in[batch_idx])
             else:
                 if batch_idx not in self.inputs:
                     self.inputs[batch_idx] = {}
@@ -78,8 +79,9 @@ class Collector:
         if self.mode == "additive":
             if batch_idx in self.outputs and mod_id in self.outputs[batch_idx]:
                 self.outputs[batch_idx][mod_id] =\
-                    torch.add(self.outputs[batch_idx][mod_id],
-                              module_out[batch_idx])
+                    torch.add(
+                        self.outputs[batch_idx][mod_id],
+                        module_out[batch_idx])
             else:
                 if batch_idx not in self.outputs:
                     self.outputs[batch_idx] = {}

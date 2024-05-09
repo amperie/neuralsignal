@@ -86,11 +86,24 @@ class MongoBackend:
                 self.write_serialized_to_GridFS(serialize(data["inputs"]))
         return self.write_dict_to_mongo(data)
 
+    def deserialize_scan(self, scan):
+        if "inputs" in scan:
+            scan["inputs"] = self.read_serialized_from_GridFS(
+                scan["inputs"])
+        if "outputs" in scan:
+            scan["outputs"] = self.read_serialized_from_GridFS(
+                scan["outputs"])
+        return scan
+
     def load_scan(self, scan_id: str):
-        raise NotImplementedError
+        id = ObjectId(scan_id)
+        data = self.col.find_one({"_id": id})
+        if data is None:
+            return None
+        return self.deserialize_scan(data)
 
     def query(self, query: dict) -> list:
-        raise NotImplementedError
+        return self.col.find(query)
 
     def load_s1_model(self, model_id: str):
         raise NotImplementedError
