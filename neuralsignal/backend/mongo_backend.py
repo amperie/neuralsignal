@@ -104,6 +104,9 @@ class MongoBackend:
 
     def query(self, query: dict) -> list:
         return self.col.find(query)
+    
+    def get_query_count(self, query: dict) -> int:
+        return self.col.count_documents(query)
 
     def load_s1_model(self, model_id: str):
         raise NotImplementedError

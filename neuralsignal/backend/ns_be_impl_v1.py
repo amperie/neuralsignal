@@ -35,6 +35,9 @@ class NSBackendImplV1:
 
     def query(self, query: dict) -> list:
         return self.mng.query(query)
+    
+    def get_query_count(self, query: dict) -> int:
+        return self.mng.get_query_count(query)
 
     def load_s1_model(self, model_id: str):
         # Check to see if model is cached locally

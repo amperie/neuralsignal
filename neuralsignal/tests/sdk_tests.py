@@ -5,6 +5,7 @@ from neuralsignal.core.modules.model_instrumentation\
     import load_model
 from neuralsignal.core.modules.detector import Detector
 from neuralsignal.datasets.dataset_runner import DatasetRunner
+from neuralsignal.datasets.dataset_creator import DatasetCreator
 
 
 def test_generation():
@@ -122,7 +123,22 @@ def test_ds_runner():
     print("")
 
 
+def test_ds_create():
+
+    dc = DatasetCreator({
+        "zone_size": 1024,
+        "application_name": "sdk_diagram",
+        "sub_application_name": "hivemapper",
+        "file_out": "test.csv",
+    })
+    d = dc.create_dataset(
+        {}
+    )
+    print(d)
+
+
 # test_detector_creation()
 # test_generation()
 # test_sdk()
-test_ds_runner()
+# test_ds_runner()
+test_ds_create()

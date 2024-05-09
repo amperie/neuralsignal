@@ -31,11 +31,11 @@ def process_tensor_dict_into_zones(
                 "when using reduced_outputs. "
                 f"zone_size: {zone_size}, "
                 f"tensor_reduction_ratio: {current_zone_size}")
-        zone_size = int(zone_size / current_zone_size)
+        reduction_ratio = int(zone_size / current_zone_size)
     retVal = {}
     for key in tensor_dict.keys():
         retVal[key] = process_zones_avg(
-            tensor_dict[key], zone_size, zone_stride)
+            tensor_dict[key], reduction_ratio, zone_stride)
     return retVal
 
 
@@ -68,25 +68,26 @@ def featurize_tensor_dict(
     zone_names = []
 
     outputs = process_tensor_dict_into_zones(
-        tensor_dict, zone_size, current_zone_size)
+        tensor_dict, zone_size,
+        current_zone_size=current_zone_size)
 
     layer_index = 0
     for layer in outputs.keys():
-        t = outputs[layer][0]
+        t = outputs[layer]
         # If it's a multi-dimensional tensor, average across all dimensions
         if len(t.shape) > 1:
             t = torch.mean(t, dim=0)
         t = t.tolist()
         zone_count = 0
         for val in t:
-            zone_index = f"z{layer_index}_{zone_count}"
+            zone_index = f"z_{layer_index}_{zone_count}"
             if layer_id_to_name is not None:
                 layer_name = layer_id_to_name[layer]
             else:
                 layer_name = "layer"
             zone_values.append(val)
             zone_indexes.append(zone_index)
-            zone_names.append(f"{layer_name}_{layer_index}")
+            zone_names.append(f"{layer_name}_{layer_index}_{zone_count}")
 
             zone_count += 1
         layer_index += 1
