@@ -92,13 +92,13 @@ class DatasetCreator:
             if self.config["write_to_file"]:
                 row = ','.join(map(str, t[0])) + "\n"
                 if self.config['include_output']:
-                    row = first['output'].replace(",", "") + ',' + row
+                    row = first['output'].replace(",", " ") + ',' + row
                 row = str(int(first['ground_truth'])) + ',' + row
                 f.write(row)
             if self.config["build_in_memory"]:
                 row = t[0]
                 if self.config['include_output']:
-                    row = [first['output'].replace(",", "")] + row
+                    row = [first['output'].replace(",", " ")] + row
                 row = [int(first['ground_truth'])] + row
                 data.append(row)
 
