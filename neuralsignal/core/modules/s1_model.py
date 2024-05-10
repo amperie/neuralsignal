@@ -14,5 +14,3 @@ class S1Model:
         self.name = config["name"]
         self.model_id = config["model_id"]
         self.model = config['model']
-
-

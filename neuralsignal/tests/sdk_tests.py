@@ -127,9 +127,11 @@ def test_ds_create():
 
     dc = DatasetCreator({
         "zone_size": 1024,
+        "row_limit": 0,
         "application_name": "sdk_diagram",
         "sub_application_name": "hivemapper",
         "file_out": "test.csv",
+        "detector_name": "hallucination",
     })
     d = dc.create_dataset(
         {}

@@ -2,6 +2,7 @@ import logging
 from neuralsignal.backend.mongo_backend import MongoBackend
 from neuralsignal.backend.ns_be_impl_v1 import NSBackendImplV1
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
+from neuralsignal.core.modules.s1_model import S1Model
 
 logging.basicConfig(level=logging.INFO)
 
@@ -65,6 +66,9 @@ class NSBackend:
     def load_s1_model(self, model_id: str):
         return self.backend.load_s1_model(model_id)
 
+    def save_s1_model(self, model: S1Model) -> str:
+        return self.backend.save_s1_model(model)
+
 
 class NoopBackend:
     def __init__(self, config: dict) -> None:
@@ -80,4 +84,7 @@ class NoopBackend:
         pass
 
     def load_s1_model(self, model_id: str):
+        pass
+
+    def save_s1_model(self, model_id: str, model: S1Model) -> None:
         pass

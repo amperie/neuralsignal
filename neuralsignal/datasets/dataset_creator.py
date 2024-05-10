@@ -1,9 +1,10 @@
-from neuralsignal.backend.ns_backend import NSBackend
-from neuralsignal.core.modules.tensors import featurize_tensor_dict
 import logging
 import pandas as pd
+from neuralsignal.backend.ns_backend import NSBackend
+from neuralsignal.core.modules.tensors import featurize_tensor_dict
+from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=sdk_config.logging_level())
 
 
 class DatasetCreator:
@@ -12,7 +13,8 @@ class DatasetCreator:
 
     default_config = {
         "zone_size": 1024,
-        "row_limit": 3,
+        "row_limit": 0,
+        "detector_name": None,  # * for all/any
         "write_header": True,
         "use_full_zone_names": False,
         "include_output": False,
@@ -28,6 +30,8 @@ class DatasetCreator:
             raise ValueError("Missing application_name in config")
         if "sub_application_name" not in config:
             raise ValueError("Missing sub_application_name in config")
+        if "detector_name" not in config:
+            raise ValueError("Missing detector_name in config")
         self.config = {**self.default_config, **config}
         if self.config["file_out"] is None and self.config["write_to_file"]:
             raise ValueError("Missing file_out in config")
@@ -36,7 +40,7 @@ class DatasetCreator:
     def process_row(self, doc):
         pass
 
-    def create_dataset(self, query: str):
+    def create_dataset(self, query: dict):
         """
         Creates an S1 dataset from a query.
         Returns a tuple:
@@ -49,6 +53,10 @@ class DatasetCreator:
             f"row_limit: {self.config['row_limit']}"
             )
 
+        # Setup the query with the detection
+        if self.config["detector_name"] != "*":
+            query[f"detections.{self.config['detector_name']}"] =\
+                {"$ne": None}
         # Query for the documents to use for the dataset
         if self.config["row_limit"] == 0:
             mng_cursor = self.be.query(query)

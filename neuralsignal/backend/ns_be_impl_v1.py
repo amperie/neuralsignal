@@ -5,6 +5,7 @@ import pickle
 from neuralsignal.backend.mongo_backend import MongoBackend
 from neuralsignal.core.modules.utils import string_to_filename
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
+from neuralsignal.core.modules.s1_model import S1Model
 
 logging.basicConfig(level=sdk_config.logging_level())
 
@@ -35,7 +36,7 @@ class NSBackendImplV1:
 
     def query(self, query: dict) -> list:
         return self.mng.query(query)
-    
+
     def get_query_count(self, query: dict) -> int:
         return self.mng.get_query_count(query)
 
@@ -58,3 +59,7 @@ class NSBackendImplV1:
             with open(file_name, 'wb') as handle:
                 pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
             return model
+
+    def save_s1_model(self, model: S1Model) -> str:
+        pass
+        # TODO: implement
