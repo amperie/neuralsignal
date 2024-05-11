@@ -25,6 +25,8 @@ class S1Trainer:
     default_config = {
         "application_name": None,
         "sub_application_name": None,
+        "model_name": None,
+        "description": None,
         "save_to_backend": True,
         "dataset_path": None,
         "columns_to_drop": [],
@@ -42,11 +44,12 @@ class S1Trainer:
         "optimization_metric": "auc",
         "xgboost_optimization_metric": "logloss",
         "prediction_threshold": 0.5,
-        "max_evals": 50,
+        "max_evals": 2,
         "early_stopping_rounds": 50,
         "metrics": {},
         "params": {},
         "tags": {},
+        "metadata": {},
     }
 
     def __init__(self, config) -> None:
@@ -56,6 +59,8 @@ class S1Trainer:
             raise ValueError("Missing application_name in config")
         if "sub_application_name" not in config:
             raise ValueError("Missing sub_application_name in config")
+        if "model_name" not in config:
+            raise ValueError("Missing model_name in config")
         self.config = {**self.default_config, **config}
         # Check if dataset path is set
         if self.config['dataset_path'] is None:
@@ -65,6 +70,7 @@ class S1Trainer:
         self.metrics = self.config["metrics"]
         self.params = self.config["params"]
         self.tags = self.config["tags"]
+        self.metadata = self.config["metadata"]
         self.params['dataset_path'] = self.config['dataset_path']
         logging.info(f"Initialized S1Trainer with config: {self.config}")
         # The whole dataset
@@ -113,7 +119,7 @@ class S1Trainer:
 
         self.load_data_from_dataframe(data)
 
-    def hyperparameter_tuning(self, space):
+    def _hyperparameter_tuning(self, space):
 
         model = xgb.XGBClassifier(
             eval_metric=self.config['xgboost_optimization_metric'],
@@ -166,7 +172,7 @@ class S1Trainer:
         # Run hyperparameter tuning
         tic = time.perf_counter()
         best = fmin(
-            fn=self.hyperparameter_tuning,
+            fn=self._hyperparameter_tuning,
             space=self.config['hyperopt_space'],
             algo=tpe.suggest,
             max_evals=self.config['max_evals'],
@@ -240,7 +246,21 @@ class S1Trainer:
 
         if self.config['save_to_backend']:
             model_cfg = {
-                # TODO: all this
+                "application_name": self.config['application_name'],
+                "sub_application_name": self.config['sub_application_name'],
+                "model_name": self.config['model_name'],
+                "description": self.config['description'],
+                "dataset_path": self.config['dataset_path'],
+                "optimization_metric": self.config['optimization_metric'],
+                'metrics': self.metrics,
+                'params': self.params,
+                'metadata': self.metadata,
+                'tags': self.tags,
+                "model": self.best_model
             }
+
+            # Make plots
+            # TODO: this
+
             model_to_save = S1Model(model_cfg)
             model_id = self.be.save_s1_model(model_to_save)

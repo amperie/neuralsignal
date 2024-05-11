@@ -6,6 +6,7 @@ from neuralsignal.core.modules.model_instrumentation\
 from neuralsignal.core.modules.detector import Detector
 from neuralsignal.datasets.dataset_runner import DatasetRunner
 from neuralsignal.datasets.dataset_creator import DatasetCreator
+from neuralsignal.datasets.s1_trainer import S1Trainer
 
 
 def test_generation():
@@ -139,8 +140,22 @@ def test_ds_create():
     print(d)
 
 
+def test_s1_model():
+    cfg = {
+        "application_name": "sdk_diagram",
+        "sub_application_name": "hivemapper",
+        "model_name": "testing-s1",
+        "dataset_path": "test.csv",
+    }
+
+    mt = S1Trainer(cfg)
+    mt.load_data()
+    mt.train_model()
+
+
 # test_detector_creation()
 # test_generation()
 # test_sdk()
 # test_ds_runner()
-test_ds_create()
+# test_ds_create()
+test_s1_model()
