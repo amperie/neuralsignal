@@ -1,4 +1,5 @@
 from neuralsignal.datasets.dataset import NSDataset
+import platform
 
 
 # TODO: Add this dataset: hotpot_qa
@@ -41,6 +42,13 @@ def datasets_dictionary(
     """
     retVal = {}
 
+    # For dev purposes and running in different computers
+    path_prefix = "/data/nfs-data/"
+    if platform.system() == "Windows":
+        path_prefix = "Y:/"
+    if platform.system() == "Darwin":
+        path_prefix = "/Users/pablo/nfs/"
+
     # diagram_hivemapper - /data/nfs-data/diagram/diagram_dataset.json
     def input_processor(row):
         context = row['question_and_context']
@@ -72,9 +80,8 @@ def datasets_dictionary(
     cfg = {
         "dataset_name": "diagram_hivemapper",
         "dataset_type": "local_json_one_per_line",
-        # "local_path": 
-        # "/Users/pablo/nfs/diagram/diagram_dataset_2nd_edit.json",
-        "local_path": "Y:/diagram/diagram_dataset_2nd_edit.json",
+        "local_path":
+            f"{path_prefix}/diagram/diagram_dataset_2nd_edit.json",
         "input_processor": input_processor,
         "hf_token": "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",
         "row_limit": row_limit,
