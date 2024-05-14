@@ -31,9 +31,7 @@ def process_tensor_dict_into_zones(
                 "when using reduced_outputs. "
                 f"zone_size: {zone_size}, "
                 f"tensor_reduction_ratio: {current_zone_size}")
-        reduction_ratio = int(zone_size / current_zone_size)
-    else:
-        reduction_ratio = 1
+    reduction_ratio = int(zone_size / current_zone_size)
     retVal = {}
     for key in tensor_dict.keys():
         retVal[key] = process_zones_avg(
