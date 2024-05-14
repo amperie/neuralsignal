@@ -41,11 +41,15 @@ class NeuralSignalConfig:
     def get_backend_config(self) -> dict:
         return self.config["backend_config"]
 
-    def get_detectors(self, detector=None) -> dict:
-        if detector is not None:
-            return self.config["detectors"][detector]
-        else:
-            return self.config["detectors"]
+    def get_detectors(self) -> dict:
+        return self.config["detectors"]
+
+    def get_detector(self, detector_name: str) -> dict:
+        ds = self.get_detectors()
+        for d in ds:
+            if d['beahvior_name'] == detector_name:
+                return d
+        raise ValueError(f"Could not find detector {detector_name}")
 
     def logging_level(self):
         ll = self.get("logging_level").upper()
