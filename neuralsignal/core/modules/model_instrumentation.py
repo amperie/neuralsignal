@@ -272,6 +272,8 @@ def instrument_model(cfg, model, hc: Collector) -> list:
         return instrument_mixtral_8x(cfg, model, hc)
     if type == "mistral7b":
         return instrument_mistral_7b(cfg, model, hc)
+    if type == "phi3":
+        return instrument_phi3(cfg, model, hc)
     return None
 
 
