@@ -41,10 +41,10 @@ class NeuralSignalConfig:
     def get_backend_config(self) -> dict:
         return self.config["backend_config"]
 
-    def get_detectors(self) -> dict:
+    def get_detector_configs(self) -> dict:
         return self.config["detectors"]
 
-    def get_detector(self, detector_name: str) -> dict:
+    def get_detector_config(self, detector_name: str) -> dict:
         ds = self.get_detectors()
         for d in ds:
             if d['behavior_name'] == detector_name:
