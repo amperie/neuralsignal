@@ -741,12 +741,12 @@ def instrument_phi3(cfg, model, hc: Collector) -> list:
                     "phi3.mlp.activation_fn"
 
                 add_hook(
-                    layer.mlp.input_layernorm, hc, registered_hooks)
-                layer.mlp.input_layernorm.ns_name =\
+                    layer.input_layernorm, hc, registered_hooks)
+                layer.input_layernorm.ns_name =\
                     "phi3.mlp.input_layernorm"
                 add_hook(
-                    layer.mlp.post_attention_layernorm, hc, registered_hooks)
-                layer.mlp.post_attention_layernorm.ns_name =\
+                    layer.post_attention_layernorm, hc, registered_hooks)
+                layer.post_attention_layernorm.ns_name =\
                     "phi3.mlp.post_attention_layernorm"
 
     add_hook(model.lm_head, hc, registered_hooks)
