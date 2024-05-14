@@ -7,6 +7,7 @@ from neuralsignal.core.modules.detector import Detector
 from neuralsignal.datasets.dataset_runner import DatasetRunner
 from neuralsignal.datasets.dataset_creator import DatasetCreator
 from neuralsignal.datasets.s1_trainer import S1Trainer
+from neuralsignal.backend.ns_backend import NSBackend
 
 
 def test_generation():
@@ -146,11 +147,17 @@ def test_s1_model():
         "sub_application_name": "hivemapper",
         "model_name": "testing-s1",
         "dataset_path": "test.csv",
+        "description": "testing",
+        "tags": {"testtag": "testtag"},
+        "metadata": {"testmd": "testmd"},
     }
 
     mt = S1Trainer(cfg)
-    mt.load_data()
-    mt.train_model()
+    m = mt.train_model()
+
+    be = NSBackend(cfg)
+    model = be.load_s1_model(m.model_id)
+    print(model)
 
 
 # test_detector_creation()

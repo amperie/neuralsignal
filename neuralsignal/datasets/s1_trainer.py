@@ -164,7 +164,7 @@ class S1Trainer:
                 ll = log_loss(self.y_test, pred_proba)
                 return {'loss': ll, 'status': STATUS_OK, 'model': model}
 
-    def train_model(self):
+    def train_model(self) -> S1Model:
         self.load_data()
         logging.info("Starting hyperparameter tuning")
         trials = Trials()
@@ -264,4 +264,11 @@ class S1Trainer:
             # TODO: this
 
             model_to_save = S1Model(model_cfg)
-            model_id = self.be.save_s1_model(model_to_save)
+            model_to_save = self.be.save_s1_model(model_to_save)
+
+        logging.info(
+            f"Training completed for model {self.config['model_name']} "
+            f"in application {self.config['application_name']} "
+            f"sub application {self.config['sub_application_name']}"
+            )
+        return model_to_save

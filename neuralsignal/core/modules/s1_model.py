@@ -31,3 +31,15 @@ class S1Model:
         self.model_name = config["model_name"]
         self.model_id = config["model_id"]
         self.model = config['model']
+
+    def set_id(self, model_id: str):
+        self.model_id = model_id
+
+    def __getitem__(self, name: str):
+        return self.config[name]
+
+    def predict(self, data):
+        pass
+
+    def predict_proba(self, data):
+        pass

@@ -7,6 +7,7 @@ from neuralsignal.core.modules.utils import string_to_filename
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.core.modules.s1_model import S1Model
 from neuralsignal.backend.backend_util import save_to_mlflow
+from neuralsignal.core.modules.s1_model import S1Model
 
 logging.basicConfig(level=sdk_config.logging_level())
 
@@ -42,6 +43,8 @@ class NSBackendImplV1:
         return self.mng.get_query_count(query)
 
     def load_s1_model(self, model_id: str):
+        # TODO: load an S1Model object, not just the model itself
+
         # Check to see if model is cached locally
         # If not, get it and cache it
         file_name = string_to_filename(model_id)
@@ -50,7 +53,7 @@ class NSBackendImplV1:
         if exists:
             logging.info(
                 f"Loading model {model_id} locally from {file_name}")
-            return pickle.load(open(file_name, "rb"))
+            model = pickle.load(open(file_name, "rb"))
         else:
             logging.info(
                 f"Model {model_id} not found locally. "
@@ -59,12 +62,23 @@ class NSBackendImplV1:
             model = mlflow.sklearn.load_model(model_id)
             with open(file_name, 'wb') as handle:
                 pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            return model
+
+        cfg = {
+            'model_id': model_id,
+            'model': model,
+            'application_name': self.config['application_name'],
+            'sub_application_name': self.config['sub_application_name'],
+            'model_name': model_id
+        }
+        retVal = S1Model(cfg)
+        return retVal
 
     def save_s1_model(self, model: S1Model) -> str:
         experiment_name =\
             f"{self.config['application_name']}_"\
             f"{self.config['sub_application_name']}"
-        retVal = save_to_mlflow(
-            model, self.config("mlflow_uri"), experiment_name)
-        return retVal
+        model.config["mlflow_info"] = save_to_mlflow(
+            model, self.config["mlflow_uri"], experiment_name)
+        model.config['model_id'] = model.config['mlflow_info']._model_uri
+        model.set_id(model.config['mlflow_info']._model_uri)
+        return model

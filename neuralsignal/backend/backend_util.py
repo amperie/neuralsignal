@@ -28,3 +28,4 @@ def save_to_mlflow(model, mlflow_uri, experiment_name):
             artifact_path="S1",
             registered_model_name=registered_model_name,
         )
+        return mlflow_model_info
