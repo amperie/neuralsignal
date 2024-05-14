@@ -5,6 +5,7 @@ logging_level: INFO
 evaluation_mode: indirect
 application_name: default # Needs to be defined when initializing
 sub_application_name: default # Needs to be defined when initializing
+max_new_tokens: 128
 
 # Evaluation mode config
 indirect_config:

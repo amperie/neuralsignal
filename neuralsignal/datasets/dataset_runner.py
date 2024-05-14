@@ -14,6 +14,7 @@ class DatasetRunner:
             "row_limit": 0,
             "batch_size": 1,
             "detectors": [],
+            "max_new_tokens": 128,
         }
 
     def _initialize(self, config: dict):
@@ -21,7 +22,8 @@ class DatasetRunner:
         """
         self.sdk = SDK(
             config['application_name'],
-            config['sub_application_name'])
+            config['sub_application_name'],
+            config)
         self.sdk.set_config("save_scans", True)
         self.dataset = get_dataset(
             config['dataset'])

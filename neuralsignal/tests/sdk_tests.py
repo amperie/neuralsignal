@@ -124,6 +124,7 @@ def test_ds_runner():
         "detectors": [d],
         "application_name": "sdk_diagram",
         "sub_application_name": "hivemapper",
+        "max_new_tokens": 1,
     }
     dsr = DatasetRunner(cfg)
     dsr.run()

@@ -42,6 +42,7 @@ class SDK:
         - Prompts for each
         - Thresholds for each
         - Backend configuration
+        - max_new_tokens for generation
     Interfaces:
         - evaluate_output - indirect evaluation of input/output
             - parameters: input/output/context/metadata
@@ -111,6 +112,7 @@ class SDK:
             self.__init_indirect()
         self.default_indirect_instrumentation_cfg =\
             config["indirect_instrumentation_config"]
+        self.config = config
 
     def set_config(self, key: str, value: str):
         """Sets a configuration value
@@ -160,7 +162,8 @@ class SDK:
         # Generate activity in indirect
         gis = generate_from_batch(
             prompted_outputs, self.model, self.tokenizer,
-            instrumentation_cfg=self.default_indirect_instrumentation_cfg
+            instrumentation_cfg=self.default_indirect_instrumentation_cfg,
+            max_new_tokens=self.config['max_new_tokens']
             )
 
         # Unpack the outputs in the same order and run the detectors on each
