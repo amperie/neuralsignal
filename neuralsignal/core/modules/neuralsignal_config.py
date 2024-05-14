@@ -41,6 +41,12 @@ class NeuralSignalConfig:
     def get_backend_config(self) -> dict:
         return self.config["backend_config"]
 
+    def get_detectors(self, detector=None) -> dict:
+        if detector is not None:
+            return self.config["detectors"][detector]
+        else:
+            return self.config["detectors"]
+
     def logging_level(self):
         ll = self.get("logging_level").upper()
         if ll == "DEBUG":

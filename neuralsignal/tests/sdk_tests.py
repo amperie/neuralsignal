@@ -8,6 +8,7 @@ from neuralsignal.datasets.dataset_runner import DatasetRunner
 from neuralsignal.datasets.dataset_creator import DatasetCreator
 from neuralsignal.datasets.s1_trainer import S1Trainer
 from neuralsignal.backend.ns_backend import NSBackend
+from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 
 def test_generation():
@@ -113,9 +114,11 @@ def test_ds_runner():
     }
     d2 = Detector(d2)
 
+    d = sdk_config.get_detectors()
+
     cfg = {
         "dataset": "diagram_hivemapper",
-        "detectors": [d1, d2],
+        "detectors": [d['hallucination']],
         "application_name": "sdk_diagram",
         "sub_application_name": "hivemapper",
     }
