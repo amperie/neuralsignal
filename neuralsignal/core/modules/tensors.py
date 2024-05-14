@@ -32,6 +32,8 @@ def process_tensor_dict_into_zones(
                 f"zone_size: {zone_size}, "
                 f"tensor_reduction_ratio: {current_zone_size}")
         reduction_ratio = int(zone_size / current_zone_size)
+    else:
+        reduction_ratio = 1
     retVal = {}
     for key in tensor_dict.keys():
         retVal[key] = process_zones_avg(
