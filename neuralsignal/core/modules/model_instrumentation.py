@@ -239,6 +239,8 @@ def get_model_type(model) -> str:
         return "mixtral8x"
     if "Mistral-7B" in model:
         return "mistral7b"
+    if "Phi-3" in model:
+        return "phi3"
     raise ValueError(f"Model type not implemented: {model_name}")
 
 
@@ -681,4 +683,68 @@ def instrument_mistral_7b(cfg, model, hc: Collector) -> list:
     add_hook(model.lm_head, hc, registered_hooks)
     model.lm_head.ns_name = "mistral.lm_head"
     hc.last_layer = id(model.lm_head)
+    return registered_hooks
+
+
+def instrument_phi3(cfg, model, hc: Collector) -> list:
+    """Instruments a Phi3 model. It returns the list of hook handles
+    that were added to the model. This list can be used to remove
+    the instrumentation later.
+
+    Args:
+        cfg (dict): should contain the following configs:
+        instrument_encoder, instrument_decoder, instrument_FF,
+        instrument_attention
+        model (HF model): HuggingFace model
+        hc (Collector): Initialized Collector
+
+    Returns:
+        list: List of hook handles to use later
+    """
+    # Keep a list of these so we can de-instrument the model later
+
+    registered_hooks = []
+    if cfg["instrument_embedding"]:
+        add_hook(model.model.embed_tokens, hc, registered_hooks)
+        model.model.embed_tokens.ns_name = "phi.embed_tokens"
+        add_hook(model.model.embed_dropout, hc, registered_hooks)
+        model.model.embed_dropout.ns_name = "phi.embed_tokens"
+    if cfg["instrument_decoder"]:
+        for layer in model.model.layers:
+            if cfg["instrument_attention"]:
+                add_hook(
+                    layer.self_attn.o_proj, hc, registered_hooks)
+                layer.self_attn.o_proj.ns_name =\
+                    "phi3.self_attn.q_proj"
+                add_hook(
+                    layer.self_attn.qkv_proj, hc, registered_hooks)
+                layer.self_attn.qkv_proj.ns_name =\
+                    "phi3.self_attn.qkv_proj"
+            if cfg["instrument_FF"]:
+                add_hook(
+                    layer.mlp.gate_up_proj, hc, registered_hooks)
+                layer.mlp.gate_up_proj.ns_name =\
+                    "phi3.mlp.gate_up_proj"
+                add_hook(
+                    layer.mlp.down_proj, hc, registered_hooks)
+                layer.mlp.down_proj.ns_name =\
+                    "phi3.mlp.down_proj"
+                add_hook(
+                    layer.mlp.activation_fn, hc, registered_hooks)
+                layer.mlp.activation_fn.ns_name =\
+                    "phi3.mlp.activation_fn"
+
+                add_hook(
+                    layer.mlp.input_layernorm, hc, registered_hooks)
+                layer.mlp.input_layernorm.ns_name =\
+                    "phi3.mlp.input_layernorm"
+                add_hook(
+                    layer.mlp.post_attention_layernorm, hc, registered_hooks)
+                layer.mlp.post_attention_layernorm.ns_name =\
+                    "phi3.mlp.post_attention_layernorm"
+
+    add_hook(model.lm_head, hc, registered_hooks)
+    model.lm_head.ns_name = "phi3.lm_head"
+    hc.last_layer = id(model.lm_head)
+    print(registered_hooks)
     return registered_hooks
