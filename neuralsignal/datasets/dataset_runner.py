@@ -1,5 +1,9 @@
+import logging
 from neuralsignal.sdk.neuralsignal import SDK
 from neuralsignal.datasets.dataset_definitions import get_dataset
+from neuralsignal.core.modules.neuralsignal_config import sdk_config
+
+logging.basicConfig(level=sdk_config.logging_level())
 
 
 class DatasetRunner:
@@ -46,11 +50,19 @@ class DatasetRunner:
         """Runs the data collection for all required rows in the dataset
         """
         batch = []
+        index = 1
 
         # Batch up the inputs
         for row in self.dataset:
+            logging.debug(
+                f"Batching row {index} for "
+                f"batch size {self.batch_size}")
             batch.append(row)
+            index += 1
             if len(batch) == self.batch_size:
+                logging.debug(
+                    f"Evaluating batch from rows "
+                    f"{index - self.batch_size + 1} to {index}")
                 self.sdk.evaluate_indirect_output(batch, self.detectors)
                 batch = []
         # Catch the last batch

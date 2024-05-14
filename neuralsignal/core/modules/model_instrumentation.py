@@ -14,7 +14,8 @@ logging.basicConfig(level=logging.INFO)
 
 
 def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
-    """Loads a model from a config
+    """Loads a model from a config, has functions to instrument model
+    and to run generation on model
 
     Args:
         model_config (dict): dictionary containing the model configuration
