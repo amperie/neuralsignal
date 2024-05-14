@@ -102,6 +102,7 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
 def generate_from_batch(
         input: list[str], model: AutoModel, tokenizer: AutoTokenizer,
         instrumentation_cfg: dict = None, truncate: bool = False,
+        max_new_tokens: int = 128,
         ) -> list[GenerationInstance]:
     """Generates a response from a model for a given string
 
@@ -163,7 +164,10 @@ def generate_from_batch(
 
     if torch.cuda.is_available():
         input_ids = input_ids.to("cuda")
-    output = model.generate(input_ids, pad_token_id=tokenizer.eos_token_id)
+    output = model.generate(
+        input_ids, pad_token_id=tokenizer.eos_token_id,
+        max_new_tokens=max_new_tokens
+        )
 
     if model_instrumented:
         hc.finish_and_get_data()
@@ -752,5 +756,4 @@ def instrument_phi3(cfg, model, hc: Collector) -> list:
     add_hook(model.lm_head, hc, registered_hooks)
     model.lm_head.ns_name = "phi3.lm_head"
     hc.last_layer = id(model.lm_head)
-    print(registered_hooks)
     return registered_hooks
