@@ -9,6 +9,25 @@ logging.basicConfig(level=sdk_config.logging_level())
 
 class DatasetCreator:
     """Generates an S1 dataset from a set of scans
+    Usage:
+            dc = DatasetCreator({
+                "application_name": "<required>",
+                "sub_application_name": "<required>",
+                "zone_size": 1024,
+                "row_limit": 0,
+                "detector_name": None,  # * for all/any
+                "write_header": True,
+                "use_full_zone_names": False,
+                "include_output": False,
+                "write_to_file": True,
+                "file_out": None,
+                "build_in_memory": True,
+                "use_gt_as_target": True,
+                "tensor_field_to_use": "outputs",
+                })
+            d = dc.create_dataset(
+                {query in the application and sub_application space}
+            )
     """
 
     default_config = {
@@ -37,17 +56,18 @@ class DatasetCreator:
             raise ValueError("Missing file_out in config")
         self.be = NSBackend(config)
 
-    def process_row(self, doc):
-        pass
-
     def create_dataset(self, query: dict):
         """
         Creates an S1 dataset from a query.
         Returns a tuple:
         retVal[0] = path to file out if write_to_file is True
         retVal[1] = pandas dataframe if build_in_memory is True
-        Both these values will be None if the configs are set to False
+        Exception is raised if both these configs are set to False
         """
+        if not self.config["write_to_file"] and\
+                not self.config["build_in_memory"]:
+            raise ValueError(
+                "Specify either write_to_file or build_in_memory or both")
         logging.info(
             f"Building dataset with query: {query} "
             f"row_limit: {self.config['row_limit']}"
