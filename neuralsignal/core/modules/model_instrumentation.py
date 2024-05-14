@@ -44,12 +44,14 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
             model = AutoModelForSeq2SeqLM.from_pretrained(
                 model_config["model_name"],
                 device_map=model_config["device"],
-                quantization_config=bnb_config)
+                quantization_config=bnb_config,
+                trust_remote_code=True)
         else:
             model = AutoModelForCausalLM.from_pretrained(
                 model_config["model_name"],
                 device_map=model_config["device"],
-                quantization_config=bnb_config)
+                quantization_config=bnb_config,
+                trust_remote_code=True)
 
         logging.info(
             f"Loaded {model_config['model_name']} in 4 bit quantization")
@@ -66,12 +68,14 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
             model = AutoModelForSeq2SeqLM.from_pretrained(
                 model_config["model_name"],
                 device_map=model_config["device"],
-                quantization_config=bnb_config)
+                quantization_config=bnb_config,
+                trust_remote_code=True)
         else:
             model = AutoModelForCausalLM.from_pretrained(
                 model_config["model_name"],
                 device_map=model_config["device"],
-                quantization_config=bnb_config)
+                quantization_config=bnb_config,
+                trust_remote_code=True)
 
         logging.info(
             f"Loaded {model_config['model_name']} in 8 bit quantization")
@@ -231,15 +235,15 @@ def get_model_type(model) -> str:
         return "t5"
     if "flan" in model_name:
         return "t5"
-    if "JudgeLM" in model:
+    if "JudgeLM" in model_name:
         return "llama2"
-    if model.startswith("meta-llama"):
+    if model_name.startswith("meta-llama"):
         return "llama2"
-    if "Mixtral-8x" in model:
+    if "Mixtral-8x" in model_name:
         return "mixtral8x"
-    if "Mistral-7B" in model:
+    if "Mistral-7B" in model_name:
         return "mistral7b"
-    if "Phi-3" in model:
+    if "Phi-3" in model_name:
         return "phi3"
     raise ValueError(f"Model type not implemented: {model_name}")
 
