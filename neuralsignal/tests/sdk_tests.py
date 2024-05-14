@@ -114,8 +114,10 @@ def test_ds_runner():
     }
     d2 = Detector(d2)
 
-    d = Detector(
-        sdk_config.get_detector_config("hallucination"))
+    d = sdk_config.get_detector_config("hallucination")
+    d['application_name'] = "diagram"
+    d['sub_application_name'] = "hivemapper"
+    d = Detector(d)
 
     cfg = {
         "dataset": "diagram_hivemapper",
