@@ -31,6 +31,6 @@ def save_to_mlflow(model, mlflow_uri, experiment_name):
 
         # Log figures
         for fig_name, fig in model['figures'].items():
-            mlflow.log_figure(fig, fig_name)
+            mlflow.log_figure(fig, f"{fig_name}.png")
 
     return mlflow_model_info

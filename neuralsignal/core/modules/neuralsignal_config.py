@@ -51,6 +51,9 @@ class NeuralSignalConfig:
                 return d
         raise ValueError(f"Could not find detector {detector_name}")
 
+    def get_sdk_home(self) -> str:
+        return self.get("home")
+
     def logging_level(self):
         ll = self.get("logging_level").upper()
         if ll == "DEBUG":
