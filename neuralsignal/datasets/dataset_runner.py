@@ -65,6 +65,15 @@ class DatasetRunner:
                     f"{index - self.batch_size + 1} to {index}")
                 self.sdk.evaluate_indirect_output(batch, self.detectors)
                 batch = []
+                logging.debug(
+                    f"Done evaluating batch from rows "
+                    f"{index - self.batch_size + 1} to {index}")
         # Catch the last batch
         if len(batch) > 0:
+            logging.debug(
+                f"Evaluating last batch from rows "
+                f"{index - self.batch_size + 1} to {index}")
             self.sdk.evaluate_indirect_output(batch, self.detectors)
+            logging.debug(
+                f"Done evaluating last batch from rows "
+                f"{index - self.batch_size + 1} to {index}")
