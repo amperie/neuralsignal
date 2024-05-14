@@ -249,6 +249,7 @@ class S1Trainer:
                 "application_name": self.config['application_name'],
                 "sub_application_name": self.config['sub_application_name'],
                 "model_name": self.config['model_name'],
+                "model_id": None,
                 "description": self.config['description'],
                 "dataset_path": self.config['dataset_path'],
                 "optimization_metric": self.config['optimization_metric'],

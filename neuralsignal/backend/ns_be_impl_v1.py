@@ -6,6 +6,7 @@ from neuralsignal.backend.mongo_backend import MongoBackend
 from neuralsignal.core.modules.utils import string_to_filename
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.core.modules.s1_model import S1Model
+from neuralsignal.backend.backend_util import save_to_mlflow
 
 logging.basicConfig(level=sdk_config.logging_level())
 
@@ -61,5 +62,9 @@ class NSBackendImplV1:
             return model
 
     def save_s1_model(self, model: S1Model) -> str:
-        pass
-        # TODO: implement
+        experiment_name =\
+            f"{self.config['application_name']}_"\
+            f"{self.config['sub_application_name']}"
+        retVal = save_to_mlflow(
+            model, self.config("mlflow_uri"), experiment_name)
+        return retVal
