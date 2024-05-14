@@ -262,6 +262,16 @@ class S1Trainer:
 
             # Make plots
             # TODO: this
+            cm = confusion_matrix(
+                self.y_test,
+                pred_proba >= self.config['prediction_threshold'],
+                labels=model.classes_)
+            conf_matrix = ConfusionMatrixDisplay(
+                confusion_matrix=cm,
+                display_labels=model.classes_)
+            conf_matrix.plot()
+            cm_fig = conf_matrix.figure_
+            model_cfg['figures'] = {'confusion_matrix': cm_fig}
 
             model_to_save = S1Model(model_cfg)
             model_to_save = self.be.save_s1_model(model_to_save)

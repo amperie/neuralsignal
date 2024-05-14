@@ -22,6 +22,7 @@ class S1Model:
         'metadata': {},
         'tags': {},
         'artifacts': {},
+        'figures': {},
         'description': "",
     }
 

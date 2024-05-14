@@ -28,4 +28,9 @@ def save_to_mlflow(model, mlflow_uri, experiment_name):
             artifact_path="S1",
             registered_model_name=registered_model_name,
         )
+
+        # Log figures
+        for fig_name, fig in model['figures'].items():
+            mlflow.log_figure(fig, fig_name)
+
     return mlflow_model_info

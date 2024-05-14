@@ -181,6 +181,7 @@ def generate_from_batch(
             "output": decoded_output,
             "model_name": model.name_or_path
         })
+        gi.add_data({"decoded_output": decoded_output})
         if model_instrumented:
             data = hc.get_data_by_batch_index(batch_idx)
             # Add data to return value
