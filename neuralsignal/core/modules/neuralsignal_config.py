@@ -47,7 +47,7 @@ class NeuralSignalConfig:
     def get_detector(self, detector_name: str) -> dict:
         ds = self.get_detectors()
         for d in ds:
-            if d['beahvior_name'] == detector_name:
+            if d['behavior_name'] == detector_name:
                 return d
         raise ValueError(f"Could not find detector {detector_name}")
 
