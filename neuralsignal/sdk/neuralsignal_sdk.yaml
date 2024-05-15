@@ -5,10 +5,10 @@ logging_level: INFO
 evaluation_mode: indirect
 application_name: default # Needs to be defined when initializing
 sub_application_name: default # Needs to be defined when initializing
-max_new_tokens: 128
 
 # Evaluation mode config
 indirect_config:
+  #  indirect_model: "microsoft/Phi-3-mini-128k-instruct"
   indirect_model: "t5-small"
   zone_size: 512
   indirect_batch_size: 1
@@ -43,10 +43,9 @@ detectors:
   - behavior_name: "hallucination"
     S1_model: "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1"
     mlflow_uri: "http://z600.lan:8000"
-    prompt: "testing hallucination prompt {input} thanks"
-    enabled: false
-  - behavior_name: "bias"
-    S1_model: "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1"
-    mlflow_uri: "http://z600.lan:8000"
-    prompt: "bias testing of prompt input: {input} thanks"
-    enabled: false
+    prompt: >
+          Based on the content and question given tell me if the answer to the question is correct.\n
+          Answer only with a single word - true or false. Remember to answer with only one word:\n
+          Question {input}\n
+          Answer: {output}\n Context: {context}\nRemember to output only true or false.
+    enabled: True

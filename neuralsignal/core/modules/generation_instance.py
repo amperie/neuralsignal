@@ -68,6 +68,8 @@ class GenerationInstance:
             flat_data["input"] = self.data["input"]
         if "output" in self.data:
             flat_data["output"] = self.data["output"]
+        if "decoded_output" in self.data:
+            flat_data["decoded_output"] = self.data["decoded_output"]
         if "data_run_name" in self.data:
             flat_data["data_run_name"] = self.data["data_run_name"]
         if "model_name" in self.data:
