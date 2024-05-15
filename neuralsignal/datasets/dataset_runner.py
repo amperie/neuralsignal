@@ -23,8 +23,9 @@ class DatasetRunner:
         self.sdk = SDK(
             config['application_name'],
             config['sub_application_name'],
-            config)
+            )
         self.sdk.set_config("save_scans", True)
+        self.sdk.set_config("max_new_tokens", config["max_new_tokens"])
         self.dataset = get_dataset(
             config['dataset'])
         self.dataset.load()
