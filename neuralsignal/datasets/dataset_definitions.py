@@ -89,6 +89,32 @@ def datasets_dictionary(
 
     add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
 
+    # squad_v2 right/wrong answer pairs
+    def input_processor(row):
+        question = row["question"]
+        answer = row["answer"]
+        context = row["context"]
+        ground_truth = row["ground_truth"]
+
+        return {
+                "input": question,
+                "context": context,
+                "output": answer,
+                "ground_truth": ground_truth,
+                "metadata": {}
+                }
+
+    cfg = {
+        "dataset_type": "local_json_one_per_line",
+        "dataset_name": "squad_v2_right_wrong_pairs",
+        "local_path": f"{path_prefix}/squad_v2_right_wrong.json",
+        "input_processor": input_processor,
+        "hf_token": "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",
+        "row_limit": row_limit,
+    }
+
+    add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
+
     # allenai toxicity test
     def input_processor(row):
         return {

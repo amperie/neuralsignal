@@ -87,43 +87,16 @@ def test_sdk():
 
 def test_ds_runner():
 
-    d1 = {
-        "S1_model": None,
-        # Either pass the model directly or specify its path
-        "S1_model_path": "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1",
-        # If both are present S1_model is used
-        "prompt":
-            "----- input:{input}---output----{output}---context---{context}",
-        "behavior_name": "hallucination",
-        "enabled": "True",
-        "application_name": "sdk_diagram",
-        "sub_application_name": "hivemapper",
-    }
-    d1 = Detector(d1)
-
-    d2 = {
-        "S1_model": None,
-        # Either pass the model directly or specify its path
-        "S1_model_path": "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1",
-        # If both are present S1_model is used
-        "prompt": "testing bias prompt {input} thanks {output}",
-        "behavior_name": "toxicity",
-        "enabled": "True",
-        "application_name": "sdk_diagram",
-        "sub_application_name": "hivemapper",
-    }
-    d2 = Detector(d2)
-
     d = sdk_config.get_detector_config("hallucination")
-    d['application_name'] = "diagram"
-    d['sub_application_name'] = "hivemapper"
+    d['application_name'] = "sdk_squad_v2"
+    d['sub_application_name'] = "data"
     d = Detector(d)
 
     cfg = {
         "dataset": "diagram_hivemapper",
         "detectors": [d],
-        "application_name": "sdk_diagram",
-        "sub_application_name": "hivemapper",
+        "application_name": "sdk_squad_v2",
+        "sub_application_name": "data",
         "max_new_tokens": 1,
     }
     dsr = DatasetRunner(cfg)
@@ -137,8 +110,8 @@ def test_ds_create():
     dc = DatasetCreator({
         "zone_size": 1024,
         "row_limit": 0,
-        "application_name": "sdk_diagram",
-        "sub_application_name": "hivemapper",
+        "application_name": "sdk_squad_v2",
+        "sub_application_name": "data",
         "file_out": "test.csv",
         "detector_name": "hallucination",
     })
@@ -150,10 +123,10 @@ def test_ds_create():
 
 def test_s1_model():
     cfg = {
-        "application_name": "sdk_diagram",
-        "sub_application_name": "hivemapper",
+        "application_name": "sdk_squad_v2",
+        "sub_application_name": "data",
         "model_name": "testing-s1",
-        "dataset_path": "test.csv",
+        "dataset_path": "squad.csv",
         "description": "testing",
         "tags": {"testtag": "testtag"},
         "metadata": {"testmd": "testmd"},
