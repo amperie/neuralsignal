@@ -93,7 +93,7 @@ def test_ds_runner():
     d = Detector(d)
 
     cfg = {
-        "dataset": "diagram_hivemapper",
+        "dataset": "squad_v2_right_wrong_pairs",
         "detectors": [d],
         "application_name": "sdk_squad_v2",
         "sub_application_name": "data",
