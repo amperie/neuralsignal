@@ -1,4 +1,5 @@
 import logging
+import os
 import pandas as pd
 from neuralsignal.backend.ns_backend import NSBackend
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
@@ -42,6 +43,7 @@ class DatasetCreator:
         "build_in_memory": True,
         "use_gt_as_target": True,
         "tensor_field_to_use": "outputs",
+        "overwrite_dataset_file": True,
     }
 
     def __init__(self, config: dict):
@@ -72,6 +74,13 @@ class DatasetCreator:
             f"Building dataset with query: {query} "
             f"row_limit: {self.config['row_limit']}"
             )
+
+        if self.config["write_to_file"] and\
+                self.config["overwrite_dataset_file"] and\
+                os.path.isfile(self.config["file_out"]):
+            logging.info(
+                f"Overwriting dataset: {self.config['file_out']}")
+            os.remove(self.config["file_out"])
 
         # Setup the query with the detection
         if self.config["detector_name"] != "*":
