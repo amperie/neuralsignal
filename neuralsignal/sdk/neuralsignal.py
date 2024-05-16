@@ -185,6 +185,8 @@ class SDK:
             rgi = GenerationInstance()
             rgi.data['input'] = output['input']
             rgi.data['output'] = output['output']
+            if 'decoded_output' in output:
+                rgi.data['decoded_output'] = output['decoded_output']
             if 'ground_truth' in output:
                 rgi.data['ground_truth'] = output['ground_truth']
             else:
