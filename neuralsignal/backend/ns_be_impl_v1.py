@@ -7,7 +7,6 @@ from neuralsignal.core.modules.utils import string_to_filename
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.core.modules.s1_model import S1Model
 from neuralsignal.backend.backend_util import save_to_mlflow
-from neuralsignal.core.modules.s1_model import S1Model
 
 logging.basicConfig(level=sdk_config.logging_level())
 
@@ -73,12 +72,23 @@ class NSBackendImplV1:
         retVal = S1Model(cfg)
         return retVal
 
-    def save_s1_model(self, model: S1Model) -> str:
+    def save_s1_model(self, model: S1Model):
+        """
+        Saves an S1Model object by updating its mlflow
+        information and model_id.
+
+        Parameters:
+            model (S1Model): The S1Model object to be saved.
+
+        Returns:
+            S1Model: The saved S1Model object.
+        """
         experiment_name =\
-            f"{self.config['application_name']}_"\
+            f"{self.config['application_name']}"
+        run_name =\
             f"{self.config['sub_application_name']}"
         model.config["mlflow_info"] = save_to_mlflow(
-            model, self.config["mlflow_uri"], experiment_name)
+            model, self.config["mlflow_uri"], experiment_name, run_name)
         model.config['model_id'] = model.config['mlflow_info']._model_uri
         model.set_id(model.config['mlflow_info']._model_uri)
         return model

@@ -9,7 +9,6 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn import metrics
 import time
-import matplotlib.pyplot as plt
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.backend.ns_backend import NSBackend
 from neuralsignal.core.modules.s1_model import S1Model

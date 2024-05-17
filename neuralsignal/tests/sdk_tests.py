@@ -118,7 +118,7 @@ def test_ds_create():
     d = dc.create_dataset(
         {}
     )
-    # print(d)
+    return d
 
 
 def test_s1_model():
@@ -130,6 +130,7 @@ def test_s1_model():
         "description": "testing",
         "tags": {"testtag": "testtag"},
         "metadata": {"testmd": "testmd"},
+        "row_limit": 1930
     }
 
     mt = S1Trainer(cfg)
