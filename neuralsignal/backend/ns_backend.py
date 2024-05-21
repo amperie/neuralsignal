@@ -33,11 +33,16 @@ class NSBackend:
             raise ValueError("Missing application_name in config")
         if "sub_application_name" not in config:
             raise ValueError("Missing sub_application_name in config")
-        if "backend_type" not in config:
+        if "backend_config" not in config:
             be = sdk_config.get_backend_config()
-            config = {**config, **be}
-        self.backend_type = config["backend_type"]
-        self.backend_config = config
+            config['backend_config'] = be
+
+        self.backend_type = config['backend_config']["backend_type"]
+        self.backend_config = config['backend_config']
+        self.backend_config['application_name'] =\
+            config['application_name']
+        self.backend_config['sub_application_name'] =\
+            config['sub_application_name']
         if self.backend_type == "noop":
             self.backend = NoopBackend(self.backend_config)
         elif self.backend_type == "mongo":
