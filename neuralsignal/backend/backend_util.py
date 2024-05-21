@@ -1,5 +1,6 @@
 import logging
 import mlflow
+import os
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
@@ -34,3 +35,11 @@ def save_to_mlflow(model, mlflow_uri, experiment_name):
             mlflow.log_figure(fig, f"{fig_name}.png")
 
     return mlflow_model_info
+
+
+def count_files_in_dir(dir_path: str, extension: str) -> int:
+    ct = 0
+    for f in os.listdir():
+        if extension in f:
+            ct += 1
+    return ct

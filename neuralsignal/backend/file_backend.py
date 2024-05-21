@@ -2,38 +2,48 @@ import logging
 import mlflow
 import os
 import pickle
-from neuralsignal.backend.mongo_backend import MongoBackend
 from neuralsignal.core.modules.utils import string_to_filename
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.core.modules.s1_model import S1Model
-from neuralsignal.backend.backend_util import save_to_mlflow
+from neuralsignal.backend.backend_util import count_files_in_dir
 
 logging.basicConfig(level=sdk_config.logging_level())
 
 
-class NSBackendImplV1:
+class FileBackend:
 
-    """Implements the dev version of the NS backend.
-    Mongo for storage, mlflow for models, elastic for vectors
+    """Implements a filesystem backed backend
     """
     def __init__(self, config: dict) -> None:
         self.config = config
-        # Set the DB and Collection based on application_name
-        config['db'] = config['application_name']
-        config['col'] = config['sub_application_name']
-        self.mng = MongoBackend(config)
-        mlflow.set_tracking_uri(config['mlflow_uri'])
+        if 'home' in config:
+            self.home_dir = config['home']
+        else:
+            self.home_dir = sdk_config.get('home')
+        self.home_dir =\
+            f'{self.home_dir}/FileBackend/{self.application_name}/'\
+            f'{self.sub_application_name}/'
+
+        if not os.path.exists(self.home_dir):
+            os.makedirs(self.home_dir)
+        self.application_name = config['application_name']
+        self.sub_application_name = config['sub_application_name']
 
     # Interface methods
     def save_scan(self, scan) -> None:
-        # TODO: functionality to save vector
-        return self.mng.save_scan(scan)
+        ct = count_files_in_dir(self.home_dir, ".scan")
+        fp = f"{self.home_dir}/{ct}.scan"
+        with open(fp, 'wb') as handle:
+            pickle.dump(scan, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def load_scan(self, scan_id: str):
-        return self.mng.load_scan(scan_id)
+        fp = f"{self.home_dir}/{scan_id}.scan"
+        with open(fp, 'rb') as handle:
+            retVal = pickle.load(handle)
+        return retVal
 
     def deserialize_scan(self, doc):
-        return self.mng.deserialize_scan(doc)
+        pass
 
     def query(self, query: dict) -> list:
         return self.mng.query(query)
