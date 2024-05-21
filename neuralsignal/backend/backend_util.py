@@ -6,12 +6,14 @@ from neuralsignal.core.modules.neuralsignal_config import sdk_config
 logging.basicConfig(level=sdk_config.logging_level())
 
 
-def save_to_mlflow(model, mlflow_uri, experiment_name):
+def save_to_mlflow(model, mlflow_uri, experiment_name, run_name=None):
     logging.info(f"Saving model to MLflow experiment {experiment_name}")
+    if run_name is None:
+        run_name = model.model_name
     mlflow.set_tracking_uri(mlflow_uri)
     mlflow.set_experiment(experiment_name)
     mlflow_run = mlflow.start_run(
-        run_name=model.model_name,
+        run_name=run_name,
         description=model['description'],
     )
 
