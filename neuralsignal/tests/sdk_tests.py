@@ -98,6 +98,10 @@ def test_ds_runner():
         "application_name": "sdk_squad_v2",
         "sub_application_name": "data",
         "max_new_tokens": 1,
+        "row_limit": 4,
+        "backend_config": {
+            "backend_type": "file_backend",
+        }
     }
     dsr = DatasetRunner(cfg)
     dsr.run()
@@ -114,6 +118,9 @@ def test_ds_create():
         "sub_application_name": "data",
         "file_out": "test.csv",
         "detector_name": "hallucination",
+        "backend_config": {
+            "backend_type": "file_backend",
+        }
     })
     d = dc.create_dataset(
         {}
@@ -147,3 +154,20 @@ def test_s1_model():
 test_ds_runner()
 test_ds_create()
 test_s1_model()
+
+
+def test_backend():
+    cfg = {
+        "application_name": "sdk_squad_v2",
+        "sub_application_name": "data",
+        "model_name": "testing-s1",
+        "dataset_path": "squad.csv",
+        "description": "testing",
+        "tags": {"testtag": "testtag"},
+        "metadata": {"testmd": "testmd"},
+        "row_limit": 1930
+    }
+
+    be = NSBackend(cfg)
+    model = be.load_s1_model("testing-s1")
+    print(model)

@@ -1,6 +1,7 @@
 import logging
 from neuralsignal.backend.mongo_backend import MongoBackend
 from neuralsignal.backend.ns_be_impl_v1 import NSBackendImplV1
+from neuralsignal.backend.file_backend import FileBackend
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.core.modules.s1_model import S1Model
 
@@ -43,6 +44,8 @@ class NSBackend:
             self.backend = MongoBackend(self.backend_config)
         elif self.backend_type == "neuralsignal_v1":
             self.backend = NSBackendImplV1(self.backend_config)
+        elif self.backend_type == "file_backend":
+            self.backend = FileBackend(self.backend_config)
         else:
             raise ValueError(f"Backend type {self.backend_type} not supported")
 

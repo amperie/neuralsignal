@@ -91,8 +91,12 @@ class SDK:
         else:
             config = {**default_config, **config}
 
-        json_str = json.dumps(config, indent=4, sort_keys=False)
-        log_string = highlight(json_str, JsonLexer(), TerminalFormatter())
+        try:
+            json_str = json.dumps(config, indent=4, sort_keys=False)
+            log_string = highlight(json_str, JsonLexer(), TerminalFormatter())
+        except TypeError:
+            log_string = str(config)
+
         logging.info(
             f"Initializing NeuralSignal SDK with config: {log_string}")
 

@@ -15,10 +15,12 @@ def add_to_dataset_dictionary(dataset_dict, cfg, dataset_list, include):
         dataset_dict[ds_name] = NSDataset(cfg)
 
 
-def get_dataset(dataset_name: str):
+def get_dataset(dataset_name: str, row_limit=0):
     """Returns the dataset object for the given dataset name
     """
-    return datasets_dictionary(dataset_list=[dataset_name])[dataset_name]
+    return datasets_dictionary(
+        row_limit=row_limit,
+        dataset_list=[dataset_name])[dataset_name]
 
 
 def datasets_dictionary(

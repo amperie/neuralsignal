@@ -6,16 +6,29 @@ from neuralsignal.core.modules.utils import string_to_filename
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.core.modules.s1_model import S1Model
 from neuralsignal.backend.backend_util import count_files_in_dir
+from neuralsignal.backend.backend_util import BackendQueryResults
 
 logging.basicConfig(level=sdk_config.logging_level())
 
 
+class FileQueryResults(BackendQueryResults):
+    def __next__(self):
+        return self.results.__next__()
+
+
 class FileBackend:
 
-    """Implements a filesystem backed backend
+    """Implements a filesystem backed backend.
+    Required configs:
+        application_name
+        sub_application_name
+    Optional configs:
+        home: directory to store data in
     """
     def __init__(self, config: dict) -> None:
         self.config = config
+        self.application_name = config['application_name']
+        self.sub_application_name = config['sub_application_name']
         if 'home' in config:
             self.home_dir = config['home']
         else:
@@ -26,18 +39,19 @@ class FileBackend:
 
         if not os.path.exists(self.home_dir):
             os.makedirs(self.home_dir)
-        self.application_name = config['application_name']
-        self.sub_application_name = config['sub_application_name']
 
     # Interface methods
     def save_scan(self, scan) -> None:
-        ct = count_files_in_dir(self.home_dir, ".scan")
-        fp = f"{self.home_dir}/{ct}.scan"
+        detection = list(scan.detections.keys())[0]
+        target_dir = f"{self.home_dir}/{detection}"
+        os.makedirs(target_dir, exist_ok=True)
+        ct = count_files_in_dir(target_dir, ".scan")
+        fp = f"{target_dir}/{ct}.scan"
         with open(fp, 'wb') as handle:
             pickle.dump(scan, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def load_scan(self, scan_id: str):
-        fp = f"{self.home_dir}/{scan_id}.scan"
+    def load_scan(self, scan_id: str, detection: str):
+        fp = f"{self.home_dir}/{detection}/{scan_id}.scan"
         with open(fp, 'rb') as handle:
             retVal = pickle.load(handle)
         return retVal
