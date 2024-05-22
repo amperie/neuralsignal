@@ -6,26 +6,6 @@ from neuralsignal.core.modules.neuralsignal_config import sdk_config
 logging.basicConfig(level=sdk_config.logging_level())
 
 
-class BackendQueryResults():
-    """Abstract iterator for query results for
-    backend query method
-    """
-    def __init__(self, results):
-        self.results = results
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        """Override this method to return the next
-        item in the iterator, whatever that may be
-        """
-        pass
-
-    def next(self):
-        return self.__next__()
-
-
 def save_to_mlflow(model, mlflow_uri, experiment_name, run_name=None):
     logging.info(f"Saving model to MLflow experiment {experiment_name}")
     if run_name is None:

@@ -5,15 +5,9 @@ from neuralsignal.core.modules.utils import string_to_filename
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.core.modules.s1_model import S1Model
 from neuralsignal.backend.backend_util import count_files_in_dir
-from neuralsignal.backend.backend_util import BackendQueryResults
 from neuralsignal.core.modules.utils import generate_uuid
 
 logging.basicConfig(level=sdk_config.logging_level())
-
-
-class FileQueryResults(BackendQueryResults):
-    def __next__(self):
-        return self.results.__next__()
 
 
 class FileBackend:
@@ -91,7 +85,7 @@ class FileBackend:
         return len(scans)
 
     def load_s1_model(self, model_id: str):
-        file_name = self.s1_home_dir + model_id
+        file_name = self.s1_home_dir + string_to_filename(model_id)
         with open(file_name, 'rb') as handle:
             retVal = pickle.load(handle)
         return retVal

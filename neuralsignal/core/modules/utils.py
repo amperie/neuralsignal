@@ -14,6 +14,7 @@ def serialize(obj):
 
 def string_to_filename(value: str) -> str:
     value = str(value)
-    value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
+    value = unicodedata.normalize('NFKD', value).\
+        encode('ascii', 'ignore').decode('ascii')
     value = re.sub(r'[^\w\s-]', '_', value.lower())
     return re.sub(r'[-\s]+', '-', value).strip('-_')
