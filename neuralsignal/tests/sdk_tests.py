@@ -174,8 +174,9 @@ def test_backend():
     be = NSBackend(cfg)
     s = be.load_scan("0", "hallucination")
     for s in be.iterate_scans({"detector_name": "hallucination"}, 10):
-        print(s)
+        print(f"{s}____{id(s)}")
 
+    print(be.get_scan_iterator_count({"detector_name": "hallucination"}))
     print(s)
 
 

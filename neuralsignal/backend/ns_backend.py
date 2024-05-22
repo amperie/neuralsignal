@@ -72,6 +72,9 @@ class NSBackend:
     def iterate_scans(self, query: dict, row_limit: int = 0):
         return self.backend.iterate_scans(query, row_limit=row_limit)
 
+    def get_scan_iterator_count(self, query: dict) -> int:
+        return self.backend.get_scan_iterator_count(query)
+
     def load_s1_model(self, model_id: str):
         return self.backend.load_s1_model(model_id)
 

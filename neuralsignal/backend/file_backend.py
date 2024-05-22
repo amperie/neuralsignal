@@ -76,7 +76,15 @@ class FileBackend:
                 break
             i += 1
             scan_id = scan.replace(".scan", "")
-            yield self.load_scan(scan_id, d)
+            retVal = self.load_scan(scan_id, d)
+
+            yield retVal
+
+    def get_scan_iterator_count(self, query: dict) -> int:
+        d = query['detector_name']
+        scan_dir = f"{self.home_dir}/{d}/"
+        scans = os.listdir(scan_dir)
+        return len(scans)
 
     def load_s1_model(self, model_id: str):
         # TODO: load an S1Model object, not just the model itself
