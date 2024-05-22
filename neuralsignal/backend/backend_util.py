@@ -22,6 +22,9 @@ class BackendQueryResults():
         """
         pass
 
+    def next(self):
+        return self.__next__()
+
 
 def save_to_mlflow(model, mlflow_uri, experiment_name, run_name=None):
     logging.info(f"Saving model to MLflow experiment {experiment_name}")
