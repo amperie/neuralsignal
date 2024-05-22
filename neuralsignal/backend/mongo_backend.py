@@ -5,6 +5,7 @@ import gridfs
 import pickle
 import io
 import torch
+import copy
 from neuralsignal.core.modules.utils import serialize
 
 logging.basicConfig(level=logging.INFO)
@@ -74,6 +75,13 @@ class MongoBackend:
         except RuntimeError:
             return loads(f)
 
+    def build_query_with_detector(self, query: dict):
+        q = copy.deepcopy(query)
+        d = q['detector_name']
+        q.pop('detector_name')
+        q[f"detections.{d}"] = {"$ne": None}
+        return q
+
     # Interface methods
 
     def save_scan(self, scan) -> ObjectId:
@@ -109,11 +117,18 @@ class MongoBackend:
         return self.col.count_documents(query)
 
     def iterate_scans(self, query: dict, row_limit: int = 0):
-        raise NotImplementedError
-        pass
+        q = self.build_query_with_detector(query)
+        if row_limit == 0:
+            mng_cursor = self.query(q)
+        else:
+            mng_cursor = self.query(q).limit(row_limit)
+        for scan in mng_cursor:
+            scan = self.deserialize_scan(scan)
+            yield scan
 
     def get_scan_iterator_count(self, query: dict) -> int:
-        raise NotImplementedError
+        q = self.build_query_with_detector(query)
+        return self.get_query_count(q)
 
     def load_s1_model(self, model_id: str):
         raise NotImplementedError
