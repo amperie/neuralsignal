@@ -37,7 +37,7 @@ class FileBackend:
             f'{self.home_dir}/FileBackend/{self.application_name}/'\
             f'{self.sub_application_name}/'
         self.s1_home_dir =\
-            f'{self.home_dir}/s1/'
+            f'{self.home_dir}s1/'
 
         if not os.path.exists(self.home_dir):
             os.makedirs(self.home_dir)
