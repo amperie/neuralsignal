@@ -98,7 +98,7 @@ def test_ds_runner():
         "application_name": "sdk_squad_v2",
         "sub_application_name": "data",
         "max_new_tokens": 1,
-        "row_limit": 4,
+        "row_limit": 40,
         "backend_config": {
             "backend_type": "file_backend",
         }
@@ -133,11 +133,14 @@ def test_s1_model():
         "application_name": "sdk_squad_v2",
         "sub_application_name": "data",
         "model_name": "testing-s1",
-        "dataset_path": "squad.csv",
+        "dataset_path": "test.csv",
         "description": "testing",
         "tags": {"testtag": "testtag"},
         "metadata": {"testmd": "testmd"},
-        "row_limit": 1930
+        "row_limit": 1930,
+        "backend_config": {
+            "backend_type": "file_backend",
+        }
     }
 
     mt = S1Trainer(cfg)
@@ -151,9 +154,9 @@ def test_s1_model():
 # test_detector_creation()
 # test_generation()
 # test_sdk()
-#test_ds_runner()
+# test_ds_runner()
 # test_ds_create()
-# test_s1_model()
+test_s1_model()
 
 
 def test_backend():
@@ -173,8 +176,10 @@ def test_backend():
 
     be = NSBackend(cfg)
     s = be.load_scan("0", "hallucination")
+    s = be.iterate_scans({"detector_name": "hallucination"}, 10)
+    # print(f"{s}____{id(s)}____{s.data['generation_correlation_id']}")
     for s in be.iterate_scans({"detector_name": "hallucination"}, 10):
-        print(f"{s}____{id(s)}")
+        print(f"{s}____{id(s)}____{s.data['generation_correlation_id']}")
 
     print(be.get_scan_iterator_count({"detector_name": "hallucination"}))
     print(s)

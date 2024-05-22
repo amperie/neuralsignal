@@ -70,6 +70,15 @@ class NSBackend:
         return self.backend.get_query_count(query)
 
     def iterate_scans(self, query: dict, row_limit: int = 0):
+        """Gives a generator to iterate over scans.
+        REQUIRED: query should contain 'detector_name'
+        Args:
+            query (dict): Should contain 'detector_name'
+            row_limit (int, optional): How many scans. Defaults to 0.
+
+        Returns:
+            genearator: iterator over scans
+        """
         return self.backend.iterate_scans(query, row_limit=row_limit)
 
     def get_scan_iterator_count(self, query: dict) -> int:

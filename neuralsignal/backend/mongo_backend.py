@@ -108,5 +108,12 @@ class MongoBackend:
     def get_query_count(self, query: dict) -> int:
         return self.col.count_documents(query)
 
+    def iterate_scans(self, query: dict, row_limit: int = 0):
+        raise NotImplementedError
+        pass
+
+    def get_scan_iterator_count(self, query: dict) -> int:
+        raise NotImplementedError
+
     def load_s1_model(self, model_id: str):
         raise NotImplementedError

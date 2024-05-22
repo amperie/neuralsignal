@@ -84,17 +84,18 @@ class DatasetCreator:
 
         # Setup the query with the detection
         if self.config["detector_name"] != "*":
-            query['detector_name'] =\
-                self.config['detector_name']
+            query[f"detections.{self.config['detector_name']}"] =\
+                {"$ne": None}
         # Query for the documents to use for the dataset
-        cursor = self.be.iterate_scans(
-            query, row_limit=self.config["row_limit"])
+        if self.config["row_limit"] == 0:
+            mng_cursor = self.be.query(query)
+        else:
+            mng_cursor = self.be.query(query).limit(
+                        self.config["row_limit"])
 
         # Get the doc count of the query
-        doc_count = self.be.get_scan_iterator_count(query)
-        logging.info(
-            f"Processing {min(doc_count, self.config['row_limit'])} "
-            f"of {doc_count} documents from query: {query}")
+        doc_count = self.be.get_query_count(query)
+        logging.info(f"Processing {doc_count} documents from query: {query}")
 
         # Setup for a couple different ways that the dataset
         # can be built. To file or in memory or both
@@ -104,54 +105,63 @@ class DatasetCreator:
         if self.config["build_in_memory"]:
             data = []
 
-        # Iterate over the scans but build header first 
-        # if required
-
-        header_written = False
-        iteration = 1
-
-        for s in cursor:
-            # Get the scan first so we can process the header if needed
+        # Build the header if needed by getting the first doc
+        # to figure out how many zones there are
+        header = "target,"
+        if self.config['include_output']:
+            header += "out,"
+        if (self.config["write_header"] and self.config["write_to_file"])\
+                or self.config["build_in_memory"]:
+            first = self.be.deserialize_scan(mng_cursor.next())
+            logging.info(f"Processing header and first doc {first['_id']}")
             t = featurize_tensor_dict(
-                s.data['outputs'], self.config["zone_size"],
-                s.data['zone_size'], s.data['layer_id_to_name']
+                first['outputs'], self.config["zone_size"],
+                first['zone_size'], first['layer_id_to_name']
             )
+            for i in range(0, len(t[1])):
+                if self.config["use_full_zone_names"]:
+                    header += f"{t[2][i]},"
+                else:
+                    header += f"{t[1][i]},"
+            f.write(f'{header}\n')
 
-            # Write the header if required
-            if not header_written and self.config["write_header"]:
-                logging.info("Processing header")
-                header = "target,"
-                if self.config['include_output']:
-                    header += "out,"
-
-                for i in range(0, len(t[1])):
-                    if self.config["use_full_zone_names"]:
-                        header += f"{t[2][i]},"
-                    else:
-                        header += f"{t[1][i]},"
-                if self.config['write_to_file']:
-                    f.write(f'{header}\n')
-                header_written = True
-
-            # Process the scans
-            if iteration % 100 == 0:
-                logging.info(f"Iteration {iteration} of {doc_count}")
-
+            # Write values for the first doc and in memory
             if self.config["write_to_file"]:
                 row = ','.join(map(str, t[0])) + "\n"
                 if self.config['include_output']:
-                    row = s.data['output'].replace(",", "") + ',' + row
-                row = str(int(s.data['ground_truth'])) + ',' + row
+                    row = first['output'].replace(",", " ") + ',' + row
+                row = str(int(first['ground_truth'])) + ',' + row
                 f.write(row)
             if self.config["build_in_memory"]:
                 row = t[0]
                 if self.config['include_output']:
-                    row = [s.data['output'].replace(",", "")] + row
-                row = [int(s.data['ground_truth'])] + row
+                    row = [first['output'].replace(",", " ")] + row
+                row = [int(first['ground_truth'])] + row
+                data.append(row)
+
+        # Process the rest of the docs
+        iteration = 1
+        for doc in mng_cursor:
+            if iteration % 100 == 0:
+                logging.info(f"Iteration {iteration} of {doc_count}")
+            doc = self.be.deserialize_scan(doc)
+            t = featurize_tensor_dict(
+                doc['outputs'], self.config["zone_size"],
+                doc['zone_size'], doc['layer_id_to_name']
+            )
+            if self.config["write_to_file"]:
+                row = ','.join(map(str, t[0])) + "\n"
+                if self.config['include_output']:
+                    row = doc['output'].replace(",", "") + ',' + row
+                row = str(int(doc['ground_truth'])) + ',' + row
+                f.write(row)
+            if self.config["build_in_memory"]:
+                row = t[0]
+                if self.config['include_output']:
+                    row = [doc['output'].replace(",", "")] + row
+                row = [int(doc['ground_truth'])] + row
                 data.append(row)
             iteration += 1
-
-        # Build return values
         file_retVal = None
         memory_retVal = None
 

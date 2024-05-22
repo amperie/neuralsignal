@@ -8,6 +8,10 @@ def process_zones_avg(tensor_in, reduction_ratio, zone_stride=None)\
         zone_stride = reduction_ratio
     if tensor_in.dtype != torch.float32:
         tensor_in = tensor_in.float()
+    # Account for cases where the tensor can't be reduced or the reduction 
+    # ratio is too high. In this case we just return a tensor that reduces
+    # to a dimension of 1
+    reduction_ratio = min(reduction_ratio, tensor_in.shape[-1])
     return F.avg_pool1d(tensor_in,
                         kernel_size=reduction_ratio, stride=zone_stride)
 

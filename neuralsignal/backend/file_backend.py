@@ -1,5 +1,4 @@
 import logging
-import mlflow
 import os
 import pickle
 from neuralsignal.core.modules.utils import string_to_filename
@@ -7,6 +6,7 @@ from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.core.modules.s1_model import S1Model
 from neuralsignal.backend.backend_util import count_files_in_dir
 from neuralsignal.backend.backend_util import BackendQueryResults
+from neuralsignal.core.modules.utils import generate_uuid
 
 logging.basicConfig(level=sdk_config.logging_level())
 
@@ -36,9 +36,13 @@ class FileBackend:
         self.home_dir =\
             f'{self.home_dir}/FileBackend/{self.application_name}/'\
             f'{self.sub_application_name}/'
+        self.s1_home_dir =\
+            f'{self.home_dir}/s1/'
 
         if not os.path.exists(self.home_dir):
             os.makedirs(self.home_dir)
+        if not os.path.exists(self.s1_home_dir):
+            os.makedirs(self.s1_home_dir)
 
     # Interface methods
     def save_scan(self, scan) -> None:
@@ -72,7 +76,7 @@ class FileBackend:
         scans.sort()
         i = 0
         for scan in scans:
-            if i > row_limit:
+            if i > row_limit and row_limit != 0:
                 break
             i += 1
             scan_id = scan.replace(".scan", "")
@@ -87,42 +91,16 @@ class FileBackend:
         return len(scans)
 
     def load_s1_model(self, model_id: str):
-        # TODO: load an S1Model object, not just the model itself
-
-        # Check to see if model is cached locally
-        # If not, get it and cache it
-        file_name = string_to_filename(model_id)
-        file_name = f"{sdk_config.get('home')}/s1/{file_name}"
-        exists = os.path.isfile(file_name)
-        if exists:
-            logging.info(
-                f"Loading model {model_id} locally from {file_name}")
-            model = pickle.load(open(file_name, "rb"))
-        else:
-            logging.info(
-                f"Model {model_id} not found locally. "
-                "Downloading from backend."
-            )
-            model = mlflow.sklearn.load_model(model_id)
-            with open(file_name, 'wb') as handle:
-                pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-        cfg = {
-            'model_id': model_id,
-            'model': model,
-            'application_name': self.config['application_name'],
-            'sub_application_name': self.config['sub_application_name'],
-            'model_name': model_id
-        }
-        retVal = S1Model(cfg)
+        file_name = self.s1_home_dir + model_id
+        with open(file_name, 'rb') as handle:
+            retVal = pickle.load(handle)
         return retVal
 
     def save_s1_model(self, model: S1Model) -> str:
-        experiment_name =\
-            f"{self.config['application_name']}_"\
-            f"{self.config['sub_application_name']}"
-        model.config["mlflow_info"] = save_to_mlflow(
-            model, self.config["mlflow_uri"], experiment_name)
-        model.config['model_id'] = model.config['mlflow_info']._model_uri
-        model.set_id(model.config['mlflow_info']._model_uri)
+        model_id =\
+            f"{model.model_name}_{model.model_id}_{generate_uuid()}"
+        model.set_id(model_id)
+        file_name = self.s1_home_dir + string_to_filename(model_id)
+        with open(file_name, 'wb') as handle:
+            pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
         return model
