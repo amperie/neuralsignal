@@ -57,8 +57,8 @@ class NSBackend:
     def save_scan(self, scan) -> None:
         return self.backend.save_scan(scan)
 
-    def load_scan(self, scan_id: str):
-        return self.backend.load_scan(scan_id)
+    def load_scan(self, scan_id: str, detection: str = None):
+        return self.backend.load_scan(scan_id, detection=detection)
 
     def deserialize_scan(self, doc):
         return self.backend.deserialize_scan(doc)
@@ -69,8 +69,8 @@ class NSBackend:
     def get_query_count(self, query: dict) -> int:
         return self.backend.get_query_count(query)
 
-    def iterate_scans(self, query: dict, row_limit: int):
-        return self.backend.iterate_scans(query)
+    def iterate_scans(self, query: dict, row_limit: int = 0):
+        return self.backend.iterate_scans(query, row_limit=row_limit)
 
     def load_s1_model(self, model_id: str):
         return self.backend.load_s1_model(model_id)

@@ -65,16 +65,18 @@ class FileBackend:
     def get_query_count(self, query: dict) -> int:
         return self.mng.get_query_count(query)
 
-    def iterate_scans(self, query: dict, row_limit: int):
+    def iterate_scans(self, query: dict, row_limit: int = 0):
         d = query['detector_name']
         scan_dir = f"{self.home_dir}/{d}/"
         scans = os.listdir(scan_dir)
+        scans.sort()
         i = 0
         for scan in scans:
             if i > row_limit:
                 break
             i += 1
-            yield self.load_scan(scan, d)
+            scan_id = scan.replace(".scan", "")
+            yield self.load_scan(scan_id, d)
 
     def load_s1_model(self, model_id: str):
         # TODO: load an S1Model object, not just the model itself

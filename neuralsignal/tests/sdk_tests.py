@@ -151,9 +151,9 @@ def test_s1_model():
 # test_detector_creation()
 # test_generation()
 # test_sdk()
-# test_ds_runner()
-test_ds_create()
-test_s1_model()
+#test_ds_runner()
+# test_ds_create()
+# test_s1_model()
 
 
 def test_backend():
@@ -165,9 +165,18 @@ def test_backend():
         "description": "testing",
         "tags": {"testtag": "testtag"},
         "metadata": {"testmd": "testmd"},
-        "row_limit": 1930
+        "row_limit": 1930,
+        "backend_config": {
+            "backend_type": "file_backend",
+        }
     }
 
     be = NSBackend(cfg)
-    model = be.load_s1_model("testing-s1")
-    print(model)
+    s = be.load_scan("0", "hallucination")
+    for s in be.iterate_scans({"detector_name": "hallucination"}, 10):
+        print(s)
+
+    print(s)
+
+
+test_backend()

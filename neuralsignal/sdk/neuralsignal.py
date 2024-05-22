@@ -109,7 +109,7 @@ class SDK:
                 self.application_name
             config["backend_config"]["sub_application_name"] =\
                 self.sub_application_name
-            self.backend = NSBackend(config["backend_config"])
+            self.backend = NSBackend(config)
 
         self.mode = config["evaluation_mode"]
         if self.mode == "indirect":

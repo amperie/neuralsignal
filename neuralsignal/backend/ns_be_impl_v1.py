@@ -29,7 +29,7 @@ class NSBackendImplV1:
         # TODO: functionality to save vector
         return self.mng.save_scan(scan)
 
-    def load_scan(self, scan_id: str):
+    def load_scan(self, scan_id: str, detection: str = None):
         return self.mng.load_scan(scan_id)
 
     def deserialize_scan(self, doc):
