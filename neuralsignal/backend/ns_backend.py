@@ -55,8 +55,6 @@ class NSBackend:
             raise ValueError(f"Backend type {self.backend_type} not supported")
 
     def save_scan(self, scan) -> None:
-        """Save a scan to the backend.
-        scan is a GenerationInstance object"""
         return self.backend.save_scan(scan)
 
     def load_scan(self, scan_id: str):
