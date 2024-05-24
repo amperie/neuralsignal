@@ -49,3 +49,12 @@ detectors:
           Question {input}\n
           Answer: {output}\n Context: {context}\nRemember to output only true or false.
     enabled: True
+  - behavior_name: "hallucination2"
+    S1_model: "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1"
+    mlflow_uri: "http://z600.lan:8000"
+    prompt: >
+          Number 2 - Based on the content and question given tell me if the answer to the question is correct.\n
+          Answer only with a single word - true or false. Remember to answer with only one word:\n
+          Question {input}\n
+          Answer: {output}\n Context: {context}\nRemember to output only true or false.
+    enabled: False

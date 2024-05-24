@@ -1,5 +1,4 @@
 import logging
-import sys
 import yaml
 from neuralsignal.core.modules.detector import Detector
 from neuralsignal.datasets.dataset_runner import DatasetRunner
@@ -72,7 +71,7 @@ def create_dataset(cfg: dict):
         file_out = file_out.replace("{detector}", d)
         cfg['file_out'] = file_out
         dc = DatasetCreator(cfg)
-        ds = dc.create_dataset({})
+        dc.create_dataset({})
         dataset_paths.append(file_out)
     return dataset_paths
 
@@ -118,7 +117,9 @@ def run_automation(cfg: dict):
         run_data_collection(cfg)
     if cfg['create_dataset']:
         create_dataset(cfg)
+        cfg['dataset_path'] = cfg['file_out']
     if cfg['create_s1_model']:
+        cfg['row_limit'] = cfg['modeling_row_limit']
         create_s1_model(cfg)
 
 

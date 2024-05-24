@@ -112,9 +112,12 @@ class DatasetCreator:
 
         for s in cursor:
             # Get the scan first so we can process the header if needed
+            scan_data = s.data if "data" in s else s
+
+            # Featurize the tensor
             t = featurize_tensor_dict(
-                s.data['outputs'], self.config["zone_size"],
-                s.data['zone_size'], s.data['layer_id_to_name']
+                scan_data['outputs'], self.config["zone_size"],
+                scan_data['zone_size'], scan_data['layer_id_to_name']
             )
 
             # Write the header if required
@@ -140,14 +143,14 @@ class DatasetCreator:
             if self.config["write_to_file"]:
                 row = ','.join(map(str, t[0])) + "\n"
                 if self.config['include_output']:
-                    row = s.data['output'].replace(",", "") + ',' + row
-                row = str(int(s.data['ground_truth'])) + ',' + row
+                    row = scan_data['output'].replace(",", "") + ',' + row
+                row = str(int(scan_data['ground_truth'])) + ',' + row
                 f.write(row)
             if self.config["build_in_memory"]:
                 row = t[0]
                 if self.config['include_output']:
-                    row = [s.data['output'].replace(",", "")] + row
-                row = [int(s.data['ground_truth'])] + row
+                    row = [scan_data['output'].replace(",", "")] + row
+                row = [int(scan_data['ground_truth'])] + row
                 data.append(row)
             iteration += 1
 

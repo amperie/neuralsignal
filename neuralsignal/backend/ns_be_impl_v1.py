@@ -42,10 +42,10 @@ class NSBackendImplV1:
         return self.mng.get_query_count(query)
 
     def iterate_scans(self, query: dict, row_limit: int = 0):
-        raise NotImplementedError
+        return self.mng.iterate_scans(query, row_limit)
 
     def get_scan_iterator_count(self, query: dict) -> int:
-        raise NotImplementedError
+        return self.mng.get_scan_iterator_count(query)
 
     def load_s1_model(self, model_id: str):
         # TODO: load an S1Model object, not just the model itself

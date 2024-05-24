@@ -87,6 +87,15 @@ class S1Trainer:
 
     def load_data_from_dataframe(self, data: pd.DataFrame) -> None:
 
+        if self.data_loaded:
+            return
+
+        if self.config['row_limit'] > 0:
+            logging.info(
+                f"Reading dataset {self.config['dataset_path']} "
+                f"with row limit: {self.config['row_limit']}")
+            data = data.head(self.config['row_limit'])
+
         self.X = data.drop(self.config['columns_to_drop'], axis=1)
         self.X = self.X.drop(['target'], axis=1)
         self.Y = data['target']

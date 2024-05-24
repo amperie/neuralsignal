@@ -1,13 +1,21 @@
-run_data_collection: True
+run_data_collection: False
 create_dataset: True
 create_s1_model: True
 
-# General Configs
-application_name: default
-sub_application_name: default
+# Iterable Configs
 detector_names: ['hallucination']
+modeling_row_limit: [10, 20]
+quantization: ['no_quantization', 'int8', 'int4']
+
+# General Configs
+application_name: sdk_automation
+sub_application_name: squad_v2_right_wrong_pairs
 backend_config:
-  backend_type: file_backend
+  backend_type: neuralsignal_v1
+  mongo_url: mongodb://hp.lan:27017/
+  db: sdk_testing
+  col: col
+  mlflow_uri: "http://z600.lan:8000"
 indirect_config:
   indirect_model: "t5-small"
   zone_size: 1024
@@ -19,8 +27,9 @@ indirect_config:
 # Data collection
 dataset: squad_v2_right_wrong_pairs
 max_new_tokens: 128
-data_collection_row_limit: 10
+data_collection_row_limit: 5
 batch_size: 1
+use_full_zone_names: False
 
 # Dataset builder
 write_to_file: True
@@ -29,12 +38,12 @@ file_out: default_{detector}.csv
 query:
 zone_size: 1024
 use_full_zone_names: False
-dataset_row_limit: 10
+dataset_row_limit: 15
 
 # S1 Model Build
 model_name: default_model
 description: model_desc
-modeling_row_limit: 0
+modeling_row_limit: 10
 params:
   description: model_desc
 tags:
