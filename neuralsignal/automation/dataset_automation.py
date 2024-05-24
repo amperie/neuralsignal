@@ -1,4 +1,6 @@
 import logging
+import sys
+import yaml
 from neuralsignal.core.modules.detector import Detector
 from neuralsignal.datasets.dataset_runner import DatasetRunner
 from neuralsignal.datasets.dataset_creator import DatasetCreator
@@ -26,9 +28,12 @@ def run_data_collection(cfg: dict):
     ds = []
     for d in cfg['detector_names']:
         detector = sdk_config.get_detector_config(d)
+        detector['application_name'] = cfg['application_name']
+        detector['sub_application_name'] = cfg['sub_application_name']
         detector = Detector(detector)
         ds.append(detector)
     cfg['detectors'] = ds
+    cfg['row_limit'] = cfg['data_collection_row_limit']
     dsr = DatasetRunner(cfg)
     dsr.run()
 
@@ -59,9 +64,17 @@ def create_dataset(cfg: dict):
         retVal[1] = pandas dataframe if build_in_memory is True
     """
 
-    dc = DatasetCreator(cfg)
-    ds = dc.create_dataset(cfg['query'])
-    return ds
+    cfg['row_limit'] = cfg['dataset_row_limit']
+    dataset_paths = []
+    for d in cfg['detector_names']:
+        cfg['detector_name'] = d
+        file_out = cfg['file_out']
+        file_out = file_out.replace("{detector}", d)
+        cfg['file_out'] = file_out
+        dc = DatasetCreator(cfg)
+        ds = dc.create_dataset({})
+        dataset_paths.append(file_out)
+    return dataset_paths
 
 
 def create_s1_model(cfg: dict):
@@ -83,6 +96,45 @@ def create_s1_model(cfg: dict):
         metadata (dict): Metadata of the model
     """
 
+    cfg['row_limit'] = cfg['modeling_row_limit']
+    # TODO: do all the datasets
     mt = S1Trainer(cfg)
     m = mt.train_model()
     return m
+
+
+def run_automation(cfg: dict):
+    """Runs the automation
+
+    Args:
+        cfg (dict): Config should include:
+        application_name (str): Name of the application
+        sub_application_name (str): Name of the sub application
+        run_data_collection (bool): Run data collection
+        create_dataset (bool): Create dataset
+        create_s1_model (bool): Create S1 model
+    """
+    if cfg['run_data_collection']:
+        run_data_collection(cfg)
+    if cfg['create_dataset']:
+        create_dataset(cfg)
+    if cfg['create_s1_model']:
+        create_s1_model(cfg)
+
+
+##########################################################
+# CONFIG AND SETUP                                       #
+##########################################################
+
+try:
+    # yaml_config = sys.argv[1]
+    yaml_config = "neuralsignal/automation/dataset_automation.yaml"
+except IndexError:
+    yaml_config = "configs/test_harness_config.yaml"
+    raise ValueError(
+        "Usage: python dataset_automation.py <yaml config file>")
+
+# Get config from YAML
+config = yaml.safe_load(open(yaml_config))
+run_automation(config)
+logging.info("Automation complete")

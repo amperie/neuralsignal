@@ -1,0 +1,43 @@
+run_data_collection: True
+create_dataset: True
+create_s1_model: True
+
+# General Configs
+application_name: default
+sub_application_name: default
+detector_names: ['hallucination']
+backend_config:
+  backend_type: file_backend
+indirect_config:
+  indirect_model: "t5-small"
+  zone_size: 1024
+  indirect_batch_size: 1
+  # no_quantization, int8 or int4
+  quantization: "no_quantization"
+  device: "cpu"
+
+# Data collection
+dataset: squad_v2_right_wrong_pairs
+max_new_tokens: 128
+data_collection_row_limit: 10
+batch_size: 1
+
+# Dataset builder
+write_to_file: True
+build_in_memory: True
+file_out: default_{detector}.csv
+query:
+zone_size: 1024
+use_full_zone_names: False
+dataset_row_limit: 10
+
+# S1 Model Build
+model_name: default_model
+description: model_desc
+modeling_row_limit: 0
+params:
+  description: model_desc
+tags:
+  tag: default_tag
+metadata:
+  md: default_md

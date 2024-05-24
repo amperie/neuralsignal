@@ -62,7 +62,7 @@ class SDK:
         self.tokenizer, self.model = load_model(model_cfg)
 
     def __init_direct(self):
-        pass
+        raise NotImplementedError("Direct mode not implemented")
 
     def __init__(
             self, application_name, sub_application_name,
@@ -72,6 +72,10 @@ class SDK:
 
         Args:
             config (dict): Dictionary of configuration options.
+            This dictionary should be structured the same way the main
+            yaml config file is structured. Any values in this dict
+            will override the default
+            values from the yaml file.
             Possible options:
             [TODO: Add options here]
             default_config_path: alternative path to config file
