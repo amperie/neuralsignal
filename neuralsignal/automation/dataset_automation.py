@@ -27,10 +27,11 @@ def run_data_collection(cfg: dict):
     ds = []
     for d in cfg['detector_names']:
         detector = sdk_config.get_detector_config(d)
-        detector['application_name'] = cfg['application_name']
-        detector['sub_application_name'] = cfg['sub_application_name']
-        detector = Detector(detector)
-        ds.append(detector)
+        if detector['enabled']:
+            detector['application_name'] = cfg['application_name']
+            detector['sub_application_name'] = cfg['sub_application_name']
+            detector = Detector(detector)
+            ds.append(detector)
     cfg['detectors'] = ds
     cfg['row_limit'] = cfg['data_collection_row_limit']
     dsr = DatasetRunner(cfg)
@@ -65,14 +66,17 @@ def create_dataset(cfg: dict):
 
     cfg['row_limit'] = cfg['dataset_row_limit']
     dataset_paths = []
+    file_out_template = cfg['file_out']
+
     for d in cfg['detector_names']:
         cfg['detector_name'] = d
-        file_out = cfg['file_out']
-        file_out = file_out.replace("{detector}", d)
+        file_out = file_out_template.replace("{detector}", d)
         cfg['file_out'] = file_out
         dc = DatasetCreator(cfg)
         dc.create_dataset({})
         dataset_paths.append(file_out)
+    # Set this back to the original template for later stages
+    cfg['file_out'] = file_out_template
     return dataset_paths
 
 
@@ -95,11 +99,21 @@ def create_s1_model(cfg: dict):
         metadata (dict): Metadata of the model
     """
 
-    cfg['row_limit'] = cfg['modeling_row_limit']
-    # TODO: do all the datasets
-    mt = S1Trainer(cfg)
-    m = mt.train_model()
-    return m
+    # Iterate through all the detectors
+    models = []
+    file_out_template = cfg['file_out']
+    for d in cfg['detector_names']:
+        for rl in cfg['modeling_row_limits']:
+            # Set up modeling parameters
+            cfg['row_limit'] = rl
+            cfg['detector_name'] = d
+            cfg['dataset_path'] = file_out_template.replace("{detector}", d)
+            cfg['model_name'] = cfg['sub_application_name'] + "_" + d
+            cfg['description'] = f"{cfg['model_name']} with {rl} rows"
+            mt = S1Trainer(cfg)
+            m = mt.train_model()
+            models.append(m)
+    return models
 
 
 def run_automation(cfg: dict):

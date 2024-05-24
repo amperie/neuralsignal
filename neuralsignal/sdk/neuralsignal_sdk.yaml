@@ -57,4 +57,4 @@ detectors:
           Answer only with a single word - true or false. Remember to answer with only one word:\n
           Question {input}\n
           Answer: {output}\n Context: {context}\nRemember to output only true or false.
-    enabled: False
+    enabled: True

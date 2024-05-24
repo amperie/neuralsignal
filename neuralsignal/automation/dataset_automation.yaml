@@ -1,11 +1,11 @@
-run_data_collection: False
+run_data_collection: True
 create_dataset: True
 create_s1_model: True
 
 # Iterable Configs
-detector_names: ['hallucination']
-modeling_row_limit: [10, 20]
-quantization: ['no_quantization', 'int8', 'int4']
+detector_names: ['hallucination', 'hallucination2']
+modeling_row_limits: [30, 40]
+quantizations: ['no_quantization', 'int8', 'int4']
 
 # General Configs
 application_name: sdk_automation
@@ -19,7 +19,7 @@ backend_config:
 indirect_config:
   indirect_model: "t5-small"
   zone_size: 1024
-  indirect_batch_size: 1
+  indirect_batch_size: 2
   # no_quantization, int8 or int4
   quantization: "no_quantization"
   device: "cpu"
@@ -27,8 +27,8 @@ indirect_config:
 # Data collection
 dataset: squad_v2_right_wrong_pairs
 max_new_tokens: 128
-data_collection_row_limit: 5
-batch_size: 1
+data_collection_row_limit: 20
+batch_size: 2
 use_full_zone_names: False
 
 # Dataset builder
@@ -44,6 +44,7 @@ dataset_row_limit: 15
 model_name: default_model
 description: model_desc
 modeling_row_limit: 10
+max_evals: 1
 params:
   description: model_desc
 tags:
