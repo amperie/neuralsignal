@@ -274,7 +274,7 @@ class S1Trainer:
                 self.best_model.get_booster().get_score(importance_type='gain')
             fi_s = dict(
                 sorted(fi.items(), key=lambda x: x[1], reverse=True)[0:20])
-            model_cfg['artifacts']['feature_importance'] = fi_s
+            model_cfg['artifacts'] = {'feature_importance': fi_s}
 
             if "run_name" in self.config:
                 model_cfg['run_name'] = self.config['run_name']
