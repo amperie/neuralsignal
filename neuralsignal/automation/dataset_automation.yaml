@@ -1,4 +1,4 @@
-run_data_collection: False
+run_data_collection: True
 create_dataset: False
 create_s1_model: True
 
@@ -27,6 +27,7 @@ indirect_config:
 # Data collection
 dataset: squad_v2_right_wrong_pairs
 max_new_tokens: 128
+truncation_length: 2048
 data_collection_row_limit: 20
 batch_size: 2
 use_full_zone_names: False

@@ -171,7 +171,8 @@ class SDK:
         gis = generate_from_batch(
             prompted_outputs, self.model, self.tokenizer,
             instrumentation_cfg=self.default_indirect_instrumentation_cfg,
-            max_new_tokens=self.config['max_new_tokens']
+            max_new_tokens=self.config['max_new_tokens'],
+            truncation_length=self.config['truncation_length'],
             )
 
         # Unpack the outputs in the same order and run the detectors on each

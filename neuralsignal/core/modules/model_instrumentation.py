@@ -101,7 +101,7 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
 
 def generate_from_batch(
         input: list[str], model: AutoModel, tokenizer: AutoTokenizer,
-        instrumentation_cfg: dict = None, truncate: bool = False,
+        instrumentation_cfg: dict = None, truncation_length: int = 0,
         max_new_tokens: int = 128,
         ) -> list[GenerationInstance]:
     """Generates a response from a model for a given string
@@ -158,9 +158,15 @@ def generate_from_batch(
 
     input_list = input
 
-    input_ids = tokenizer(
-        input_list, return_tensors="pt",
-        padding=True, truncation=truncate).input_ids
+    if truncation_length == 0:
+        input_ids = tokenizer(
+            input_list, return_tensors="pt",
+            padding=True, truncation=False).input_ids
+    else:
+        input_ids = tokenizer(
+            input_list, return_tensors="pt",
+            padding=True, truncation=True,
+            max_length=truncation_length).input_ids
 
     if torch.cuda.is_available():
         input_ids = input_ids.to("cuda")
