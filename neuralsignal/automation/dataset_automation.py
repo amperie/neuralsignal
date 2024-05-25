@@ -122,8 +122,6 @@ def create_s1_model(cfg: dict):
                 "dataset": cfg['dataset'],
                 "detector": d,
                 "s1_model_for_detector": d_cfg['S1_model'],
-            }
-            cfg['metadata'] = {
                 "prompt": d_cfg['prompt'],
             }
             cfg['run_name'] = cfg['model_name']
