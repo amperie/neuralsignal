@@ -33,8 +33,17 @@ def save_to_mlflow(model, mlflow_uri, experiment_name, run_name=None):
         )
 
         # Log figures
-        for fig_name, fig in model['figures'].items():
-            mlflow.log_figure(fig, f"{fig_name}.png")
+        if "figures" in model:
+            for fig_name, fig in model['figures'].items():
+                mlflow.log_figure(fig, f"{fig_name}.png")
+
+        # Log artifacts
+        if "artifacts" in model:
+            for artifact_name, artifact in model['artifacts'].items():
+                if isinstance(artifact, dict):
+                    mlflow.log_dict(artifact, artifact_name)
+                else:
+                    mlflow.log_artifact(artifact, artifact_name)
 
     return mlflow_model_info
 
