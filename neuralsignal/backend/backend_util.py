@@ -41,7 +41,7 @@ def save_to_mlflow(model, mlflow_uri, experiment_name, run_name=None):
         if "artifacts" in model.config:
             for artifact_name, artifact in model.config['artifacts'].items():
                 if isinstance(artifact, dict):
-                    mlflow.log_dict(artifact, artifact_name)
+                    mlflow.log_dict(artifact, artifact_name + ".json")
                 else:
                     mlflow.log_artifact(artifact, artifact_name)
 
