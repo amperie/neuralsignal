@@ -1,5 +1,7 @@
 import logging
 import yaml
+import platform
+import sys
 from neuralsignal.core.modules.detector import Detector
 from neuralsignal.datasets.dataset_runner import DatasetRunner
 from neuralsignal.datasets.dataset_creator import DatasetCreator
@@ -109,7 +111,22 @@ def create_s1_model(cfg: dict):
             cfg['detector_name'] = d
             cfg['dataset_path'] = file_out_template.replace("{detector}", d)
             cfg['model_name'] = cfg['sub_application_name'] + "_" + d
-            cfg['description'] = f"{cfg['model_name']} with {rl} rows"
+            cfg['description'] = f"{cfg['model_name']} {d} with {rl} rows"
+            d_cfg = sdk_config.get_detector_config(d)
+            cfg['params'] = {
+                "zone_size": cfg['zone_size'],
+                "row_limit": cfg['row_limit'],
+                "use_full_zone_names": cfg['use_full_zone_names'],
+                "model": cfg['indirect_config']['indirect_model'],
+                "quantization": cfg['indirect_config']['quantization'],
+                "dataset": cfg['dataset'],
+                "detector": d,
+                "s1_model_for_detector": d_cfg['S1_model'],
+            }
+            cfg['metadata'] = {
+                "prompt": d_cfg['prompt'],
+            }
+            cfg['run_name'] = cfg['model_name']
             mt = S1Trainer(cfg)
             m = mt.train_model()
             models.append(m)
@@ -142,8 +159,10 @@ def run_automation(cfg: dict):
 ##########################################################
 
 try:
-    # yaml_config = sys.argv[1]
-    yaml_config = "neuralsignal/automation/dataset_automation.yaml"
+    if platform.system() == "Windows" or platform.system() == "Darwin":
+        yaml_config = "neuralsignal/automation/dataset_automation.yaml"
+    else:
+        yaml_config = sys.argv[1]
 except IndexError:
     yaml_config = "configs/test_harness_config.yaml"
     raise ValueError(

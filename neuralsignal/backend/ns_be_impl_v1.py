@@ -91,8 +91,11 @@ class NSBackendImplV1:
         """
         experiment_name =\
             f"{self.config['application_name']}"
-        run_name =\
-            f"{self.config['sub_application_name']}"
+        if "run_name" in model.config:
+            run_name = model.config["run_name"]
+        else:
+            run_name =\
+                f"{self.config['sub_application_name']}"
         model.config["mlflow_info"] = save_to_mlflow(
             model, self.config["mlflow_uri"], experiment_name, run_name)
         model.config['model_id'] = model.config['mlflow_info']._model_uri

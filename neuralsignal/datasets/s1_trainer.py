@@ -268,6 +268,9 @@ class S1Trainer:
                 "model": self.best_model
             }
 
+            if "run_name" in self.config:
+                model_cfg['run_name'] = self.config['run_name']
+
             # Make plots
             # TODO: this
             cm = confusion_matrix(

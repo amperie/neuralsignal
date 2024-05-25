@@ -1,5 +1,5 @@
-run_data_collection: True
-create_dataset: True
+run_data_collection: False
+create_dataset: False
 create_s1_model: True
 
 # Iterable Configs
@@ -38,7 +38,7 @@ file_out: default_{detector}.csv
 query:
 zone_size: 1024
 use_full_zone_names: False
-dataset_row_limit: 15
+dataset_row_limit: 100
 
 # S1 Model Build
 model_name: default_model
@@ -48,6 +48,6 @@ max_evals: 1
 params:
   description: model_desc
 tags:
-  tag: default_tag
+  runner: dataset_automation
 metadata:
-  md: default_md
+  md: dataset_automation
