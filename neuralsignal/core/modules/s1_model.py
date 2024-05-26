@@ -40,7 +40,7 @@ class S1Model:
         return self.config[name]
 
     def predict(self, data):
-        pass
+        return self.model.predict(data)
 
     def predict_proba(self, data):
-        pass
+        return self.model.predict_proba(data)

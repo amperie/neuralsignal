@@ -32,6 +32,10 @@ class DatasetRunner:
             dataset_name=config['dataset'])
         self.dataset.load()
         self.detectors = config['detectors']
+        for d in self.detectors:
+            # Since we're just doing data collection
+            # We don't want to enable prediction
+            d.enable_prediction = False
 
     def __init__(self, config: dict):
         """

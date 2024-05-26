@@ -51,6 +51,7 @@ class Detector:
         "behavior_name": "default",
         "threshold": None,
         "enabled": False,
+        "enable_prediction": True,
     }
 
     def __init__(self, config: dict = None) -> None:
@@ -81,8 +82,7 @@ class Detector:
             raise ValueError("Missing sub_application_name in config")
         if config is None:
             config = sdk_config.get_config()
-        else:
-            self.config = {**self.default_config, **config}
+        self.config = {**self.default_config, **config}
         logging.debug(f"Initializing detector with config: {self.config}")
         self.backend = copy.deepcopy(
             sdk_config.get_backend_config())
@@ -92,8 +92,9 @@ class Detector:
         self.backend["sub_application_name"] =\
             self.config["sub_application_name"]
         self.backend = NSBackend(self.backend)
-        if self.config["S1_model"] is not None:
-            self.model = self.config["S1_model"]
+        if "S1_model_instance" in self.config and\
+                self.config["S1_model_instance"] is not None:
+            self.model == self.config["S1_model_instance"]
             logging.info(f"Loaded S1 model directly: {self.model}")
         elif self.config["S1_model_path"] is not None:
             self.model =\
@@ -101,6 +102,7 @@ class Detector:
         else:
             raise ValueError("S1_model or S1_model_path must be provided")
         self.enabled = self.config["enabled"]
+        self.enable_prediction = self.config['enable_prediction']
         self.behavior_name = self.config["behavior_name"]
         self.prompt = self.config["prompt"]
 
@@ -114,12 +116,11 @@ class Detector:
         Returns:
             float: probability of class 0 being detected
         """
+        if not self.enabled or not self.enable_prediction:
+            return None
         try:
-            # return self.model.predict_proba([input_data])
-            # for testing
-            if self.behavior_name == "toxicity":
-                return .1
-            return .5
+            retVal = self.model.predict_proba([input_data])
+            return retVal
         except ValueError as e:
             logging.error(
                 f"Error predicting for detector: {self.behavior_name}\n"
@@ -133,7 +134,7 @@ class Detector:
         If a threshold is defined, returns a binary value of 0 or 1
         If a threshold is not defined, returns a probability between 0 and 1
         """
-        if not self.enabled:
+        if not self.enabled or self.enable_prediction:
             return None
         fd = featurize_tensor_dict(input_data, 1, 1)
         prob_class_0 = self.predict(fd[0])
