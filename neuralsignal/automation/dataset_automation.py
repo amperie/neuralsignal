@@ -71,12 +71,14 @@ def create_dataset(cfg: dict):
     file_out_template = cfg['file_out']
 
     for d in cfg['detector_names']:
-        cfg['detector_name'] = d
-        file_out = file_out_template.replace("{detector}", d)
-        cfg['file_out'] = file_out
-        dc = DatasetCreator(cfg)
-        dc.create_dataset({})
-        dataset_paths.append(file_out)
+        detector = sdk_config.get_detector_config(d)
+        if detector['enabled']:
+            cfg['detector_name'] = d
+            file_out = file_out_template.replace("{detector}", d)
+            cfg['file_out'] = file_out
+            dc = DatasetCreator(cfg)
+            dc.create_dataset({})
+            dataset_paths.append(file_out)
     # Set this back to the original template for later stages
     cfg['file_out'] = file_out_template
     return dataset_paths
@@ -105,29 +107,32 @@ def create_s1_model(cfg: dict):
     models = []
     file_out_template = cfg['file_out']
     for d in cfg['detector_names']:
-        for rl in cfg['modeling_row_limits']:
-            # Set up modeling parameters
-            cfg['row_limit'] = rl
-            cfg['detector_name'] = d
-            cfg['dataset_path'] = file_out_template.replace("{detector}", d)
-            cfg['model_name'] = cfg['sub_application_name'] + "_" + d
-            cfg['description'] = f"{cfg['model_name']} {d} with {rl} rows"
-            d_cfg = sdk_config.get_detector_config(d)
-            cfg['params'] = {
-                "zone_size": cfg['zone_size'],
-                "row_limit": cfg['row_limit'],
-                "use_full_zone_names": cfg['use_full_zone_names'],
-                "model": cfg['indirect_config']['indirect_model'],
-                "quantization": cfg['indirect_config']['quantization'],
-                "dataset": cfg['dataset'],
-                "detector": d,
-                "s1_model_for_detector": d_cfg['S1_model'],
-                "prompt": d_cfg['prompt'],
-            }
-            cfg['run_name'] = cfg['model_name']
-            mt = S1Trainer(cfg)
-            m = mt.train_model()
-            models.append(m)
+        detector = sdk_config.get_detector_config(d)
+        if detector['enabled']:
+            for rl in cfg['modeling_row_limits']:
+                # Set up modeling parameters
+                cfg['row_limit'] = rl
+                cfg['detector_name'] = d
+                cfg['dataset_path'] =\
+                    file_out_template.replace("{detector}", d)
+                cfg['model_name'] = cfg['sub_application_name'] + "_" + d
+                cfg['description'] = f"{cfg['model_name']} {d} with {rl} rows"
+                d_cfg = sdk_config.get_detector_config(d)
+                cfg['params'] = {
+                    "zone_size": cfg['zone_size'],
+                    "row_limit": cfg['row_limit'],
+                    "use_full_zone_names": cfg['use_full_zone_names'],
+                    "model": cfg['indirect_config']['indirect_model'],
+                    "quantization": cfg['indirect_config']['quantization'],
+                    "dataset": cfg['dataset'],
+                    "detector": d,
+                    "s1_model_for_detector": d_cfg['S1_model'],
+                    "prompt": d_cfg['prompt'],
+                }
+                cfg['run_name'] = cfg['model_name']
+                mt = S1Trainer(cfg)
+                m = mt.train_model()
+                models.append(m)
     return models
 
 

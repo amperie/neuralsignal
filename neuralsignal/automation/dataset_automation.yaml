@@ -1,4 +1,4 @@
-run_data_collection: False
+run_data_collection: True
 create_dataset: True
 create_s1_model: True
 
