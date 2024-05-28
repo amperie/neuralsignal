@@ -55,8 +55,6 @@ class Collector:
             if "inputs" in dts:
                 self.store_inputs(mod_id, module_in[0], batch_idx)
             if "outputs" in dts:
-                # Pre-process tensor matrix to 1d
-                # t = tensor_mean(module_out[0][batch_idx], dim=0)
                 self.store_outputs(mod_id, module_out, batch_idx)
         if "layer_info" in dts:
             self.store_layer_info(mod_id, module, module_in)

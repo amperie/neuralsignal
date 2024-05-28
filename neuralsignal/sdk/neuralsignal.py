@@ -213,7 +213,11 @@ class SDK:
                 curr = gis[batch_idx]
                 if d.enabled:
                     # If the detector is enabled, run it on the output tensor
-                    detection = d.detect(curr.data['outputs'])
+                    detection = d.detect(
+                        curr.data['outputs'],
+                        current_zone_size=curr.data['zone_size'],
+                        target_zone_size=self.config['zone_size']
+                        )
                     detection.prompted_input = curr.data['input']
                     rgi.add_detection(detection)
                     gis[batch_idx].add_detection(detection)
