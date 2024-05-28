@@ -1,5 +1,5 @@
-run_data_collection: True
-create_dataset: False
+run_data_collection: False
+create_dataset: True
 create_s1_model: True
 
 # Iterable Configs
@@ -9,7 +9,7 @@ quantizations: ['no_quantization', 'int8', 'int4']
 
 # General Configs
 application_name: sdk_automation
-sub_application_name: squad_v2_right_wrong_pairs
+sub_application_name: testing
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/

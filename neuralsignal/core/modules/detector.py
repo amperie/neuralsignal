@@ -129,16 +129,18 @@ class Detector:
             self.enabled = False
             return None
 
-    def detect(self, input_data,
-               current_zone_size=1, target_zone_size=1) -> DetectionResults:
+    def detect(
+            self, input_data,
+            current_zone_size=1, target_zone_size=1) -> DetectionResults:
         """Detects behavior in input data
         If a threshold is defined, returns a binary value of 0 or 1
         If a threshold is not defined, returns a probability between 0 and 1
         """
-        if not self.enabled or self.enable_prediction:
-            return None
+        if not self.enabled or not self.enable_prediction:
+            return DetectionResults(self.config["behavior_name"], -1)
         fd = featurize_tensor_dict(
             input_data, target_zone_size, current_zone_size)
-        prob_class_0 = self.predict(fd[0])
-        retVal = DetectionResults(self.config["behavior_name"], prob_class_0)
+        prob_classes = self.predict(fd[0])
+        retVal = DetectionResults(
+            self.config["behavior_name"], prob_classes[0])
         return retVal

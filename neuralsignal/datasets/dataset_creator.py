@@ -104,9 +104,10 @@ class DatasetCreator:
         if self.config["build_in_memory"]:
             data = []
 
-        # Iterate over the scans but build header first 
+        # Iterate over the scans but build header first
         # if required
 
+        header = ""
         header_written = False
         iteration = 1
 

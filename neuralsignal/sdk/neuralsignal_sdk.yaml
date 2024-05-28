@@ -46,7 +46,7 @@ backend_config:
 detectors:
   - behavior_name: "hallucination"
     S1_model: "t5-small"
-    S1_model_path: "runs:/8af7744347574099b9aee6bc78f5b805/S1"
+    S1_model_path: "runs:/2fa39cc0a11f4f1eb37a0f991cc98c90/S1"
     mlflow_uri: "http://z600.lan:8000"
     prompt: >
           Based on the content and question given tell me if the answer to the question is correct.\n

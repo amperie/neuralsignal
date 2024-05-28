@@ -90,6 +90,9 @@ class S1Trainer:
         if self.data_loaded:
             return
 
+        # Drop any extra columns that have formed
+        data = data.dropna(axis=1, how='all')
+
         if self.config['row_limit'] > 0:
             logging.info(
                 f"Reading dataset {self.config['dataset_path']} "
@@ -251,6 +254,8 @@ class S1Trainer:
             self.config['prediction_threshold']
         self.params['early_stopping_rounds'] = \
             self.config['early_stopping_rounds']
+        self.params['features_dimension'] = \
+            len(self.X.columns)
 
         if self.config['save_to_backend']:
             model_cfg = {
@@ -291,6 +296,7 @@ class S1Trainer:
             conf_matrix.plot()
             cm_fig = conf_matrix.figure_
             model_cfg['figures'] = {'confusion_matrix': cm_fig}
+            model_cfg['params']['confusion_matrix'] = str(cm)
 
             model_to_save = S1Model(model_cfg)
             model_to_save = self.be.save_s1_model(model_to_save)
