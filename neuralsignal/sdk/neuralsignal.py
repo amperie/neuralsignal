@@ -1,5 +1,6 @@
 import logging
 import json
+from torch.cuda import OutOfMemoryError
 from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.formatters import TerminalFormatter
@@ -131,7 +132,7 @@ class SDK:
         """
         self.cfg[key] = value
 
-    def evaluate_batch_output(
+    def _evaluate_batch_output(
             self, outputs: list[dict], detectors: list[Detector]
             ) -> list[GenerationInstance]:
         """Evaluates a batch of outputs
@@ -167,6 +168,7 @@ class SDK:
                 prompt = wrap_with_prompt(d.prompt, output)
                 prompted_outputs.append(prompt)
 
+        # torch.cuda.OutOfMemoryError is possible here
         # Generate activity in indirect
         gis = generate_from_batch(
             prompted_outputs, self.model, self.tokenizer,
@@ -255,11 +257,59 @@ class SDK:
 
         return retVal
 
+    def evaluate_indirect_output_old(
+            self, outputs: list[dict], detectors: list[Detector]
+            ) -> list[DetectionResults]:
+
+        gis = self._evaluate_batch_output(outputs, detectors)
+        retVal = []
+        for gi in gis:
+            dr = DetectionResults()
+            dr.input = gi.data['input']
+            dr.output = gi.data['output']
+            dr.ground_truth = gi.data['ground_truth']
+            dr.metadata = gi.data['metadata']
+            dr.correlation_id = gi.data['generation_correlation_id']
+            dr.detections = gi.detections
+            retVal.append(dr)
+        return retVal
+
     def evaluate_indirect_output(
             self, outputs: list[dict], detectors: list[Detector]
             ) -> list[DetectionResults]:
 
-        gis = self.evaluate_batch_output(outputs, detectors)
+        # Dynamic batch size. Run the whole thing first
+        # If OOM, half the batch size until no OOM happens
+        oom = True
+        batch_size = len(outputs)
+        original_batch_size = batch_size
+        start_idx = 0
+        end_idx = batch_size
+        while oom:
+            try:
+                # TODO: this will cause data to repeat itself
+                # If a smaller batch other than the first one fails
+                # because the first one will already be saved and this will
+                # rerun everything again with a smaller batch size
+                while start_idx <= original_batch_size:
+                    gis = self._evaluate_batch_output(
+                        outputs[start_idx:min(end_idx, original_batch_size)],
+                        detectors)
+                    # TODO: start_idx and end_idx can be used to fix
+                    # the problem of data repeating
+                    start_idx += batch_size + 1
+                    end_idx = start_idx + batch_size
+                oom = False
+            except OutOfMemoryError as e:
+                # If we're already at batch size = 1 there's nowhere else to go
+                if batch_size == 1:
+                    logging.fatal("CUDA OOM on batch size of 1 fatal error")
+                    raise f"CUDA OOM on batch size of 1, FATAL {e}"
+                batch_size = int(batch_size/2)
+                logging.error(f"CUDA OOM on batch size of {len(outputs)}")
+                logging.error(f"Dropping batch size to {batch_size}")
+                logging.error(f"CUDA Error: {e}")
+
         retVal = []
         for gi in gis:
             dr = DetectionResults()
@@ -273,4 +323,4 @@ class SDK:
         return retVal
 
     def generate():
-        pass
+        raise NotImplementedError

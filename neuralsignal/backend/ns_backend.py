@@ -1,4 +1,5 @@
 import logging
+import pymongo
 from neuralsignal.backend.mongo_backend import MongoBackend
 from neuralsignal.backend.ns_be_impl_v1 import NSBackendImplV1
 from neuralsignal.backend.file_backend import FileBackend
@@ -55,19 +56,44 @@ class NSBackend:
             raise ValueError(f"Backend type {self.backend_type} not supported")
 
     def save_scan(self, scan) -> None:
-        return self.backend.save_scan(scan)
+        try:
+            return self.backend.save_scan(scan)
+        except pymongo.errors.ServerSelectionTimeoutError as e:
+            logging.error(f"Error connecting to Mongo {e}")
+        except Exception as e:
+            logging.error(f"Error connecting to backend {e}")
 
     def load_scan(self, scan_id: str, detection: str = None):
-        return self.backend.load_scan(scan_id, detection=detection)
+        try:
+            return self.backend.load_scan(scan_id, detection=detection)
+        except pymongo.errors.ServerSelectionTimeoutError as e:
+            logging.error(f"Error connecting to Mongo {e}")
+        except Exception as e:
+            logging.error(f"Error connecting to backend {e}")
 
     def deserialize_scan(self, doc):
-        return self.backend.deserialize_scan(doc)
+        try:
+            return self.backend.deserialize_scan(doc)
+        except pymongo.errors.ServerSelectionTimeoutError as e:
+            logging.error(f"Error connecting to Mongo {e}")
+        except Exception as e:
+            logging.error(f"Error connecting to backend {e}")
 
     def query(self, query: dict) -> list:
-        return self.backend.query(query)
+        try:
+            return self.backend.query(query)
+        except pymongo.errors.ServerSelectionTimeoutError as e:
+            logging.error(f"Error connecting to Mongo {e}")
+        except Exception as e:
+            logging.error(f"Error connecting to backend {e}")
 
     def get_query_count(self, query: dict) -> int:
-        return self.backend.get_query_count(query)
+        try:
+            return self.backend.get_query_count(query)
+        except pymongo.errors.ServerSelectionTimeoutError as e:
+            logging.error(f"Error connecting to Mongo {e}")
+        except Exception as e:
+            logging.error(f"Error connecting to backend {e}")
 
     def iterate_scans(self, query: dict, row_limit: int = 0):
         """Gives a generator to iterate over scans.
@@ -79,10 +105,20 @@ class NSBackend:
         Returns:
             genearator: iterator over scans
         """
-        return self.backend.iterate_scans(query, row_limit=row_limit)
+        try:
+            return self.backend.iterate_scans(query, row_limit=row_limit)
+        except pymongo.errors.ServerSelectionTimeoutError as e:
+            logging.error(f"Error connecting to Mongo {e}")
+        except Exception as e:
+            logging.error(f"Error connecting to backend {e}")
 
     def get_scan_iterator_count(self, query: dict) -> int:
-        return self.backend.get_scan_iterator_count(query)
+        try:
+            return self.backend.get_scan_iterator_count(query)
+        except pymongo.errors.ServerSelectionTimeoutError as e:
+            logging.error(f"Error connecting to Mongo {e}")
+        except Exception as e:
+            logging.error(f"Error connecting to backend {e}")
 
     def load_s1_model(self, model_id: str):
         return self.backend.load_s1_model(model_id)
