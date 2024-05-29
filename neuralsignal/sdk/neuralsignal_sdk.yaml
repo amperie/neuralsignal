@@ -19,7 +19,7 @@ indirect_config:
   # no_quantization, int8 or int4
   quantization: "no_quantization"
   device: "cpu"
-  use_dynamic_batch_size: True # unimplemented
+  use_dynamic_batch_size: True
   max_oom_count: 50 # SDK will disable itself after this
 
 # indirect instrumentation config

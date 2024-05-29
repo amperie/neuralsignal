@@ -351,8 +351,8 @@ class SDK:
                     logging.fatal("CUDA OOM on batch size of 1 fatal error")
                     raise OutOfMemoryError(
                         f"CUDA OOM on batch size of 1, FATAL {e}")
+                logging.error(f"CUDA OOM on batch size of {batch_size}")
                 batch_size = int(batch_size/2)
-                logging.error(f"CUDA OOM on batch size of {len(outputs)}")
                 logging.error(f"Dropping batch size to {batch_size}")
                 logging.error(f"CUDA Error: {e}")
                 self.oom_count += 1
