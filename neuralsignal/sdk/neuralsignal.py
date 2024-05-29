@@ -60,6 +60,7 @@ class SDK:
             "quantization": self.cfg["indirect_config"]["quantization"],
         }
 
+        self.model_config = model_cfg
         self.tokenizer, self.model = load_model(model_cfg)
 
     def __init_direct(self):
@@ -83,6 +84,8 @@ class SDK:
         """
         self.application_name = application_name
         self.sub_application_name = sub_application_name
+        self.enabled = True
+        self.disabled_reason = ""
 
         if default_config_path is None:
             default_config = yaml.safe_load(
@@ -106,6 +109,9 @@ class SDK:
             f"Initializing NeuralSignal SDK with config: {log_string}")
 
         self.cfg = config
+        self.dynamic_batch_size = None
+        self.oom_count = 0
+        self.max_oom_count = config["max_oom_count"]
 
         # If we're saving scans, initialize backend
         self.save_scans = config["save_scans"]
@@ -153,6 +159,11 @@ class SDK:
                 - judgement: 0 or 1 depending on the threshold and score
                 - correlation_id: unique id for the evaluation
         """
+
+        # Check if SDK is disabled and return empty list if so
+        if not self.check_enabled():
+            return []
+
         if self.mode != "indirect":
             raise ValueError(
                 "Evaluate_batch_output is only available in indirect mode")
@@ -261,6 +272,10 @@ class SDK:
             self, outputs: list[dict], detectors: list[Detector]
             ) -> list[DetectionResults]:
 
+        # Check if SDK is disabled and return empty list if so
+        if not self.check_enabled():
+            return []
+
         gis = self._evaluate_batch_output(outputs, detectors)
         retVal = []
         for gi in gis:
@@ -278,37 +293,70 @@ class SDK:
             self, outputs: list[dict], detectors: list[Detector]
             ) -> list[DetectionResults]:
 
+        # Check if SDK is disabled and return empty list if so
+        if not self.check_enabled():
+            return []
         # Dynamic batch size. Run the whole thing first
         # If OOM, half the batch size until no OOM happens
         oom = True
-        batch_size = len(outputs)
-        original_batch_size = batch_size
+        if self.dynamic_batch_size is None:
+            batch_size = len(outputs)
+            original_batch_size = batch_size
+        else:
+            # If we already have a dynamic batch size
+            # that we found in a previous iteration
+            # use that
+            original_batch_size = self.dynamic_batch_size
+            batch_size = self.dynamic_batch_size
         start_idx = 0
-        end_idx = batch_size
+        gis = []
+        testing = False
         while oom:
             try:
                 # TODO: this will cause data to repeat itself
                 # If a smaller batch other than the first one fails
                 # because the first one will already be saved and this will
                 # rerun everything again with a smaller batch size
-                while start_idx <= original_batch_size:
-                    gis = self._evaluate_batch_output(
-                        outputs[start_idx:min(end_idx, original_batch_size)],
-                        detectors)
+                while start_idx < original_batch_size:
+                    if testing:
+                        raise OutOfMemoryError
+                    end_idx = start_idx + batch_size
+                    res =\
+                        self._evaluate_batch_output(
+                            outputs[
+                                start_idx:min(end_idx, original_batch_size)],
+                            detectors)
+                    gis = gis + res
                     # TODO: start_idx and end_idx can be used to fix
                     # the problem of data repeating
-                    start_idx += batch_size + 1
+                    start_idx += batch_size
                     end_idx = start_idx + batch_size
+                # If we get here, we made it through the batch
+                # so we'l save the batch size for later use
+                # and set oom to false to exit the loop
+                self.dynamic_batch_size = batch_size
                 oom = False
             except OutOfMemoryError as e:
                 # If we're already at batch size = 1 there's nowhere else to go
                 if batch_size == 1:
                     logging.fatal("CUDA OOM on batch size of 1 fatal error")
-                    raise f"CUDA OOM on batch size of 1, FATAL {e}"
+                    raise OutOfMemoryError(
+                        f"CUDA OOM on batch size of 1, FATAL {e}")
                 batch_size = int(batch_size/2)
                 logging.error(f"CUDA OOM on batch size of {len(outputs)}")
                 logging.error(f"Dropping batch size to {batch_size}")
                 logging.error(f"CUDA Error: {e}")
+                self.oom_count += 1
+                if self.oom_count > self.max_oom_count:
+                    logging.fatal("Exceeded MAX_OOM_COUNT, SDK disabled")
+                    self.disable_sdk("Exceeded MAX_OOM_COUNT") 
+                    raise OutOfMemoryError(
+                        f"Exceeded MAX_OOM_COUNT, SDK disabled. FATAL {e}")
+                else:
+                    logging.info(
+                        f"Reloading model and setting batch size to "
+                        f"{batch_size}")
+                    self.tokenizer, self.model = load_model(self.model_config)
 
         retVal = []
         for gi in gis:
@@ -324,3 +372,12 @@ class SDK:
 
     def generate():
         raise NotImplementedError
+
+    def disable_sdk(self, reason: str):
+        self.enabled = False
+        self.disabled_reason = reason
+
+    def check_enabled(self):
+        if not self.enabled:
+            logging.error("SDK is not enabled")
+        return self.enabled
