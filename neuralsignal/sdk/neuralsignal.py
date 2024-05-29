@@ -110,6 +110,7 @@ class SDK:
 
         self.cfg = config
         self.dynamic_batch_size = None
+        self.use_dynamic_batch_size = config["use_dynamic_batch_size"]
         self.oom_count = 0
         self.max_oom_count = config["max_oom_count"]
 
@@ -299,15 +300,23 @@ class SDK:
         # Dynamic batch size. Run the whole thing first
         # If OOM, half the batch size until no OOM happens
         oom = True
-        if self.dynamic_batch_size is None:
+        # If we're not using dynamic batch size, batch size will
+        # always start with the original value
+        if not self.use_dynamic_batch_size:
             batch_size = len(outputs)
             original_batch_size = batch_size
         else:
-            # If we already have a dynamic batch size
-            # that we found in a previous iteration
-            # use that
-            original_batch_size = self.dynamic_batch_size
-            batch_size = self.dynamic_batch_size
+            # If we're using dynamic batch size, check if we've
+            # established a dynamic batch size before and use that
+            if self.dynamic_batch_size is None:
+                batch_size = len(outputs)
+                original_batch_size = batch_size
+            else:
+                # If we already have a dynamic batch size
+                # that we found in a previous iteration
+                # and dynamic batch size is enabled, use that
+                original_batch_size = self.dynamic_batch_size
+                batch_size = self.dynamic_batch_size
         start_idx = 0
         gis = []
         testing = False
