@@ -74,7 +74,7 @@ detectors:
     mlflow_uri: "http://z600.lan:8000"
     prompt: >
           Based on the content given tell me what category the text belongs to.\n
-          These are the categories: {context}\n
+          These are the categories\n: {context}\n
           Answer only with the number of the category in the list. Remember to answer with the number:\n
           Here is the content. \nContent given: {input}\n
     enabled: True
