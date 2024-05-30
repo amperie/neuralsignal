@@ -174,14 +174,13 @@ def datasets_dictionary(
     # Patent categorization
     def input_processor(row):
         gt = row["label"]
-        val = int(gt)
 
         categories = "0. Human Necessities\n"\
             "1. Performing Operations; Transporting\n"\
             "2. Chemistry; Metallurgy\n"\
             "3. Textiles; Paper\n"\
             "4. Fixed Constructions\n"\
-            "5. Mechanical Engineering; Lightning; Heating; Weapons; Blasting\n"\
+            "5. Mechanical Engineering; Lightning; Heating; Weapons;\n"\
             "6. Physics\n"\
             "7. Electricity\n"\
             "8. General tagging of new or cross-sectional technology"

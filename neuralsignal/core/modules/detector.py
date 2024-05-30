@@ -92,10 +92,16 @@ class Detector:
         self.backend["sub_application_name"] =\
             self.config["sub_application_name"]
         self.backend = NSBackend(self.backend)
+
         if "S1_model_instance" in self.config and\
                 self.config["S1_model_instance"] is not None:
             self.model == self.config["S1_model_instance"]
             logging.info(f"Loaded S1 model directly: {self.model}")
+        elif self.config["S1_model"] is None and\
+                self.config["S1_model_path"] is None:
+            # No model should be loaded, probably just running data collection
+            self.model = None
+            self.enable_prediction = False
         elif self.config["S1_model_path"] is not None:
             self.model =\
                 self.backend.load_s1_model(self.config["S1_model_path"])
