@@ -3,7 +3,7 @@ create_dataset: True
 create_s1_model: True
 
 # Iterable Configs
-detector_names: ['hallucination', 'hallucination2']
+detector_names: ['text_categorizer']
 modeling_row_limits: [30, 40]
 quantizations: ['no_quantization', 'int8', 'int4']
 
