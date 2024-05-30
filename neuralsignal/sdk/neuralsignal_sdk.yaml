@@ -77,4 +77,4 @@ detectors:
           These are the categories: {categories}\n
           Answer only with the number of the category in the list. Remember to answer with the number:\n
           Here is the content. \nContent given: {input}\n
-    enabled: False
+    enabled: True
