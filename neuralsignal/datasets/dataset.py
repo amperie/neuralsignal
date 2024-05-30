@@ -58,7 +58,7 @@ class NSDataset:
             random.shuffle(self.rows)
 
     def shuffle_dataset(self):
-        self.rows = random.shuffle(self.rows)
+        random.shuffle(self.rows)
 
     def load(self):
         """Loads the dataset into memory"""
@@ -97,15 +97,16 @@ class NSDataset:
 
         self.loaded = True
         f.close()
+        self.shuffle_if_needed()
 
     def load_hf_dataset(self):
         if self.config['row_limit'] > 0:
-            split = f"{self.config['split']}[0:{self.config['row_limit']-1}]"
+            split = f"{self.config['split']}[0:{self.config['row_limit']}]"
         else:
             split = self.config['split']
 
         ds = load_dataset(
-            self.config["dataset_name"],
+            self.config["hf_name"],
             self.config["dataset_variant"],
             split=split,
             use_auth_token=self.config["hf_token"])
@@ -125,7 +126,7 @@ class NSDataset:
             if i - self.config["starting_row"] > self.config["row_limit"]\
                     and self.config["row_limit"] > 0:
                 break
-        self.shuffle_if_needed(self)
+        self.shuffle_if_needed()
         self.loaded = True
 
     def __iter__(self):

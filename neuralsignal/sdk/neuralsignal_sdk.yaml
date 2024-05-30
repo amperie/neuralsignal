@@ -10,6 +10,7 @@ sub_application_name: default # Needs to be defined when initializing
 max_new_tokens: 128
 truncation_length: 0
 use_dynamic_batch_size: True
+max_oom_count: 20
 
 # Evaluation mode config
 indirect_config:
@@ -66,4 +67,14 @@ detectors:
           Answer only with a single word - true or false. Remember to answer with only one word:\n
           Question {input}\n
           Answer: {output}\n Context: {context}\nRemember to output only true or false.
+    enabled: False
+  - behavior_name: "text_categorizer"
+    S1_model: ""
+    S1_model_path: ""
+    mlflow_uri: "http://z600.lan:8000"
+    prompt: >
+          Based on the content given tell me what category the text belongs to.\n
+          These are the categories: {categories}\n
+          Answer only with the number of the category in the list. Remember to answer with the number:\n
+          Here is the content. \nContent given: {input}\n
     enabled: False
