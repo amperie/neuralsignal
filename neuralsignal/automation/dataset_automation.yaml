@@ -9,7 +9,7 @@ quantizations: ['no_quantization', 'int8', 'int4']
 
 # General Configs
 application_name: sdk_automation
-sub_application_name: testing
+sub_application_name: patent_abstract_categorization
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
@@ -25,7 +25,7 @@ indirect_config:
   device: "cpu"
 
 # Data collection
-dataset: halu_qa
+dataset: patent_abstract_categorization
 max_new_tokens: 128
 truncation_length: 2048
 data_collection_row_limit: 20
@@ -35,15 +35,15 @@ use_full_zone_names: False
 # Dataset builder
 write_to_file: True
 build_in_memory: True
-file_out: default_{detector}.csv
+file_out: patent_abstract_categorization_{detector}.csv
 query:
 zone_size: 1024
 use_full_zone_names: False
 dataset_row_limit: 100
 
 # S1 Model Build
-model_name: default_model
-description: model_desc
+model_name: patent_abstract_categorization
+description: patent_abstract_categorization
 modeling_row_limit: 10
 max_evals: 1
 params:

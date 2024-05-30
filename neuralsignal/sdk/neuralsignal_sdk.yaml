@@ -9,6 +9,7 @@ sub_application_name: default # Needs to be defined when initializing
 # Generation Configs
 max_new_tokens: 128
 truncation_length: 0
+use_dynamic_batch_size: True
 
 # Evaluation mode config
 indirect_config:

@@ -1,5 +1,7 @@
 import logging
 import json
+import random
+from datasets import load_dataset
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,6 +27,7 @@ class NSDataset:
         "config_name": None,
         "row_limit": 0,
         "starting_row": 0,
+        "shuffle_dataset": False,
     }
 
     def __init__(self, config) -> None:
@@ -49,6 +52,13 @@ class NSDataset:
         # Merge with the default config in case things are missing
         self.config = {**self.default_config, **config}
         self.loaded = False
+
+    def shuffle_if_needed(self):
+        if self.config['shuffle_dataset']:
+            random.shuffle(self.rows)
+
+    def shuffle_dataset(self):
+        self.rows = random.shuffle(self.rows)
 
     def load(self):
         """Loads the dataset into memory"""
@@ -86,10 +96,37 @@ class NSDataset:
                 break
 
         self.loaded = True
+        f.close()
 
     def load_hf_dataset(self):
-        raise NotImplementedError(
-            "load_hf_dataset not implemented")
+        if self.config['row_limit'] > 0:
+            split = f"{self.config['split']}[0:{self.config['row_limit']-1}]"
+        else:
+            split = self.config['split']
+
+        ds = load_dataset(
+            self.config["dataset_name"],
+            self.config["dataset_variant"],
+            split=split,
+            use_auth_token=self.config["hf_token"])
+
+        self.rows = []
+        i = 1
+
+        for row in ds:
+            if i >= self.config["starting_row"]:
+
+                row_dict = self.config["input_processor"](row)
+                row_dict["line_number"] = i
+
+                self.rows.append(row_dict)
+
+            i += 1
+            if i - self.config["starting_row"] > self.config["row_limit"]\
+                    and self.config["row_limit"] > 0:
+                break
+        self.shuffle_if_needed(self)
+        self.loaded = True
 
     def __iter__(self):
         """returns a tuple with prompt+input and ground truth

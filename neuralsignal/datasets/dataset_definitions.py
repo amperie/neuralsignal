@@ -15,16 +15,18 @@ def add_to_dataset_dictionary(dataset_dict, cfg, dataset_list, include):
         dataset_dict[ds_name] = NSDataset(cfg)
 
 
-def get_dataset(dataset_name: str, row_limit=0):
+def get_dataset(dataset_name: str, row_limit=0, shuffle=False):
     """Returns the dataset object for the given dataset name
     """
     return datasets_dictionary(
         row_limit=row_limit,
-        dataset_list=[dataset_name])[dataset_name]
+        dataset_list=[dataset_name],
+        shuffle=shuffle)[dataset_name]
 
 
 def datasets_dictionary(
-        row_limit=0, dataset_list=[], include=True, dataset_variant=None)\
+        row_limit=0, dataset_list=[], include=True,
+        dataset_variant=None, shuffle=False)\
         -> dict:
     """Returns a dict of defined datasets in HF
     Keys are the HF dataset names, values are the dataset objects
@@ -87,6 +89,7 @@ def datasets_dictionary(
         "input_processor": input_processor,
         "hf_token": "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",
         "row_limit": row_limit,
+        "shuffle_dataset": shuffle,
     }
 
     add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
@@ -113,6 +116,7 @@ def datasets_dictionary(
         "input_processor": input_processor,
         "hf_token": "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",
         "row_limit": row_limit,
+        "shuffle_dataset": shuffle,
     }
 
     add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
@@ -140,6 +144,7 @@ def datasets_dictionary(
         "input_processor": input_processor,
         "hf_token": "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",
         "row_limit": row_limit,
+        "shuffle_dataset": shuffle,
     }
 
     add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
@@ -161,6 +166,31 @@ def datasets_dictionary(
         "input_processor": input_processor,
         "hf_token": "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",
         "row_limit": row_limit,
+        "shuffle_dataset": shuffle,
+    }
+
+    add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
+
+    # Patent categorization
+    def input_processor(row):
+        return {
+                "input": row["text"],
+                "context": "",
+                "output": "",
+                "ground_truth": row["label"],
+                "metadata": {}
+                }
+
+    cfg = {
+        "dataset_type": "hf",
+        "dataset_name": "patent_abstract_categorization",
+        "hf_name": "ccdv/patent-classification",
+        "variant": "abstract",
+        "split": "train",
+        "input_processor": input_processor,
+        "hf_token": "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",
+        "row_limit": row_limit,
+        "shuffle_dataset": shuffle,
     }
 
     add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
