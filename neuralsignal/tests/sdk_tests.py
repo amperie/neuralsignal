@@ -44,7 +44,10 @@ def test_detector_creation():
 
 def test_sdk():
 
-    s = SDK()
+    s = SDK(
+        application_name="demo",
+        sub_application_name="demo",
+    )
     eval = {
         "input": "input1",
         "context": "context1",
@@ -68,7 +71,7 @@ def test_sdk():
         "behavior_name": "hallucination",
         "enabled": "True",
     }
-    d1 = Detector(d1)
+    # d1 = Detector(d1)
     d2 = {
         "S1_model": None,
         # Either pass the model directly or specify its path
@@ -78,8 +81,9 @@ def test_sdk():
         "behavior_name": "toxicity",
         "enabled": "True",
     }
-    d2 = Detector(d2)
+    # d2 = Detector(d2)
 
+    gis = s.evaluate_indirect(ins, ['hallucination', 'text_categorizer'])
     gis = s.evaluate_indirect_output(ins, [d1, d2])
 
     print(gis)
@@ -153,7 +157,7 @@ def test_s1_model():
 
 # test_detector_creation()
 # test_generation()
-# test_sdk()
+test_sdk()
 test_ds_runner()
 test_ds_create()
 test_s1_model()

@@ -48,6 +48,10 @@ def save_to_mlflow(model, mlflow_uri, experiment_name, run_name=None):
     return mlflow_model_info
 
 
+def load_s1_model_from_mlflow(model_id):
+    raise NotImplementedError
+
+
 def count_files_in_dir(dir_path: str, extension: str) -> int:
     ct = 0
     for f in os.listdir(dir_path):

@@ -48,7 +48,6 @@ class NSBackendImplV1:
         return self.mng.get_scan_iterator_count(query)
 
     def load_s1_model(self, model_id: str):
-        # TODO: load an S1Model object, not just the model itself
 
         # Check to see if model is cached locally
         # If not, get it and cache it

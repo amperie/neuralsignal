@@ -162,7 +162,7 @@ def datasets_dictionary(
     cfg = {
         "dataset_type": "local_json_one_per_line",
         "dataset_name": "allenai_toxicity",
-        "local_path": "//data/nfs-data/allenai_toxicity.json",
+        "local_path": f"{path_prefix}/allenai_toxicity.json",
         "input_processor": input_processor,
         "hf_token": "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",
         "row_limit": row_limit,

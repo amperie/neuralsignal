@@ -13,6 +13,7 @@ from neuralsignal.core.modules.prompting import wrap_with_prompt
 from neuralsignal.core.modules.utils import generate_uuid
 from neuralsignal.backend.ns_backend import NSBackend
 import yaml
+from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=logging.INFO)
 
@@ -298,6 +299,19 @@ class SDK:
     # detector list. Get the detector list from
     # the config file instead or only ask for a list
     # of strings of the detector names
+
+    def evaluate_indirect(
+            self, outputs: list[dict], detectors: list[str]
+            ) -> list[DetectionResults]:
+        dl = []
+        for d in detectors:
+            cfg = sdk_config.get_detector_config(d)
+            cfg['application_name'] = self.application_name
+            cfg['sub_application_name'] = self.sub_application_name
+            dl.append(Detector(cfg))
+
+        return self.evaluate_indirect_output(outputs, dl)
+
     def evaluate_indirect_output(
             self, outputs: list[dict], detectors: list[Detector]
             ) -> list[DetectionResults]:
