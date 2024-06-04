@@ -1,5 +1,6 @@
 import logging
 import json
+import os
 from torch.cuda import OutOfMemoryError
 from pygments import highlight
 from pygments.lexers import JsonLexer
@@ -88,8 +89,11 @@ class SDK:
         self.disabled_reason = ""
 
         if default_config_path is None:
+            dirname = os.path.dirname(__file__)
+            default_config_path = os.path.join(
+                dirname, './neuralsignal_sdk.yaml')
             default_config = yaml.safe_load(
-                open("neuralsignal/sdk/neuralsignal_sdk.yaml"))
+                open(default_config_path))
         else:
             default_config = yaml.safe_load(
                 open(default_config_path))
@@ -290,6 +294,10 @@ class SDK:
             retVal.append(dr)
         return retVal
 
+    # TODO: Need to make this method without requiring
+    # detector list. Get the detector list from
+    # the config file instead or only ask for a list
+    # of strings of the detector names
     def evaluate_indirect_output(
             self, outputs: list[dict], detectors: list[Detector]
             ) -> list[DetectionResults]:

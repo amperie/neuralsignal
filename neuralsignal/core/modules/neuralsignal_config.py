@@ -15,7 +15,10 @@ class NeuralSignalConfig:
 
     def __init__(self, config_file: str = None) -> None:
         if config_file is None:
-            config_file = "neuralsignal/sdk/neuralsignal_sdk.yaml"
+            # config_file = "neuralsignal/sdk/neuralsignal_sdk.yaml"
+            dirname = os.path.dirname(__file__)
+            config_file = os.path.join(
+                dirname, '../../sdk/neuralsignal_sdk.yaml')
         self.config_file = config_file
         self._initialize(config_file)
 
@@ -69,6 +72,12 @@ class NeuralSignalConfig:
         # If none of the above, return default INFO
         return logging.INFO
 
+
+# TODO: This has the potential to load different configs on
+# a race condition. When this file is imported when the process
+# starts, it runs from the default config file in sdk/ folder
+# If the use inits the sdk with a different file, it could
+# load both. NEed to fix that
 
 try:
     sdk_config
