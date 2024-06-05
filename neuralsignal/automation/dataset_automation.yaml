@@ -1,15 +1,15 @@
-run_data_collection: True
+run_data_collection: False
 create_dataset: True
 create_s1_model: True
 
 # Iterable Configs
-detector_names: ['text_categorizer']
+detector_names: ['hallucination']
 modeling_row_limits: [30, 40]
 quantizations: ['no_quantization', 'int8', 'int4']
 
 # General Configs
 application_name: sdk_automation
-sub_application_name: patent_abstract_categorization
+sub_application_name: halu_qa
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
@@ -25,7 +25,7 @@ indirect_config:
   device: "cpu"
 
 # Data collection
-dataset: patent_abstract_categorization
+dataset: halu_qa
 max_new_tokens: 128
 truncation_length: 2048
 data_collection_row_limit: 20
@@ -35,15 +35,15 @@ use_full_zone_names: False
 # Dataset builder
 write_to_file: True
 build_in_memory: True
-file_out: patent_abstract_categorization_{detector}.csv
+file_out: halu_qa_{detector}.csv
 query:
 zone_size: 1024
 use_full_zone_names: False
 dataset_row_limit: 100
 
 # S1 Model Build
-model_name: patent_abstract_categorization
-description: patent_abstract_categorization
+model_name: halu_qa
+description: halu_qa
 modeling_row_limit: 10
 max_evals: 1
 params:
