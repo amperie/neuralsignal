@@ -171,6 +171,28 @@ def datasets_dictionary(
 
     add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
 
+    # allenai identity_attack test
+    def input_processor(row):
+        return {
+                "input": row["prompt"],
+                "context": "",
+                "output": "",
+                "ground_truth": row["ground_truth"],
+                "metadata": {}
+                }
+
+    cfg = {
+        "dataset_type": "local_json_one_per_line",
+        "dataset_name": "allenai_identity_attack",
+        "local_path": f"{path_prefix}/allenai_identity_attack.json",
+        "input_processor": input_processor,
+        "hf_token": "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",
+        "row_limit": row_limit,
+        "shuffle_dataset": shuffle,
+    }
+
+    add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
+
     # Patent categorization
     def input_processor(row):
         gt = row["label"]
