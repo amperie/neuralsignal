@@ -144,7 +144,7 @@ class Detector:
         If a threshold is not defined, returns a probability between 0 and 1
         """
         if not self.enabled or not self.enable_prediction:
-            return DetectionResults(self.config["behavior_name"], -1)
+            return DetectionResults(self.config["behavior_name"], [-1, -1])
         fd = featurize_tensor_dict(
             input_data, target_zone_size, current_zone_size)
         prob_classes = self.predict(fd[0])
