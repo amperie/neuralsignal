@@ -3,7 +3,7 @@ create_dataset: True
 create_s1_model: True
 
 # Iterable Configs
-detector_names: ['text_categorizer']
+detector_names: ['hallucination']
 modeling_row_limits: [30, 40]
 quantizations: ['no_quantization', 'int8', 'int4']
 
@@ -25,7 +25,7 @@ indirect_config:
   device: "cpu"
 
 # Data collection
-dataset: patent_abstract_categorization
+dataset: halu_qa
 max_new_tokens: 128
 truncation_length: 2048
 data_collection_row_limit: 20
@@ -35,7 +35,7 @@ use_full_zone_names: False
 # Dataset builder
 write_to_file: True
 build_in_memory: True
-file_out: patent_abstract_categorization_{detector}.csv
+file_out: halu_qa_{detector}.csv
 query:
 zone_size: 1024
 use_full_zone_names: False
