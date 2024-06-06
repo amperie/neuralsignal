@@ -1,4 +1,4 @@
-run_data_collection: True
+run_data_collection: False
 create_dataset: True
 create_s1_model: True
 
@@ -9,7 +9,7 @@ quantizations: ['no_quantization', 'int8', 'int4']
 
 # General Configs
 application_name: sdk_automation
-sub_application_name: patent_abstract_categorization
+sub_application_name: halu_qa
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
@@ -42,8 +42,8 @@ use_full_zone_names: False
 dataset_row_limit: 100
 
 # S1 Model Build
-model_name: patent_abstract_categorization
-description: patent_abstract_categorization
+model_name: halu_qa
+description: halu_qa
 modeling_row_limit: 10
 max_evals: 1
 params:
