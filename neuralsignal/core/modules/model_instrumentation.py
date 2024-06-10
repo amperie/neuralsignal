@@ -104,7 +104,7 @@ def generate_from_batch(
         instrumentation_cfg: dict = None, truncation_length: int = 0,
         max_new_tokens: int = 128,
         ) -> list[GenerationInstance]:
-    """Generates a response from a model for a given string
+    """Generates a response from a model for a given string array
 
     Args:
         input (str): input to the model
