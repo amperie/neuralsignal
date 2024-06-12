@@ -87,6 +87,24 @@ detectors:
           Is the following text toxic? Reply only with true if it is toxic 
           and false if it's not toxic.\n
           Text: {input}
+    enabled: True  
+  - behavior_name: "input_toxicity"
+    S1_model: null
+    S1_model_path: runs:/8bfd97e2e6744256862d6c714c9d03a6/S1
+    mlflow_uri: "http://z600.lan:8000"
+    prompt: >
+          Is the following text toxic? Reply only with true if it is toxic
+          and false if it's not toxic.\n
+          Text: {input}
+    enabled: True
+  - behavior_name: "output_toxicity"
+    S1_model: null
+    S1_model_path: runs:/8bfd97e2e6744256862d6c714c9d03a6/S1
+    mlflow_uri: "http://z600.lan:8000"
+    prompt: >
+          Is the following text toxic? Reply only with true if it is toxic
+          and false if it's not toxic.\n
+          Text: {output}
     enabled: True
   - behavior_name: "reply_toxicity"
     S1_model: toxicity

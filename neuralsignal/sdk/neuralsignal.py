@@ -266,7 +266,7 @@ class SDK:
 
         # At this point gis contains the consistent data for each detector run
         # gis should be used for the purposes of saving to the backend
-        # retVal's readings are only for the first detector
+        # retVal's output readings are only for the first detector
 
         # Save to the backend if required
         if self.save_scans:
