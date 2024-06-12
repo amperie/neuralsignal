@@ -114,6 +114,26 @@ class S1Trainer:
         logging.info(
             f"Dataset {self.config['dataset_path']} shape: {data.shape}")
 
+
+def load_splits_from_dataframe(
+        self, train_data: pd.DataFrame, test_data: pd.DataFrame):
+    if self.data_loaded:
+        return
+
+    self.X_train = train_data.drop(self.config['columns_to_drop'], axis=1)
+    self.X_train = self.X_train.drop(['target'], axis=1)
+    self.y_train = train_data['target']
+    self.X_test = test_data.drop(self.config['columns_to_drop'], axis=1)
+    self.X_test = self.X_test.drop(['target'], axis=1)
+    self.y_test = test_data['target']
+
+    self.X = self.X_train.append(self.X_test)
+    self.Y = self.y_train.append(self.y_test)
+
+    self.data_loaded = True
+    logging.info(
+        f"Loaded splits directly with shape: {self.X.shape}")
+
     def load_data(self) -> None:
         if self.data_loaded:
             return

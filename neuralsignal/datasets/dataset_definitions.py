@@ -94,6 +94,41 @@ def datasets_dictionary(
 
     add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
 
+    # diagram_hivemapper_augmented
+    def input_processor(row):
+        context = row['context']
+        question = row['question']
+        answer = row['answer']
+
+        ground_truth = row['judge']
+        if ground_truth == "yes":
+            ground_truth = True
+        elif ground_truth == "no":
+            ground_truth = False
+        else:
+            ground_truth = "skip_row"
+
+        return {
+                "input": question,
+                "context": context,
+                "output": answer,
+                "ground_truth": ground_truth,
+                "metadata": {}
+                }
+
+    cfg = {
+        "dataset_name": "diagram_hivemapper_augmented",
+        "dataset_type": "local_json_one_per_line",
+        "local_path":
+            f"{path_prefix}/diagram/diagram_augmented.json",
+        "input_processor": input_processor,
+        "hf_token": "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",
+        "row_limit": row_limit,
+        "shuffle_dataset": shuffle,
+    }
+
+    add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
+
     # squad_v2 right/wrong answer pairs
     def input_processor(row):
         question = row["question"]
