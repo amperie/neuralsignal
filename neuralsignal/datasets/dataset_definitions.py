@@ -113,7 +113,10 @@ def datasets_dictionary(
                 "context": context,
                 "output": answer,
                 "ground_truth": ground_truth,
-                "metadata": {}
+                "metadata": {
+                    "row": row['row'],
+                    "type": row['type']
+                }
                 }
 
     cfg = {
