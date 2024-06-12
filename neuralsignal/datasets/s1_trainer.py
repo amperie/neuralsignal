@@ -126,8 +126,8 @@ class S1Trainer:
         self.X_test = self.X_test.drop(['target'], axis=1)
         self.y_test = test_data['target']
 
-        self.X = self.X_train.append(self.X_test)
-        self.Y = self.y_train.append(self.y_test)
+        self.X = pd.concat([self.X_train, self.X_test])
+        self.Y = pd.concat([self.y_train, self.y_test])
 
         self.data_loaded = True
         logging.info(
