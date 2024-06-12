@@ -175,10 +175,11 @@ class SDK:
                 "Evaluate_batch_output is only available in indirect mode")
         logging.debug(f"Evaluating batch output: {outputs}")
 
-        # TODO: for indirect mode, need to replace the prompt
-        # with each detector's prompt so we need to explode the outputs
-        # and run each detector on each output in a batch
-        # ie: 2 outputs and 3 detectors=6 total evaluations and batch size=6
+        # TODO: BUG HERE
+        # The tokenizer pads the batches to the size of the biggest prompt
+        # The S1 model gives different scores depending on the batch size
+        # Need to figure out if they can still be batched without padding
+        # or is they'll need to be passed in series
         prompted_outputs = []
         for output in outputs:
             for d in detectors:
@@ -303,6 +304,8 @@ class SDK:
     def evaluate_indirect(
             self, outputs: list[dict], detectors: list[str]
             ) -> list[DetectionResults]:
+        # TODO: cache the detector object so they don't load each time
+        # this method runs
         dl = []
         for d in detectors:
             cfg = sdk_config.get_detector_config(d)
