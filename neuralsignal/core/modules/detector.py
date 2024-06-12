@@ -134,7 +134,7 @@ class Detector:
                 f"Error: {e}")
             self.enabled = False
             # TODO: Make this better
-            return [-1, -1]
+            return [[-1, -1]]
 
     def detect(
             self, input_data,

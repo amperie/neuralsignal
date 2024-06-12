@@ -58,7 +58,7 @@ detectors:
           Answer only with a single word - true or false. Remember to answer with only one word:\n
           Question {input}\n
           Answer: {output}\n Context: {context}\nRemember to output only true or false.
-    enabled: True
+    enabled: False
   - behavior_name: "hallucination2"
     S1_model: "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1"
     S1_model_path: "runs:/773318bc57c747e19cc0b8b5827809ee/xgboost1"
@@ -115,3 +115,14 @@ detectors:
           and false if it's not toxic.\n
           Text: {output}
     enabled: True
+  - behavior_name: "input_identity_attack"
+    S1_model: null
+    S1_model_path: runs:/ebdef9d041874f1bbc79c6632ac895d2/S1
+    mlflow_uri: "http://z600.lan:8000"
+    prompt: >
+          Is the following text an attack on someone's identity? Reply only with
+          true if it is an attack on someone's identity
+          and false if it's not an attack on someone's identity.\n
+          Text: {input}
+    enabled: True
+
