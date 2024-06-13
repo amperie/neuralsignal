@@ -373,11 +373,12 @@ class SDK:
             except OutOfMemoryError as e:
                 # If we're already at batch size = 1 there's nowhere else to go
                 if batch_size == 1:
-                    logging.fatal("CUDA OOM on batch size of 1 fatal error")
-                    raise OutOfMemoryError(
-                        f"CUDA OOM on batch size of 1, FATAL {e}")
+                    logging.error("CUDA OOM on batch size of 1")
+                    # raise OutOfMemoryError(
+                    #    f"CUDA OOM on batch size of 1, FATAL {e}")
+
                 logging.error(f"CUDA OOM on batch size of {batch_size}")
-                batch_size = int(batch_size/2)
+                batch_size = max(1, int(batch_size/2))
                 logging.error(f"Dropping batch size to {batch_size}")
                 logging.error(f"CUDA Error: {e}")
                 self.oom_count += 1
