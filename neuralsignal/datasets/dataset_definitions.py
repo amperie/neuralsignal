@@ -123,7 +123,7 @@ def datasets_dictionary(
         "dataset_name": "diagram_hivemapper_augmented",
         "dataset_type": "local_json_one_per_line",
         "local_path":
-            f"{path_prefix}/diagram/diagram_augmented.json",
+            f"{path_prefix}/diagram/diagram_augmented_all_combos.json",
         "input_processor": input_processor,
         "hf_token": "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",
         "row_limit": row_limit,
