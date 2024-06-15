@@ -44,6 +44,7 @@ class DatasetCreator:
         "use_gt_as_target": True,
         "tensor_field_to_use": "outputs",
         "overwrite_dataset_file": True,
+        "passthrough_fields": [],
     }
 
     def __init__(self, config: dict):
@@ -125,6 +126,9 @@ class DatasetCreator:
             if not header_written and self.config["write_header"]:
                 logging.info("Processing header")
                 header = "target,"
+                # Add the passthrough fields names
+                for pt in self.config["passthrough_fields"]:
+                    header += f"{pt},"
                 if self.config['include_output']:
                     header += "out,"
 
@@ -143,12 +147,30 @@ class DatasetCreator:
 
             if self.config["write_to_file"]:
                 row = ','.join(map(str, t[0])) + "\n"
+
+                # Add passthrough field data
+                pt_fields = ""
+                for pt in self.config["passthrough_fields"]:
+                    pt_fields += scan_data[pt] + ","
+                if pt_fields != "":
+                    row = pt_fields + row
+
                 if self.config['include_output']:
-                    row = scan_data['output'].replace(",", "") + ',' + row
+                    row =\
+                        scan_data['decoded_output'].replace(",", "") +\
+                        ',' + row
                 row = str(int(scan_data['ground_truth'])) + ',' + row
                 f.write(row)
             if self.config["build_in_memory"]:
                 row = t[0]
+
+                # Add passthrough field data
+                pt_fields = []
+                for pt in self.config["passthrough_fields"]:
+                    pt_fields.append(scan_data[pt])
+                if len(pt_fields) > 0:
+                    row = pt_fields + row
+
                 if self.config['include_output']:
                     row = [scan_data['output'].replace(",", "")] + row
                 row = [int(scan_data['ground_truth'])] + row
