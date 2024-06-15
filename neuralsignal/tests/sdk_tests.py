@@ -115,21 +115,23 @@ def test_ds_runner():
 
 def test_ds_create():
 
-    dc = DatasetCreator({
-        "zone_size": 1024,
-        "row_limit": 0,
-        "application_name": "sdk_squad_v2",
-        "sub_application_name": "data",
-        "file_out": "test.csv",
+    cfg = {
+        "application_name": "sdk_diagram",
+        "sub_application_name": "augmented_combos_v2",
+        "write_to_file": False,
+        "build_in_memory": True,
+        "file_out": "J:\\Temp",
         "detector_name": "hallucination",
-        "backend_config": {
-            "backend_type": "file_backend",
+        "query": {},
+        #"query": {'$and': [{'metadata.row': {'$gt': 200}}, {'metadata.type': {'$ne': 'qa_rewrite_wrong'}}]},
+        "zone_size": 1024,
+        "use_full_zone_names": True,
+        "use_gt_as_target": True,
+        "passthrough_fields": ['metadata.type'],
         }
-    })
-    d = dc.create_dataset(
-        {}
-    )
-    return d
+
+    dc = DatasetCreator(cfg)
+    retVal = dc.create_dataset(cfg['query'])
 
 
 def test_s1_model():
@@ -157,8 +159,8 @@ def test_s1_model():
 
 # test_detector_creation()
 # test_generation()
-test_sdk()
-test_ds_runner()
+# test_sdk()
+# test_ds_runner()
 test_ds_create()
 test_s1_model()
 

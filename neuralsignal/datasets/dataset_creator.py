@@ -151,7 +151,13 @@ class DatasetCreator:
                 # Add passthrough field data
                 pt_fields = ""
                 for pt in self.config["passthrough_fields"]:
-                    pt_fields += scan_data[pt] + ","
+                    # Split the pt field in case it's a nested field
+                    # Like metadata.type
+                    sp = pt.split(".")
+                    if len(sp) == 1:
+                        pt_fields += scan_data[pt] + ","
+                    else:
+                        pt_fields += scan_data[sp[0]][sp[1]] + ","
                 if pt_fields != "":
                     row = pt_fields + row
 
@@ -167,7 +173,13 @@ class DatasetCreator:
                 # Add passthrough field data
                 pt_fields = []
                 for pt in self.config["passthrough_fields"]:
-                    pt_fields.append(scan_data[pt])
+                    # Split the pt field in case it's a nested field
+                    # Like metadata.type
+                    sp = pt.split(".")
+                    if len(sp) == 1:
+                        pt_fields.append(scan_data[pt])
+                    else:
+                        pt_fields.append(scan_data[sp[0]][sp[1]])
                 if len(pt_fields) > 0:
                     row = pt_fields + row
 
