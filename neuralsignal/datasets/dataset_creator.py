@@ -155,15 +155,15 @@ class DatasetCreator:
                     # Like metadata.type
                     sp = pt.split(".")
                     if len(sp) == 1:
-                        pt_fields += scan_data[pt] + ","
+                        pt_fields += str(scan_data[pt]) + ","
                     else:
-                        pt_fields += scan_data[sp[0]][sp[1]] + ","
+                        pt_fields += str(scan_data[sp[0]][sp[1]]) + ","
                 if pt_fields != "":
                     row = pt_fields + row
 
                 if self.config['include_output']:
                     row =\
-                        scan_data['decoded_output'].replace(",", "") +\
+                        str(scan_data['decoded_output']).replace(",", "") +\
                         ',' + row
                 row = str(int(scan_data['ground_truth'])) + ',' + row
                 f.write(row)
