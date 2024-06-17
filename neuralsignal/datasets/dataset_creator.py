@@ -164,7 +164,7 @@ class DatasetCreator:
 
                 if self.config['include_output']:
                     row =\
-                        scan_data['decoded_output'].replace(",", "") +\
+                        str(scan_data['decoded_output']).replace(",", "") +\
                         ',' + row
                 row = str(int(scan_data['ground_truth'])) + ',' + row
                 f.write(row)
