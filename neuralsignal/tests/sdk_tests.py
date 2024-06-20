@@ -123,7 +123,8 @@ def test_ds_create():
         "file_out": "J:\\Temp",
         "detector_name": "hallucination",
         "query": {},
-        #"query": {'$and': [{'metadata.row': {'$gt': 200}}, {'metadata.type': {'$ne': 'qa_rewrite_wrong'}}]},
+        # "query": {'$and': [{'metadata.row': {'$gt': 200}}, 
+        # {'metadata.type': {'$ne': 'qa_rewrite_wrong'}}]},
         "zone_size": 1024,
         "use_full_zone_names": True,
         "use_gt_as_target": True,
@@ -132,6 +133,7 @@ def test_ds_create():
 
     dc = DatasetCreator(cfg)
     retVal = dc.create_dataset(cfg['query'])
+    return retVal
 
 
 def test_s1_model():

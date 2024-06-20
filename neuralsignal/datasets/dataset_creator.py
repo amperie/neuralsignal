@@ -124,6 +124,13 @@ class DatasetCreator:
                 scan_data['zone_size'], scan_data['layer_id_to_name']
             )
 
+            # Featurize the delta layers if needed
+            dlt = featurize_delta_layers(
+                self.config["featurize_delta_layers"],
+                scan_data['inputs'], scan_data['outputs'],
+                scan_data['layer_id_to_name']
+            )
+
             # TODO: Redo all this shit spaghetti code
 
             # Write the header if required
@@ -140,11 +147,6 @@ class DatasetCreator:
 
                 # Add the delta layers features
                 if len(self.config["featurize_delta_layers"]) > 0:
-                    dlt = featurize_delta_layers(
-                        self.config["featurize_delta_layers"],
-                        scan_data['inputs'], scan_data['outputs'],
-                        scan_data['layer_id_to_name']
-                    )
                     for i in range(0, len(dlt[0])):
                         header += f"{dlt[0][i]},"
 
