@@ -65,7 +65,10 @@ def featurize_delta_layers(
         inputs: dict, outputs: dict,
         layer_id_to_name: dict):
     """
-    Featurizes the delta of given layers.
+    Featurizes the delta of given layers. It uses string matchin
+    so it will match substrings in layer names. ie: "Attention" will
+    match "Attention.k" and "Attention.q" and anything else that
+    has the substring "Attention" in it.
 
     Args:
         layers_to_featurize (list): List of layers to be featurized.
@@ -82,7 +85,8 @@ def featurize_delta_layers(
     i = 0
 
     for lyr in layer_id_to_name.keys():
-        if layer_id_to_name[lyr] in layers_to_featurize:
+        # if layer_id_to_name[lyr] in layers_to_featurize:
+        if any(x in layer_id_to_name[lyr] for x in layers_to_featurize):
             val = torch.mean(outputs[lyr] - inputs[lyr]).item()
             name = f"delta_{i}_{layer_id_to_name[lyr]}"
             feature_names.append(name)
