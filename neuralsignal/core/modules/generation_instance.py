@@ -95,6 +95,8 @@ class GenerationInstance:
             flat_data["topology"] = self.data["topology"]
         if "outputs" in self.data:
             flat_data["outputs"] = self.data["outputs"]
+        if "inputs" in self.data:
+            flat_data["inputs"] = self.data["inputs"]
         if "generation_correlation_id" in self.data:
             flat_data["generation_correlation_id"] =\
                 self.data["generation_correlation_id"]
