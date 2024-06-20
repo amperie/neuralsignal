@@ -13,6 +13,10 @@ use_dynamic_batch_size: True
 max_oom_count: 20
 zone_size: 1024
 
+# Dataset creation configs
+# for including features for the delta in specific layer names
+featurize_delta_layers: [] 
+
 # Evaluation mode config
 indirect_config:
   #  indirect_model: "google/flan-t5-large"

@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from neuralsignal.backend.ns_backend import NSBackend
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
+from neuralsignal.core.modules.tensors import featurize_delta_layers
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
@@ -45,6 +46,7 @@ class DatasetCreator:
         "tensor_field_to_use": "outputs",
         "overwrite_dataset_file": True,
         "passthrough_fields": [],
+        "featurize_delta_layers": []  # Layer names to featurize
     }
 
     def __init__(self, config: dict):
@@ -122,16 +124,31 @@ class DatasetCreator:
                 scan_data['zone_size'], scan_data['layer_id_to_name']
             )
 
+            # TODO: Redo all this shit spaghetti code
+
             # Write the header if required
             if not header_written and self.config["write_header"]:
                 logging.info("Processing header")
                 header = "target,"
+
                 # Add the passthrough fields names
                 for pt in self.config["passthrough_fields"]:
                     header += f"{pt},"
+                # Add the output if needed
                 if self.config['include_output']:
                     header += "out,"
 
+                # Add the delta layers features
+                if len(self.config["featurize_delta_layers"]) > 0:
+                    dlt = featurize_delta_layers(
+                        self.config["featurize_delta_layers"],
+                        scan_data['inputs'], scan_data['outputs'],
+                        scan_data['layer_id_to_name']
+                    )
+                    for i in range(0, len(dlt[0])):
+                        header += f"{dlt[0][i]},"
+
+                # Add the zones data
                 for i in range(0, len(t[1])):
                     if self.config["use_full_zone_names"]:
                         header += f"{t[2][i]},"
@@ -146,7 +163,13 @@ class DatasetCreator:
                 logging.info(f"Iteration {iteration} of {doc_count}")
 
             if self.config["write_to_file"]:
-                row = ','.join(map(str, t[0])) + "\n"
+                row = ""
+
+                if len(self.config["featurize_delta_layers"]) > 0:
+                    for i in range(0, len(dlt[1])):
+                        row += f"{dlt[1][i]},"
+
+                row += ','.join(map(str, t[0])) + "\n"
 
                 # Add passthrough field data
                 pt_fields = ""
