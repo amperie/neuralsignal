@@ -34,7 +34,7 @@ indirect_instrumentation_config:
   instrument_embedding: True
   collector_config:
     mode: additive
-    data_to_save: ["outputs", "layer_info", "topology"]
+    data_to_save: ["inputs", "outputs", "layer_info", "topology"]
     zone_size: 512
 
 # Backend config

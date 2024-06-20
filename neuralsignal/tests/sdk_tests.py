@@ -123,7 +123,8 @@ def test_ds_create():
         "file_out": "J:\\Temp",
         "detector_name": "hallucination",
         "query": {},
-        #"query": {'$and': [{'metadata.row': {'$gt': 200}}, {'metadata.type': {'$ne': 'qa_rewrite_wrong'}}]},
+        # "query": {'$and': [{'metadata.row': {'$gt': 200}}, 
+        # {'metadata.type': {'$ne': 'qa_rewrite_wrong'}}]},
         "zone_size": 1024,
         "use_full_zone_names": True,
         "use_gt_as_target": True,
@@ -132,6 +133,7 @@ def test_ds_create():
 
     dc = DatasetCreator(cfg)
     retVal = dc.create_dataset(cfg['query'])
+    return retVal
 
 
 def test_s1_model():
@@ -157,12 +159,23 @@ def test_s1_model():
     print(model)
 
 
+def load_scan(scan_id: str, detection: str = "hallucination"):
+    cfg = {
+        "application_name": "sdk_squad_v2",
+        "sub_application_name": "data",
+    }
+    be = NSBackend(cfg)
+    scan = be.load_scan(scan_id, detection)
+    return scan
+
+
+# load_scan("664d809ff39d0f158c7d079d", "hallucination")
 # test_detector_creation()
 # test_generation()
 test_sdk()
 # test_ds_runner()
-test_ds_create()
-test_s1_model()
+# test_ds_create()
+# test_s1_model()
 
 
 def test_backend():
