@@ -96,6 +96,30 @@ def featurize_delta_layers(
     return (feature_names, delta_values)
 
 
+def featurize_deltas_by_layer_name(layer_name: str, scan: dict):
+    """
+    Featurizes the deltas by layer name.
+
+    Args:
+        layer_name (str): The name of the layer to featurize.
+        scan (dict): The scan dictionary containing layer information.
+
+    Returns:
+        Tuple: A tuple containing lists of feature names and 
+        corresponding delta values.
+    """
+    feature_names = []
+    values = []
+    for lyr, i in enumerate(scan['layer_order']):
+        if layer_name in scan['layer_id_to_name'][lyr]:
+            # TODO: There's got to be a better way to featurize this
+            val = torch.mean(scan['outputs'][lyr]).item()
+            name = f"delta_{i}_{layer_name}"
+            feature_names.append(name)
+            values.append(val)
+    return (feature_names, values)
+
+
 def featurize_tensor_dict(
         tensor_dict, zone_size, current_zone_size,
         layer_id_to_name: dict = None) -> list:
