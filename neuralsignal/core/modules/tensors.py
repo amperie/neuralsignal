@@ -110,7 +110,7 @@ def featurize_deltas_by_layer_name(layer_name: str, scan: dict):
     """
     feature_names = []
     values = []
-    for lyr, i in enumerate(scan['layer_order']):
+    for i, lyr in enumerate(scan['layer_order']):
         if layer_name in scan['layer_id_to_name'][lyr]:
             # TODO: There's got to be a better way to featurize this
             val = torch.mean(scan['outputs'][lyr]).item()
