@@ -131,7 +131,9 @@ def featurize_layer_distributions(layer_name: str, bin_count: int, scan: dict):
         if layer_name in scan['layer_id_to_name'][lyr]:
             hist = torch.histc(scan['outputs'][lyr], bin_count)
             # hist = hist/torch.max(hist) # Not sure this is needed
-            feature_names += [f"{lyr}_{i}_bin_{b}" for b in range(bin_count)]
+            layer_name = scan['layer_id_to_name'][lyr]
+            feature_names +=\
+                [f"{layer_name}_{i}_bin_{b}" for b in range(bin_count)]
             values += hist.tolist()
 
     return (feature_names, values)
