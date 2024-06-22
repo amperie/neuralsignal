@@ -115,8 +115,7 @@ def create_s1_model(cfg: dict):
                 cfg['detector_name'] = d
                 cfg['dataset_path'] =\
                     file_out_template.replace("{detector}", d)
-                cfg['model_name'] = cfg['sub_application_name'] + "_" + d
-                cfg['description'] = f"{cfg['model_name']} {d} with {rl} rows"
+                cfg['model_name'] = cfg['model_name'] + "_" + d
                 d_cfg = sdk_config.get_detector_config(d)
                 cfg['params'] = {
                     "zone_size": cfg['zone_size'],

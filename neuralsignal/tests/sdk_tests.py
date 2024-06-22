@@ -116,19 +116,22 @@ def test_ds_runner():
 def test_ds_create():
 
     cfg = {
-        "application_name": "sdk_diagram",
-        "sub_application_name": "augmented_combos_v2",
-        "write_to_file": False,
+        "application_name": "sdk_attention_test",
+        "sub_application_name": "squad_v2_right_wrong_pairs",
+        "row_limit": 20,
+        "write_to_file": True,
         "build_in_memory": True,
-        "file_out": "J:\\Temp",
+        "file_out": "J:\\Temp\\test.csv",
         "detector_name": "hallucination",
         "query": {},
+        # "query": {'$and': [{'metadata.row': {'$gt': 200}},
         # "query": {'$and': [{'metadata.row': {'$gt': 200}}, 
         # {'metadata.type': {'$ne': 'qa_rewrite_wrong'}}]},
         "zone_size": 1024,
         "use_full_zone_names": True,
         "use_gt_as_target": True,
-        "passthrough_fields": ['metadata.type'],
+        "passthrough_fields": ['zone_size'],
+        "featurize_delta_layers": ["Attention"],
         }
 
     dc = DatasetCreator(cfg)

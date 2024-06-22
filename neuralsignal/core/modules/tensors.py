@@ -60,12 +60,47 @@ def reduce_tensor_into_zones(
     return process_zones_avg(t_in, reduction_ratio)
 
 
+def featurize_delta_layers(
+        layers_to_featurize: list,
+        inputs: dict, outputs: dict,
+        layer_id_to_name: dict):
+    """
+    Featurizes the delta of given layers. It uses string matchin
+    so it will match substrings in layer names. ie: "Attention" will
+    match "Attention.k" and "Attention.q" and anything else that
+    has the substring "Attention" in it.
+
+    Args:
+        layers_to_featurize (list): List of layers to be featurized.
+        inputs (dict): Dictionary of input layers.
+        outputs (dict): Dictionary of output layers.
+        layer_id_to_name (dict): Mapping of layer IDs to layer names.
+
+    Returns:
+        Tuple: A tuple containing lists of feature names and corresponding 
+        delta values.
+    """
+    feature_names = []
+    delta_values = []
+    i = 0
+
+    for lyr in layer_id_to_name.keys():
+        # if layer_id_to_name[lyr] in layers_to_featurize:
+        if any(x in layer_id_to_name[lyr] for x in layers_to_featurize):
+            val = torch.mean(outputs[lyr] - inputs[lyr]).item()
+            name = f"delta_{i}_{layer_id_to_name[lyr]}"
+            feature_names.append(name)
+            delta_values.append(val)
+            i += 1
+
+    return (feature_names, delta_values)
+
+
 def featurize_tensor_dict(
         tensor_dict, zone_size, current_zone_size,
         layer_id_to_name: dict = None) -> list:
-    """Takes a dict of layer -> tensor and returns a list of zones
-    If layer_id_to_name dictionary object is there, it will return
-    the names of the layers and zone index for each zone as well
+    """Takes a dict of layer -> tensor and returns a tuple of
+    (zone_values, zone_indexes, zone_names)
     """
     zone_indexes = []
     zone_values = []
