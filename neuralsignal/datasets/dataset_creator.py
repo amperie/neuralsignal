@@ -352,9 +352,9 @@ class DatasetCreator:
 
             # Add the cross model layer deltas
             for lyr in self.config["featurize_delta_by_layer_name"]:
-                f = featurize_deltas_by_layer_name(lyr, scan_data)
+                f_deltas = featurize_deltas_by_layer_name(lyr, scan_data)
                 curr_row = self.add_columns(
-                    f[0], f[1], curr_row
+                    f_deltas[0], f_deltas[1], curr_row
                 )
 
             # Add the zones data
