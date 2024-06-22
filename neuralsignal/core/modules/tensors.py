@@ -105,18 +105,22 @@ def featurize_deltas_by_layer_name(layer_name: str, scan: dict):
         scan (dict): The scan dictionary containing layer information.
 
     Returns:
-        Tuple: A tuple containing lists of feature names and 
+        Tuple: A tuple containing lists of feature names and
         corresponding delta values.
     """
     feature_names = []
     values = []
+    last_val = None
     for i, lyr in enumerate(scan['layer_order']):
         if layer_name in scan['layer_id_to_name'][lyr]:
             # TODO: There's got to be a better way to featurize this
             val = torch.mean(scan['outputs'][lyr]).item()
             name = f"delta_{i}_{layer_name}"
             feature_names.append(name)
-            values.append(val)
+            if last_val is None:
+                values.append(val)
+            else:
+                values.append(val - last_val)
     return (feature_names, values)
 
 

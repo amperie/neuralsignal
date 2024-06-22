@@ -17,6 +17,7 @@ zone_size: 1024
 # for including features for the delta in specific layer names
 featurize_delta_layers: [] 
 featurize_delta_by_layer_name: ['SelfAttention.o']
+featurize_zones_data: True
 
 # Evaluation mode config
 indirect_config:
