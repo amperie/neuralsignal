@@ -361,7 +361,7 @@ class DatasetCreator:
                 )
 
             # Add the layer distributions
-            for lyr in self.config["featurize_layer_distributions"]:
+            for lyr in self.config["featurize_layer_distributions_layers"]:
                 bin_size = self.config["featurize_layer_distribution_bin_size"]
                 f_dists = featurize_layer_distributions(
                     lyr, bin_size, scan_data)

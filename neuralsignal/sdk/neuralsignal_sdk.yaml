@@ -18,7 +18,6 @@ zone_size: 1024
 featurize_delta_layers: [] 
 featurize_delta_by_layer_name: ['SelfAttention.o']
 featurize_zones_data: True
-featurize_layer_distributions: True
 featurize_layer_distributions_layers: ['SelfAttention.o']
 featurize_layer_distributions_bin_count: 10
 
