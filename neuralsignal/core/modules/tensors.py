@@ -124,6 +124,19 @@ def featurize_deltas_by_layer_name(layer_name: str, scan: dict):
     return (feature_names, values)
 
 
+def featurize_layer_distributions(layer_name: str, bin_count: int, scan: dict):
+    feature_names = []
+    values = []
+    for i, lyr in enumerate(scan['layer_order']):
+        if layer_name in scan['layer_id_to_name'][lyr]:
+            hist = torch.histc(scan['outputs'][lyr], bin_count)
+            # hist = hist/torch.max(hist) # Not sure this is needed
+            feature_names += [f"{lyr}_{i}_bin_{b}" for b in range(bin_count)]
+            values += hist.tolist()
+
+    return (feature_names, values)
+
+
 def featurize_tensor_dict(
         tensor_dict, zone_size, current_zone_size,
         layer_id_to_name: dict = None) -> list:

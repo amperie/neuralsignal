@@ -5,6 +5,7 @@ from neuralsignal.backend.ns_backend import NSBackend
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
 from neuralsignal.core.modules.tensors import featurize_delta_layers
 from neuralsignal.core.modules.tensors import featurize_deltas_by_layer_name
+from neuralsignal.core.modules.tensors import featurize_layer_distributions
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
@@ -357,6 +358,15 @@ class DatasetCreator:
                 f_deltas = featurize_deltas_by_layer_name(lyr, scan_data)
                 curr_row = self.add_columns(
                     f_deltas[0], f_deltas[1], curr_row
+                )
+
+            # Add the layer distributions
+            for lyr in self.config["featurize_layer_distributions"]:
+                bin_size = self.config["featurize_layer_distribution_bin_size"]
+                f_dists = featurize_layer_distributions(
+                    lyr, bin_size, scan_data)
+                curr_row = self.add_columns(
+                    f_dists[0], f_dists[1], curr_row
                 )
 
             # Add the zones data
