@@ -98,7 +98,7 @@ def featurize_delta_layers(
 
 def featurize_tensor_dict(
         tensor_dict, zone_size, current_zone_size,
-        layer_id_to_name: dict) -> list:
+        layer_id_to_name: dict = None) -> list:
     """Takes a dict of layer -> tensor and returns a tuple of
     (zone_values, zone_indexes, zone_names)
     """

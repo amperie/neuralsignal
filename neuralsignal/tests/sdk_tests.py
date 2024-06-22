@@ -163,9 +163,9 @@ def test_s1_model():
 
 # test_detector_creation()
 # test_generation()
-# test_sdk()
+test_sdk()
 # test_ds_runner()
-test_ds_create()
+# test_ds_create()
 test_s1_model()
 
 
