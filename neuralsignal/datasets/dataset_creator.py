@@ -47,7 +47,9 @@ class DatasetCreator:
         "tensor_field_to_use": "outputs",
         "overwrite_dataset_file": True,
         "passthrough_fields": [],
-        "featurize_delta_layers": []  # Layer names to featurize
+        "featurize_delta_layers": [],  # Layer names to featurize
+        "featurize_delta_by_layer_name": [],
+        "featurize_zones_data": True,
     }
 
     def __init__(self, config: dict):
@@ -358,14 +360,15 @@ class DatasetCreator:
                 )
 
             # Add the zones data
-            if self.config["use_full_zone_names"]:
-                curr_row = self.add_columns(
-                    t[2], t[0], curr_row
-                )
-            else:
-                curr_row = self.add_columns(
-                    t[1], t[0], curr_row
-                )
+            if self.config["featurize_zones_data"]:
+                if self.config["use_full_zone_names"]:
+                    curr_row = self.add_columns(
+                        t[2], t[0], curr_row
+                    )
+                else:
+                    curr_row = self.add_columns(
+                        t[1], t[0], curr_row
+                    )
 
             # Write to file and/or memory
             row_strings = self.get_column_strings(curr_row)
