@@ -1,51 +1,54 @@
-run_data_collection: False
+run_data_collection: True
 create_dataset: True
 create_s1_model: True
 
 # Iterable Configs
 detector_names: ['hallucination']
-modeling_row_limits: [30, 40]
-quantizations: ['no_quantization', 'int8', 'int4']
+modeling_row_limits: [300, 1000]
+  # quantizations: ['no_quantization', 'int8', 'int4']
 
 # General Configs
 application_name: sdk_automation
-sub_application_name: halu_qa
+sub_application_name: patent_abstract_categorization
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
-  db: sdk_testing
-  col: col
   mlflow_uri: "http://z600.lan:8000"
 indirect_config:
   indirect_model: "t5-small"
   zone_size: 1024
-  indirect_batch_size: 100
+  indirect_batch_size: 10
   # no_quantization, int8 or int4
-  quantization: "no_quantization"
-  device: "cpu"
+  quantization: "int8"
+  device: "auto"
 
 # Data collection
-dataset: halu_qa
-max_new_tokens: 128
+dataset: patent_abstract_categorization
+max_new_tokens: 10
 truncation_length: 2048
-data_collection_row_limit: 20
+data_collection_row_limit: 1000
 batch_size: 10
-use_full_zone_names: False
 
 # Dataset builder
 write_to_file: True
-build_in_memory: True
-file_out: halu_qa_{detector}.csv
+build_in_memory: False
+file_out: patent_{detector}.csv
 query:
 zone_size: 1024
 use_full_zone_names: False
 dataset_row_limit: 100
+featurize_delta_layers: ["Attention", "act"]
+featurize_delta_by_layer_name: ['SelfAttention.o', 'SelfAttention.v']
+featurize_zones_data: True
+featurize_layer_distributions_layers: ['SelfAttention.o, SelfAttention.v']
+featurize_layer_distributions_bin_count: 20
+
 
 # S1 Model Build
-model_name: halu_qa
-description: halu_qa
-modeling_row_limit: 10
-max_evals: 1
+model_name: patent_abstract_categorization
+description: patent_abstract_categorization
+modeling_row_limit: 0
+max_evals: 20
 params:
   description: model_desc
 tags:

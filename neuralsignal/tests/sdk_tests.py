@@ -132,6 +132,10 @@ def test_ds_create():
         "use_gt_as_target": True,
         "passthrough_fields": ['zone_size'],
         "featurize_delta_layers": ["Attention"],
+        "featurize_delta_by_layer_name": ['SelfAttention.o'],
+        "featurize_zones_data": True,
+        "featurize_layer_distributions_layers": ['SelfAttention.o'],
+        "featurize_layer_distributions_bin_count": 10,
         }
 
     dc = DatasetCreator(cfg)

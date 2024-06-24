@@ -37,6 +37,12 @@ query:
 zone_size: 1024
 use_full_zone_names: False
 dataset_row_limit: 100
+featurize_delta_layers: ["Attention", "act"]
+featurize_delta_by_layer_name: ['SelfAttention.o', 'SelfAttention.v']
+featurize_zones_data: True
+featurize_layer_distributions_layers: ['SelfAttention.o, SelfAttention.v']
+featurize_layer_distributions_bin_count: 20
+
 
 # S1 Model Build
 model_name: patent_abstract_categorization
