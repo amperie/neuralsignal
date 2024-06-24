@@ -1,54 +1,55 @@
-run_data_collection: True
+run_data_collection: False
 create_dataset: True
 create_s1_model: True
 
 # Iterable Configs
-detector_names: ['text_categorizer']
-modeling_row_limits: [300, 1000]
+detector_names: ['hallucination']
+modeling_row_limits: [10000]
   # quantizations: ['no_quantization', 'int8', 'int4']
 
 # General Configs
-application_name: sdk_automation
-sub_application_name: patent_abstract_categorization
+application_name: sdk_attention_test
+sub_application_name: diagram_hivemapper
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
   mlflow_uri: "http://z600.lan:8000"
 indirect_config:
-  indirect_model: "google/flan-t5-large"
+  # indirect_model: "microsoft/Phi-3-mini-128k-instruct"
+  indirect_model: "google/flan-t5-xl"
   zone_size: 1024
-  indirect_batch_size: 100
+  indirect_batch_size: 1
   # no_quantization, int8 or int4
   quantization: "int8"
   device: "auto"
 
 # Data collection
-dataset: patent_abstract_categorization
+dataset: diagram_hivemapper
 max_new_tokens: 10
-truncation_length: 2048
+truncation_length: 3000
 data_collection_row_limit: 1000
-batch_size: 100
+batch_size: 1
 
 # Dataset builder
 write_to_file: True
 build_in_memory: False
-file_out: patent_{detector}.csv
-query:
+file_out: diagram_attention_test__{detector}.csv
+query: {}
 zone_size: 1024
-use_full_zone_names: False
-dataset_row_limit: 100
+use_full_zone_names: True
+dataset_row_limit: 1000
 featurize_delta_layers: ["Attention", "act"]
 featurize_delta_by_layer_name: ['SelfAttention.o', 'SelfAttention.v']
 featurize_zones_data: True
 featurize_layer_distributions_layers: ['SelfAttention.o, SelfAttention.v']
 featurize_layer_distributions_bin_count: 20
 
-
 # S1 Model Build
-model_name: patent_abstract_categorization
-description: patent_abstract_categorization
+model_name: diagram_att_test_no_attention
+description: All self + cross attention
 modeling_row_limit: 0
-max_evals: 20
+max_evals: 50
+seed: 43
 params:
   description: model_desc
 tags:
