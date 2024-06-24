@@ -162,7 +162,8 @@ def run_automation(cfg: dict):
 
 try:
     if platform.system() == "Windows" or platform.system() == "Darwin":
-        yaml_config = "neuralsignal/automation/dataset_automation.yaml"
+        yaml_config =\
+            "neuralsignal/neuralsignal/automation/dataset_automation_z440.yaml"
     else:
         yaml_config = sys.argv[1]
 except IndexError:
