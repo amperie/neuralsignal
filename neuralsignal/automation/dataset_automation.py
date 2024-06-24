@@ -166,7 +166,6 @@ try:
     else:
         yaml_config = sys.argv[1]
 except IndexError:
-    yaml_config = "configs/test_harness_config.yaml"
     raise ValueError(
         "Usage: python dataset_automation.py <yaml config file>")
 
