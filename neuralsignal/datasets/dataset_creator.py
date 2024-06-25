@@ -4,7 +4,8 @@ import pandas as pd
 from neuralsignal.backend.ns_backend import NSBackend
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
 from neuralsignal.core.modules.tensors import featurize_delta_layers
-from neuralsignal.core.modules.tensors import featurize_deltas_by_layer_name
+from neuralsignal.core.modules.tensors\
+    import featurize_crossmodel_deltas_by_layer_name
 from neuralsignal.core.modules.tensors import featurize_layer_distributions
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
@@ -355,7 +356,8 @@ class DatasetCreator:
 
             # Add the cross model layer deltas
             for lyr in self.config["featurize_delta_by_layer_name"]:
-                f_deltas = featurize_deltas_by_layer_name(lyr, scan_data)
+                f_deltas = featurize_crossmodel_deltas_by_layer_name(
+                    lyr, scan_data)
                 curr_row = self.add_columns(
                     f_deltas[0], f_deltas[1], curr_row
                 )
