@@ -96,7 +96,7 @@ def featurize_delta_layers(
     return (feature_names, delta_values)
 
 
-def featurize_deltas_by_layer_name(layer_name: str, scan: dict):
+def featurize_crossmodel_deltas_by_layer_name(layer_name: str, scan: dict):
     """
     Featurizes the deltas by layer name.
 
@@ -115,7 +115,7 @@ def featurize_deltas_by_layer_name(layer_name: str, scan: dict):
         if layer_name in scan['layer_id_to_name'][lyr]:
             # TODO: There's got to be a better way to featurize this
             val = torch.mean(scan['outputs'][lyr]).item()
-            name = f"delta_{i}_{layer_name}"
+            name = f"delta_crossmodel_{i}_{layer_name}"
             feature_names.append(name)
             if last_val is None:
                 values.append(val)
