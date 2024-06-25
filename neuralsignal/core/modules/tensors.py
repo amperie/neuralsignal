@@ -124,16 +124,29 @@ def featurize_deltas_by_layer_name(layer_name: str, scan: dict):
     return (feature_names, values)
 
 
-def featurize_layer_distributions(layer_name: str, bin_count: int, scan: dict):
+def featurize_layer_distributions(
+        layer_name: str, bin_count: int, scan: dict,
+        delta_distributions: bool = False):
     feature_names = []
     values = []
     for i, lyr in enumerate(scan['layer_order']):
         if layer_name in scan['layer_id_to_name'][lyr]:
-            hist = torch.histc(scan['outputs'][lyr], bin_count)
-            hist = hist/torch.max(hist)  # Not sure this is needed
             layer_name = scan['layer_id_to_name'][lyr]
-            feature_names +=\
-                [f"{layer_name}_{i}_bin_{b}" for b in range(bin_count)]
+            if delta_distributions:
+                val = scan['outputs'][lyr] - scan['inputs'][lyr]
+                feature_names += [
+                    f"bin_delta_{b}_{layer_name}_{i}"
+                    for b in range(bin_count)
+                    ]
+            else:
+                val = scan['outputs'][lyr]
+                feature_names += [
+                    f"bin_outputs_{b}_{layer_name}_{i}"
+                    for b in range(bin_count)
+                    ]
+
+            hist = torch.histc(val, bin_count)
+            hist = hist/torch.max(hist)  # Not sure this is needed
             values += hist.tolist()
 
     return (feature_names, values)
