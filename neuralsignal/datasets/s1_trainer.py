@@ -276,48 +276,48 @@ class S1Trainer:
         self.params['features_dimension'] = \
             len(self.X.columns)
 
+        model_cfg = {
+            "application_name": self.config['application_name'],
+            "sub_application_name": self.config['sub_application_name'],
+            "model_name": self.config['model_name'],
+            "model_id": None,
+            "description": self.config['description'],
+            "dataset_path": self.config['dataset_path'],
+            "optimization_metric": self.config['optimization_metric'],
+            'metrics': self.metrics,
+            'params': self.params,
+            'metadata': self.metadata,
+            'tags': self.tags,
+            "model": self.best_model
+        }
+
+        # Feature Importance
+
+        fi =\
+            self.best_model.get_booster().get_score(importance_type='gain')
+        fi_s = dict(
+            sorted(fi.items(), key=lambda x: x[1], reverse=True)[0:20])
+        model_cfg['artifacts'] = {'feature_importance': fi_s}
+
+        if "run_name" in self.config:
+            model_cfg['run_name'] = self.config['run_name']
+
+        # Make plots
+        # TODO: this
+        cm = confusion_matrix(
+            self.y_test,
+            pred_proba >= self.config['prediction_threshold'],
+            labels=model.classes_)
+        conf_matrix = ConfusionMatrixDisplay(
+            confusion_matrix=cm,
+            display_labels=model.classes_)
+        conf_matrix.plot()
+        cm_fig = conf_matrix.figure_
+        model_cfg['figures'] = {'confusion_matrix': cm_fig}
+        model_cfg['params']['confusion_matrix'] = str(cm)
+
+        model_to_save = S1Model(model_cfg)
         if self.config['save_to_backend']:
-            model_cfg = {
-                "application_name": self.config['application_name'],
-                "sub_application_name": self.config['sub_application_name'],
-                "model_name": self.config['model_name'],
-                "model_id": None,
-                "description": self.config['description'],
-                "dataset_path": self.config['dataset_path'],
-                "optimization_metric": self.config['optimization_metric'],
-                'metrics': self.metrics,
-                'params': self.params,
-                'metadata': self.metadata,
-                'tags': self.tags,
-                "model": self.best_model
-            }
-
-            # Feature Importance
-
-            fi =\
-                self.best_model.get_booster().get_score(importance_type='gain')
-            fi_s = dict(
-                sorted(fi.items(), key=lambda x: x[1], reverse=True)[0:20])
-            model_cfg['artifacts'] = {'feature_importance': fi_s}
-
-            if "run_name" in self.config:
-                model_cfg['run_name'] = self.config['run_name']
-
-            # Make plots
-            # TODO: this
-            cm = confusion_matrix(
-                self.y_test,
-                pred_proba >= self.config['prediction_threshold'],
-                labels=model.classes_)
-            conf_matrix = ConfusionMatrixDisplay(
-                confusion_matrix=cm,
-                display_labels=model.classes_)
-            conf_matrix.plot()
-            cm_fig = conf_matrix.figure_
-            model_cfg['figures'] = {'confusion_matrix': cm_fig}
-            model_cfg['params']['confusion_matrix'] = str(cm)
-
-            model_to_save = S1Model(model_cfg)
             model_to_save = self.be.save_s1_model(model_to_save)
 
         logging.info(

@@ -180,7 +180,7 @@ def load_scan(scan_id: str, detection: str = "hallucination"):
 # test_detector_creation()
 # test_generation()
 # test_sdk()
-# test_ds_runner()
+test_ds_runner()
 test_ds_create()
 # test_s1_model()
 
