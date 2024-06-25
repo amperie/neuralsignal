@@ -88,7 +88,7 @@ def featurize_delta_layers(
         # if layer_id_to_name[lyr] in layers_to_featurize:
         if any(x in layer_id_to_name[lyr] for x in layers_to_featurize):
             val = torch.mean(outputs[lyr] - inputs[lyr]).item()
-            name = f"delta_{i}_{layer_id_to_name[lyr]}"
+            name = f"delta__{i}_{layer_id_to_name[lyr]}"
             feature_names.append(name)
             delta_values.append(val)
             i += 1
@@ -115,7 +115,7 @@ def featurize_crossmodel_deltas_by_layer_name(layer_name: str, scan: dict):
         if layer_name in scan['layer_id_to_name'][lyr]:
             # TODO: There's got to be a better way to featurize this
             val = torch.mean(scan['outputs'][lyr]).item()
-            name = f"delta_crossmodel_{i}_{layer_name}"
+            name = f"delta_crossmodel__{i}_{layer_name}"
             feature_names.append(name)
             if last_val is None:
                 values.append(val)
@@ -135,13 +135,13 @@ def featurize_layer_distributions(
             if delta_distributions:
                 val = scan['outputs'][lyr] - scan['inputs'][lyr]
                 feature_names += [
-                    f"bin_delta_{b}_{layer_name}_{i}"
+                    f"bin_delta__{b}_{layer_name}_{i}"
                     for b in range(bin_count)
                     ]
             else:
                 val = scan['outputs'][lyr]
                 feature_names += [
-                    f"bin_outputs_{b}_{layer_name}_{i}"
+                    f"bin_outputs__{b}_{layer_name}_{i}"
                     for b in range(bin_count)
                     ]
 
@@ -182,7 +182,7 @@ def featurize_tensor_dict(
                 layer_name = "layer"
             zone_values.append(val)
             zone_indexes.append(zone_index)
-            zone_names.append(f"{layer_name}_{layer_index}_{zone_count}")
+            zone_names.append(f"zone_{layer_name}_{layer_index}_{zone_count}")
 
             zone_count += 1
         layer_index += 1
