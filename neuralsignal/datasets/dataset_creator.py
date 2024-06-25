@@ -364,11 +364,18 @@ class DatasetCreator:
             for lyr in self.config["featurize_layer_distributions_layers"]:
                 bin_size =\
                     self.config["featurize_layer_distributions_bin_count"]
-                f_dists = featurize_layer_distributions(
-                    lyr, bin_size, scan_data)
-                curr_row = self.add_columns(
-                    f_dists[0], f_dists[1], curr_row
-                )
+                if self.config["featurize_delta_distributions_absolute"]:
+                    f_dists = featurize_layer_distributions(
+                        lyr, bin_size, scan_data, False)
+                    curr_row = self.add_columns(
+                        f_dists[0], f_dists[1], curr_row
+                    )
+                if self.config["featurize_delta_distributions_deltas"]:
+                    f_dists = featurize_layer_distributions(
+                        lyr, bin_size, scan_data, True)
+                    curr_row = self.add_columns(
+                        f_dists[0], f_dists[1], curr_row
+                    )
 
             # Add the zones data
             if self.config["featurize_zones_data"]:
