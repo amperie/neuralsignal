@@ -77,7 +77,7 @@ def featurize_delta_layers(
         layer_id_to_name (dict): Mapping of layer IDs to layer names.
 
     Returns:
-        Tuple: A tuple containing lists of feature names and corresponding 
+        Tuple: A tuple containing lists of feature names and corresponding
         delta values.
     """
     feature_names = []
@@ -183,7 +183,6 @@ def featurize_tensor_dict(
             zone_values.append(val)
             zone_indexes.append(zone_index)
             zone_names.append(f"zone_{layer_name}_{layer_index}_{zone_count}")
-
             zone_count += 1
         layer_index += 1
     return (zone_values, zone_indexes, zone_names)
