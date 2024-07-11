@@ -131,11 +131,14 @@ def test_ds_create():
         "use_full_zone_names": True,
         "use_gt_as_target": True,
         "passthrough_fields": ['zone_size'],
-        "featurize_delta_layers": ["Attention"],
-        "featurize_delta_by_layer_name": ['SelfAttention.o'],
-        "featurize_zones_data": True,
-        "featurize_layer_distributions_layers": ['SelfAttention.o'],
+        "featurize_delta_layers": [],
+        "featurize_delta_by_layer_name": [],
+        "featurize_zones_data": False,
+        "featurize_layer_distributions_layers": [],
         "featurize_layer_distributions_bin_count": 10,
+        "featurize_embedding_vector_layers": ['SelfAttention.o'],
+        "featurize_embedding_vector_range": -1,
+        "featurize_embedding_vector_mode": "delta",
         }
 
     dc = DatasetCreator(cfg)
@@ -180,7 +183,7 @@ def load_scan(scan_id: str, detection: str = "hallucination"):
 # test_detector_creation()
 # test_generation()
 # test_sdk()
-test_ds_runner()
+# test_ds_runner()
 test_ds_create()
 # test_s1_model()
 
