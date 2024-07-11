@@ -152,6 +152,35 @@ def featurize_layer_distributions(
     return (feature_names, values)
 
 
+def featurize_embedding_vector(
+        range: int, lyr_to_instrument: str, scan: dict,
+        mode: str = "outputs"
+        ):
+    """
+    mode = "outputs", "inputs" or "delta" - tells us
+    what to featurize, the output, input or the difference
+    between them
+    """
+    feature_names = []
+    values = []
+    for i, lyr in enumerate(scan['layer_order']):
+        if lyr_to_instrument in scan['layer_id_to_name'][lyr]:
+            layer_name = scan['layer_id_to_name'][lyr]
+            if mode == "delta":
+                vector = (
+                    scan['outputs'][lyr][range] -
+                    scan['inputs'][lyr][range]
+                    ).tolist()
+            else:
+                vector = scan[mode][lyr][range].tolist()
+            for y, val in enumerate(vector):
+                feature_names += [
+                    f"token_vector_{mode}_{range}__{layer_name}_{i}_{y}"]
+                values += [val]
+
+    return (feature_names, values)
+
+
 def featurize_tensor_dict(
         tensor_dict, zone_size, current_zone_size,
         layer_id_to_name: dict = None) -> list:
