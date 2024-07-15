@@ -7,6 +7,7 @@ from neuralsignal.core.modules.tensors import featurize_delta_layers
 from neuralsignal.core.modules.tensors\
     import featurize_crossmodel_deltas_by_layer_name
 from neuralsignal.core.modules.tensors import featurize_layer_distributions
+from neuralsignal.core.modules.tensors import featurize_embedding_vector
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
@@ -389,6 +390,17 @@ class DatasetCreator:
                     curr_row = self.add_columns(
                         t[1], t[0], curr_row
                     )
+
+            # Add attention layer vectors
+            for lyr in self.config["featurize_embedding_vector_layers"]:
+                features = featurize_embedding_vector(
+                    self.config["featurize_embedding_vector_range"],
+                    lyr, scan_data,
+                    mode=self.config["featurize_embedding_vector_mode"]
+                    )
+                curr_row = self.add_columns(
+                    features[0], features[1], curr_row
+                )
 
             # Write to file and/or memory
             row_strings = self.get_column_strings(curr_row)

@@ -45,6 +45,9 @@ featurize_layer_distributions_layers: ['SelfAttention.o', 'SelfAttention.v']
 featurize_layer_distributions_bin_count: 20
 featurize_layer_distributions_deltas: True
 featurize_layer_distributions_absolute: True
+featurize_embedding_vector_layers: ['SelfAttention.o']
+featurize_embedding_vector_range: -1  # Embedding to get from the token list
+featurize_embedding_vector_mode: outputs # Can be 'inputs' or 'outputs' or "delta"
 
 # S1 Model Build
 model_name: diagram_att_test_no_attention
