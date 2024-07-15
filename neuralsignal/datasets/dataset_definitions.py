@@ -267,4 +267,33 @@ def datasets_dictionary(
 
     add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
 
+    # HaluBench
+    def input_processor(row):
+        gt = row["label"]
+        if "FAIL" in gt:
+            gt = 0
+        else:
+            gt = 1
+
+        return {
+                "input": row["question"],
+                "context": row['passage'],
+                "output": row['answer'],
+                "ground_truth": gt,
+                "metadata": {'source_ds': row['source_ds']}
+                }
+
+    cfg = {
+        "dataset_type": "hf",
+        "dataset_name": "HaluBench",
+        "hf_name": "PatronusAI/HaluBench",
+        "split": "test",
+        "input_processor": input_processor,
+        "hf_token": "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",
+        "row_limit": row_limit,
+        "shuffle_dataset": shuffle,
+    }
+
+    add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
+
     return retVal
