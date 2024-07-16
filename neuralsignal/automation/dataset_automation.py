@@ -77,7 +77,8 @@ def create_dataset(cfg: dict):
             file_out = file_out_template.replace("{detector}", d)
             cfg['file_out'] = file_out
             dc = DatasetCreator(cfg)
-            dc.create_dataset({})
+            query = cfg['query']
+            dc.create_dataset(query)
             dataset_paths.append(file_out)
     # Set this back to the original template for later stages
     cfg['file_out'] = file_out_template
