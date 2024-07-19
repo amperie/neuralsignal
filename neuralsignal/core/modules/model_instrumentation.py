@@ -248,6 +248,8 @@ def get_model_type(model) -> str:
         return "t5"
     if "JudgeLM" in model_name:
         return "llama2"
+    if "Llama" in model_name:
+        return "llama2"
     if model_name.startswith("meta-llama"):
         return "llama2"
     if "Mixtral-8x" in model_name:
