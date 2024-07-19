@@ -161,11 +161,11 @@ def generate_from_batch(
     if truncation_length == 0:
         input_ids = tokenizer(
             input_list, return_tensors="pt",
-            padding=True, truncation=False).input_ids
+            padding=False, truncation=False).input_ids
     else:
         input_ids = tokenizer(
             input_list, return_tensors="pt",
-            padding=True, truncation=True,
+            padding=False, truncation=True,
             max_length=truncation_length).input_ids
 
     if torch.cuda.is_available():
