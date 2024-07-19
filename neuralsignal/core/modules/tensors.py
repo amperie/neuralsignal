@@ -19,11 +19,11 @@ def process_zones_avg(tensor_in, reduction_ratio, zone_stride=None)\
     try:
         retVal = F.avg_pool1d(
             tensor_in, kernel_size=reduction_ratio, stride=zone_stride)
-    except RuntimeError as ex:
+    except RuntimeError:
         logging.error(
             f"Could not reduce tensor of shape {tensor_in.shape} "
         )
-        raise ex
+        retVal = tensor_in
     return retVal
 
 
