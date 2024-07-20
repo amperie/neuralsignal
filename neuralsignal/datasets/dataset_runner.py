@@ -68,9 +68,9 @@ class DatasetRunner:
             if index <= self.config["skip_rows"]:
                 index += 1
                 if index == self.config["skip_rows"]:
-                    logging.debug(f"Skipped {self.config['skip_rows']} rows")
+                    logging.info(f"Skipped {self.config['skip_rows']} rows")
                 continue
-            
+
             logging.debug(
                 f"Batching row {index} for "
                 f"batch size {self.batch_size}")
