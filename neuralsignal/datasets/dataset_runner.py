@@ -62,11 +62,6 @@ class DatasetRunner:
         batch = []
         index = 1
 
-        if self.config["skip_rows"] > 0:
-            logging.info(f"Skipping {self.config['skip_rows']} rows")
-            for _ in range(self.config["skip_rows"]):
-                self.dataset.next()
-
         # Batch up the inputs
         for row in self.dataset:
             # Skip rows if needed
@@ -75,6 +70,7 @@ class DatasetRunner:
                 if index == self.config["skip_rows"]:
                     logging.debug(f"Skipped {self.config['skip_rows']} rows")
                 continue
+            
             logging.debug(
                 f"Batching row {index} for "
                 f"batch size {self.batch_size}")
