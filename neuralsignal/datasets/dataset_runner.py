@@ -12,6 +12,7 @@ class DatasetRunner:
     default_config = {
             "dataset": None,
             "row_limit": 0,
+            "skip_rows": 0,
             "batch_size": 1,
             "detectors": [],
             "max_new_tokens": 128,
@@ -60,6 +61,11 @@ class DatasetRunner:
         """
         batch = []
         index = 1
+
+        if self.config["skip_rows"] > 0:
+            logging.info(f"Skipping {self.config['skip_rows']} rows")
+            for _ in range(self.config["skip_rows"]):
+                self.dataset.next()
 
         # Batch up the inputs
         for row in self.dataset:
