@@ -207,6 +207,12 @@ class SDK:
                 f"inst_cfg: {self.default_indirect_instrumentation_cfg}\n\n"
                 )
             logging.error(f"{e}")
+        except RuntimeError as e:
+            logging.error("Suppressing RuntimeError in generate_from_batch")
+            logging.error(
+                f"Parameters:\n prompted_outputs: {prompted_outputs}\n\n"
+                )
+            logging.error(f"{e}")
 
         # Unpack the outputs in the same order and run the detectors on each
         # We need to make two data structures:
