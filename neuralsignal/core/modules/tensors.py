@@ -1,5 +1,9 @@
 import torch
+import logging
 import torch.nn.functional as F
+from neuralsignal.core.modules.neuralsignal_config import sdk_config
+
+logging.basicConfig(level=sdk_config.logging_level())
 
 
 def process_zones_avg(tensor_in, reduction_ratio, zone_stride=None)\
@@ -12,8 +16,15 @@ def process_zones_avg(tensor_in, reduction_ratio, zone_stride=None)\
     reduction_ratio = min(reduction_ratio, tensor_in.shape[-1])
     if zone_stride is None:
         zone_stride = reduction_ratio
-    return F.avg_pool1d(tensor_in,
-                        kernel_size=reduction_ratio, stride=zone_stride)
+    try:
+        retVal = F.avg_pool1d(
+            tensor_in, kernel_size=reduction_ratio, stride=zone_stride)
+    except RuntimeError:
+        logging.error(
+            f"Could not reduce tensor of shape {tensor_in.shape} "
+        )
+        retVal = tensor_in
+    return retVal
 
 
 def process_tensor_dict_into_zones(
