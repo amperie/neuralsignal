@@ -19,7 +19,7 @@ indirect_config:
   # indirect_model: "google/flan-t5-xl"
   indirect_model: "google-bert/bert-base-uncased"
   # indirect_model: "PatronusAI/Llama-3-Patronus-Lynx-8B-Instruct"
-  zone_size: 1024
+  zone_size: 8
   indirect_batch_size: 1
   # no_quantization, int8 or int4
   quantization: "no_quantization"

@@ -56,8 +56,10 @@ class SDK:
 
     def __init_indirect(self):
         logging.info("Initializing NeuralSignal in indirect mode")
+        # TODO: pass through the config directly instead of picking them out
         model_cfg = {
             "model_name": self.cfg["indirect_config"]["indirect_model"],
+            "zone_size": self.cfg["indirect_config"]["zone_size"],
             "device": self.cfg["indirect_config"]["device"],
             "quantization": self.cfg["indirect_config"]["quantization"],
         }
