@@ -200,6 +200,7 @@ class SDK:
             raise OutOfMemoryError(
                 "NeuralSignal out of memory error. "
             )
+            return None
         except TypeError as e:
             logging.error("Suppressing TypeError in generate_from_batch")
             logging.error(
@@ -207,12 +208,14 @@ class SDK:
                 f"inst_cfg: {self.default_indirect_instrumentation_cfg}\n\n"
                 )
             logging.error(f"{e}")
+            return None
         except RuntimeError as e:
             logging.error("Suppressing RuntimeError in generate_from_batch")
             logging.error(
                 f"Parameters:\n prompted_outputs: {prompted_outputs}\n\n"
                 )
             logging.error(f"{e}")
+            return None
 
         # Unpack the outputs in the same order and run the detectors on each
         # We need to make two data structures:
