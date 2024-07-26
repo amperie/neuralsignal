@@ -170,10 +170,16 @@ def generate_from_batch(
 
     if torch.cuda.is_available():
         input_ids = input_ids.to("cuda")
-    output = model.generate(
-        input_ids, pad_token_id=tokenizer.eos_token_id,
-        max_new_tokens=max_new_tokens
-        )
+    try:
+        output = model.generate(
+            input_ids, pad_token_id=tokenizer.eos_token_id,
+            max_new_tokens=max_new_tokens
+            )
+    except Exception as e:
+        if model_instrumented:
+            deinstrument_model(hndls)
+            model_instrumented = False
+        raise e
 
     if model_instrumented:
         hc.finish_and_get_data()
@@ -485,10 +491,6 @@ def instrument_bert(cfg, model, hc: Collector) -> list:
     # Keep a list of these so we can de-instrument the model later
     registered_hooks = []
     if cfg["instrument_encoder"]:
-        add_hook(
-            model.bert.embeddings.position_embeddings, hc, registered_hooks)
-        model.bert.embeddings.position_embeddings.ns_name = "encoder." + \
-            ".position_embeddings"
 
         for i, lyr in enumerate(model.bert.encoder.layer):
             add_hook(
