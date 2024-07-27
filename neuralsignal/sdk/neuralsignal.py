@@ -59,7 +59,6 @@ class SDK:
         # TODO: pass through the config directly instead of picking them out
         model_cfg = {
             "model_name": self.cfg["indirect_config"]["indirect_model"],
-            "zone_size": self.cfg["indirect_config"]["zone_size"],
             "device": self.cfg["indirect_config"]["device"],
             "quantization": self.cfg["indirect_config"]["quantization"],
         }

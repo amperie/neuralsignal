@@ -19,11 +19,22 @@ indirect_config:
   # indirect_model: "google/flan-t5-xl"
   indirect_model: "google-bert/bert-base-uncased"
   # indirect_model: "PatronusAI/Llama-3-Patronus-Lynx-8B-Instruct"
-  zone_size: 8
   indirect_batch_size: 1
   # no_quantization, int8 or int4
   quantization: "no_quantization"
   device: "cpu"
+
+# indirect instrumentation config
+indirect_instrumentation_config:
+  instrument_encoder: True
+  instrument_decoder: True
+  instrument_attention: True
+  instrument_FF: True
+  instrument_embedding: True
+  collector_config:
+    mode: additive
+    data_to_save: ["inputs", "outputs", "layer_info", "topology"]
+    zone_size: 8
 
 # Data collection
 dataset: HaluBench
