@@ -42,6 +42,8 @@ max_new_tokens: 1
 truncation_length: 3000
 data_collection_row_limit: 14900
 batch_size: 1
+preprocess_dataset: True
+preprocess_params: {"source_ds": "DROP", "rows": 100}
 
 # Dataset builder
 write_to_file: True

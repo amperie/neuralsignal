@@ -291,9 +291,9 @@ def datasets_dictionary(
         if "rows" in params:
             rows = params['rows']
         else:
-            rows = retVal['test'].num_rows
+            rows = retVal.num_rows
         retVal = retVal.shuffle()
-        retVal = retVal['test'].select(range(0, rows))
+        retVal = retVal.select(range(0, rows))
         return retVal
 
     cfg = {

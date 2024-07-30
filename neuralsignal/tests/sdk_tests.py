@@ -102,7 +102,7 @@ def test_ds_runner():
         "application_name": "halubench",
         "sub_application_name": "data",
         "max_new_tokens": 1,
-        "row_limit": 40,
+        "row_limit": 0,
         "preprocess_dataset": True,
         "preprocess_params": {
             "source_ds": "DROP",
