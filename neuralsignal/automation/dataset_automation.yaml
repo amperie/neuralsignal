@@ -4,51 +4,69 @@ create_s1_model: True
 
 # Iterable Configs
 detector_names: ['hallucination']
-modeling_row_limits: [300, 1000]
+modeling_row_limits: [10000]
   # quantizations: ['no_quantization', 'int8', 'int4']
 
 # General Configs
-application_name: sdk_automation
-sub_application_name: patent_abstract_categorization
+application_name: sdk_halubench_bert
+sub_application_name: hb
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
   mlflow_uri: "http://z600.lan:8000"
 indirect_config:
-  indirect_model: "t5-small"
-  zone_size: 1024
-  indirect_batch_size: 10
+  # indirect_model: "microsoft/Phi-3-mini-128k-instruct"
+  # indirect_model: "google/flan-t5-xl"
+  indirect_model: "google-bert/bert-base-uncased"
+  # indirect_model: "PatronusAI/Llama-3-Patronus-Lynx-8B-Instruct"
+  indirect_batch_size: 1
   # no_quantization, int8 or int4
-  quantization: "int8"
-  device: "auto"
+  quantization: "no_quantization"
+  device: "cpu"
+
+# indirect instrumentation config
+indirect_instrumentation_config:
+  instrument_encoder: True
+  instrument_decoder: True
+  instrument_attention: True
+  instrument_FF: True
+  instrument_embedding: True
+  collector_config:
+    mode: additive
+    data_to_save: ["inputs", "outputs", "layer_info", "topology"]
+    zone_size: 8
 
 # Data collection
-dataset: patent_abstract_categorization
-max_new_tokens: 10
-truncation_length: 2048
-data_collection_row_limit: 1000
-batch_size: 10
+dataset: HaluBench
+max_new_tokens: 1
+truncation_length: 3000
+data_collection_row_limit: 14900
+batch_size: 1
 
 # Dataset builder
 write_to_file: True
 build_in_memory: False
-file_out: patent_{detector}.csv
-query:
+file_out: HaluBench_lynx_halueval__{detector}.csv
+query: {}
 zone_size: 1024
-use_full_zone_names: False
-dataset_row_limit: 100
-featurize_delta_layers: ["Attention", "act"]
-featurize_delta_by_layer_name: ['SelfAttention.o', 'SelfAttention.v']
+use_full_zone_names: True
+dataset_row_limit: 20000
+featurize_delta_layers: []
+featurize_delta_by_layer_name: []
 featurize_zones_data: True
-featurize_layer_distributions_layers: ['SelfAttention.o, SelfAttention.v']
+featurize_layer_distributions_layers: []
 featurize_layer_distributions_bin_count: 20
-
+featurize_layer_distributions_deltas: False
+featurize_layer_distributions_absolute: False
+featurize_embedding_vector_layers: []
+passthrough_fields: []
 
 # S1 Model Build
-model_name: patent_abstract_categorization
-description: patent_abstract_categorization
+model_name: HaluBench
+description: Zones only
 modeling_row_limit: 0
-max_evals: 20
+max_evals: 50
+seed: 43
 params:
   description: model_desc
 tags:

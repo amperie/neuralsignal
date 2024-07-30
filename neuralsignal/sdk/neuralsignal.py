@@ -56,6 +56,7 @@ class SDK:
 
     def __init_indirect(self):
         logging.info("Initializing NeuralSignal in indirect mode")
+        # TODO: pass through the config directly instead of picking them out
         model_cfg = {
             "model_name": self.cfg["indirect_config"]["indirect_model"],
             "device": self.cfg["indirect_config"]["device"],
@@ -207,6 +208,14 @@ class SDK:
                 f"inst_cfg: {self.default_indirect_instrumentation_cfg}\n\n"
                 )
             logging.error(f"{e}")
+        except RuntimeError as e:
+            logging.error("Suppressing RuntimeError in generate_from_batch")
+            logging.error(
+                f"Parameters:\n prompted_outputs: {prompted_outputs}\n\n"
+                )
+            logging.error(f"{e}")
+            # TODO: Add more specific error handling
+            return []
 
         # Unpack the outputs in the same order and run the detectors on each
         # We need to make two data structures:
