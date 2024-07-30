@@ -55,6 +55,60 @@ def process_tensor_dict_into_zones(
     return retVal
 
 
+def process_tensor_dict_into_zones_by_layer(
+        tensor_dict: dict, zones_by_layer: dict,
+        layer_id_to_name: dict, current_zone_sizes: dict,
+        default_zone_size: int) -> tuple:
+    """
+    Process a dictionary of tensors into zones by layer.
+
+    Args:
+        tensor_dict (dict): A dictionary of tensors, where the keys are layer
+            IDs and the values are tensors.
+        zones_by_layer (dict): A dictionary that maps layer IDs to lists of
+            corresponding zone sizes.
+        layer_id_to_name (dict): A dictionary that maps layer IDs to their
+            corresponding names.
+        current_zone_sizes (dict): A dictionary that maps layer IDs to their
+            current zone sizes. A value of {'default': x} indicates that all
+            layers without an entry have a zone size of x.
+
+    Returns:
+        tuple: A tuple containing two dictionaries:
+            - zone_values (dict): A dictionary that maps layer IDs to their
+                reduced tensors
+            - zone_sizes (dict): A dictionary that maps layer IDs to the
+                zone sizes they were reduced to
+    """
+
+    retVal = {}
+    for lyr in tensor_dict.keys():
+        lyr_name = layer_id_to_name[lyr]
+        zs = get_layer_zone_size(lyr_name, zones_by_layer, default_zone_size)
+        curr_zs = get_current_zone_size(lyr, current_zone_sizes)
+        reduction_ratio = int(zs / curr_zs)
+        retVal[lyr] = process_zones_avg(
+            tensor_dict[lyr], reduction_ratio)
+    return retVal
+
+
+def get_current_zone_size(lyr, current_zone_sizes):
+    if lyr in current_zone_sizes:
+        return current_zone_sizes[lyr]
+    else:
+        return current_zone_sizes['default']
+
+
+def get_layer_zone_size(
+        layer_name: str, zones_by_layer: dict,
+        default_zone_size: int
+        ) -> int:
+    for lyr_match in zones_by_layer.keys():
+        if lyr_match in layer_name:
+            return zones_by_layer[lyr_match]
+    return default_zone_size
+
+
 def process_tensor_dict_to_lists(dict_in: dict) -> dict:
     """Takes a dict of layer -> tensor and converts it to a dict of
     layer -> list"""
