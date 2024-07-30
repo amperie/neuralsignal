@@ -11,6 +11,8 @@ class Collector:
         "data_to_save":
             ["inputs", "outputs", "layer_info", "topology"],
         "zone_size": 512,
+        "zone_size_by_layer": {},
+        # Entries are: "layer string to match": zone size for layer
     }
 
     def __init__(self, config: dict = None) -> None:
