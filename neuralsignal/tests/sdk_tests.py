@@ -97,12 +97,17 @@ def test_ds_runner():
     d = Detector(d)
 
     cfg = {
-        "dataset": "squad_v2_right_wrong_pairs",
+        "dataset": "HaluBench",
         "detectors": [d],
-        "application_name": "sdk_squad_v2",
+        "application_name": "halubench",
         "sub_application_name": "data",
         "max_new_tokens": 1,
         "row_limit": 40,
+        "preprocess_dataset": True,
+        "preprocess_params": {
+            "source_ds": "DROP",
+            "rows": 40
+        },
         "backend_config": {
             "backend_type": "file_backend",
         }
@@ -179,11 +184,15 @@ def load_scan(scan_id: str, detection: str = "hallucination"):
     return scan
 
 
+def test_dataset_load():
+    pass
+
+
 # load_scan("664d809ff39d0f158c7d079d", "hallucination")
 # test_detector_creation()
 # test_generation()
 # test_sdk()
-# test_ds_runner()
+test_ds_runner()
 test_ds_create()
 # test_s1_model()
 

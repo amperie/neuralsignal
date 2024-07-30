@@ -283,12 +283,26 @@ def datasets_dictionary(
                 "metadata": {'source_ds': row['source_ds']}
                 }
 
+    def HaluBench_pre_processor(raw_dataset, params: dict):
+        # Function for preprocessing HaluBench dataset
+        # to only return the specific source_ds and number of rows
+        sds = params['source_ds']
+        retVal = raw_dataset.filter(lambda row: row["source_ds"] == sds)
+        if "rows" in params:
+            rows = params['rows']
+        else:
+            rows = retVal['test'].num_rows
+        retVal = retVal.shuffle()
+        retVal = retVal['test'].select(range(0, rows))
+        return retVal
+
     cfg = {
         "dataset_type": "hf",
         "dataset_name": "HaluBench",
         "hf_name": "PatronusAI/HaluBench",
         "split": "test",
         "input_processor": input_processor,
+        "pre_processor": HaluBench_pre_processor,
         "hf_token": "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",
         "row_limit": row_limit,
         "shuffle_dataset": shuffle,

@@ -16,6 +16,8 @@ class DatasetRunner:
             "batch_size": 1,
             "detectors": [],
             "max_new_tokens": 128,
+            "preprocess_dataset": False,
+            "preprocess_params": {},
         }
 
     def _initialize(self, config: dict):
@@ -31,6 +33,8 @@ class DatasetRunner:
         self.dataset = get_dataset(
             row_limit=config['row_limit'],
             dataset_name=config['dataset'])
+        if config["preprocess_dataset"]:
+            self.dataset.set_preprocessor(config["preprocess_params"])
         self.dataset.load()
         self.detectors = config['detectors']
         for d in self.detectors:

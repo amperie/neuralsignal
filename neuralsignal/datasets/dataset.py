@@ -28,6 +28,7 @@ class NSDataset:
         "row_limit": 0,
         "starting_row": 0,
         "shuffle_dataset": False,
+        "preprocess": False,
     }
 
     def __init__(self, config) -> None:
@@ -99,6 +100,10 @@ class NSDataset:
         f.close()
         self.shuffle_if_needed()
 
+    def set_preprocessor(self, preprocessor_params: dict):
+        self.config['preprocess'] = True
+        self.config['pp_params'] = preprocessor_params
+
     def load_hf_dataset(self):
         if self.config['row_limit'] > 0:
             split = f"{self.config['split']}[0:{self.config['row_limit']}]"
@@ -110,6 +115,10 @@ class NSDataset:
             self.config["dataset_variant"],
             split=split,
             use_auth_token=self.config["hf_token"])
+
+        if self.config["preprocess"]:
+            pp_params = self.config["pp_params"]
+            ds = self.config["pre_processor"](ds, pp_params)
 
         self.rows = []
         i = 1
