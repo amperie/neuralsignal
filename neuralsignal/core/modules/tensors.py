@@ -58,7 +58,9 @@ def process_tensor_dict_into_zones(
 def process_tensor_dict_into_zones_by_layer(
         tensor_dict: dict, zones_by_layer: dict,
         layer_id_to_name: dict, current_zone_sizes: dict,
-        default_zone_size: int) -> tuple:
+        default_zone_size: int, layer_indexes_to_include: list,
+        layer_names_to_include: list
+        ) -> tuple:
     """
     Process a dictionary of tensors into zones by layer.
 
@@ -71,7 +73,10 @@ def process_tensor_dict_into_zones_by_layer(
             corresponding names.
         current_zone_sizes (dict): A dictionary that maps layer IDs to their
             current zone sizes. A value of {'default': x} indicates that all
-            layers without an entry have a zone size of x.
+            layers without an entry have a zone size of x. An int value of x
+            indicates that all layers have a zone size of x.
+        default_zone_size (int): The default zone size layers without an entry
+            will be compressed to
 
     Returns:
         tuple: A tuple containing two dictionaries:
@@ -81,15 +86,49 @@ def process_tensor_dict_into_zones_by_layer(
                 zone sizes they were reduced to
     """
 
-    retVal = {}
-    for lyr in tensor_dict.keys():
+    retTensorDict = {}
+    retLayerSizes = {}
+    for idx, lyr in enumerate(tensor_dict.keys()):
         lyr_name = layer_id_to_name[lyr]
+        # Check if we're including this layer before processing it
+        # Both these params will be none by default which means we
+        # include all layers
+        inc_layer_name = (
+            is_layer_string_match_in_list(
+                lyr_name, layer_names_to_include
+                )
+            if layer_names_to_include is not None else False
+            )
+        inc_index_layer = (
+            idx in layer_indexes_to_include
+            if layer_indexes_to_include is not None else False
+            )
+        inc_all_layers = (
+            layer_indexes_to_include is None and
+            layer_names_to_include is None
+        )
+        # If we're not including this layer, skip it
+        # Skip if neither is included
+        # Also skip if both params are set to None
+        # which means we include all layers
+        if not (inc_layer_name or inc_index_layer) and\
+                not inc_all_layers:
+            continue
+
         zs = get_layer_zone_size(lyr_name, zones_by_layer, default_zone_size)
         curr_zs = get_current_zone_size(lyr, current_zone_sizes)
         reduction_ratio = int(zs / curr_zs)
-        retVal[lyr] = process_zones_avg(
+        retTensorDict[lyr] = process_zones_avg(
             tensor_dict[lyr], reduction_ratio)
-    return retVal
+        retLayerSizes[lyr] = zs
+    return (retTensorDict, retLayerSizes)
+
+
+def is_layer_string_match_in_list(lyr_name: str, layer_list: list) -> bool:
+    for lyr_match in layer_list:
+        if lyr_match in lyr_name:
+            return True
+    return False
 
 
 def get_current_zone_size(lyr, current_zone_sizes):
@@ -103,6 +142,20 @@ def get_layer_zone_size(
         layer_name: str, zones_by_layer: dict,
         default_zone_size: int
         ) -> int:
+    """
+    Returns the zone size for a given layer name.
+    This is the zone size the layer will be compressed to
+
+    Args:
+        layer_name (str): The name of the layer.
+        zones_by_layer (dict): A dictionary mapping layer names to zone sizes.
+        default_zone_size (int): The default zone size to return if no match 
+        is found.
+
+    Returns:
+        int: The zone size for the given layer name. If no match is found, 
+        returns the default zone size.
+    """
     for lyr_match in zones_by_layer.keys():
         if lyr_match in layer_name:
             return zones_by_layer[lyr_match]
