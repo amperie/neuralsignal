@@ -92,15 +92,15 @@ def test_sdk():
 def test_ds_runner():
 
     d = sdk_config.get_detector_config("hallucination")
-    d['application_name'] = "sdk_squad_v2"
-    d['sub_application_name'] = "data"
+    d['application_name'] = "sdk_testing"
+    d['sub_application_name'] = "zones_size_test"
     d = Detector(d)
 
     cfg = {
         "dataset": "HaluBench",
         "detectors": [d],
-        "application_name": "halubench",
-        "sub_application_name": "data",
+        "application_name": "sdk_testing",
+        "sub_application_name": "zones_size_test",
         "max_new_tokens": 1,
         "row_limit": 0,
         "preprocess_dataset": True,
@@ -108,9 +108,19 @@ def test_ds_runner():
             "source_ds": "DROP",
             "rows": 40
         },
-        "backend_config": {
-            "backend_type": "file_backend",
+        "indirect_instrumentation_config": {
+            "collector_config": {
+                "zone_size": 64,
+                "zone_size_by_layer": {
+                    "SelfAttention.o": 1,
+                    "SelfAttention.q": 256
+                },
+                "layer_names_to_include": [
+                    "SelfAttention.o", "SelfAttention.q", "norm"],
+                "layer_indexes_to_include": [2],
+            }
         }
+
     }
     dsr = DatasetRunner(cfg)
     dsr.run()
