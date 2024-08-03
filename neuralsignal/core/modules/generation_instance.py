@@ -68,6 +68,9 @@ class GenerationInstance:
             flat_data["input"] = self.data["input"]
         if "output" in self.data:
             flat_data["output"] = self.data["output"]
+        if "zone_sizes_by_layer" in self.data:
+            flat_data["zone_sizes_by_layer"] =\
+                self.data["zone_sizes_by_layer"]
         if "decoded_output" in self.data:
             flat_data["decoded_output"] = self.data["decoded_output"]
         if "data_run_name" in self.data:

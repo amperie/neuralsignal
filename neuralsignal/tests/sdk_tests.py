@@ -186,8 +186,8 @@ def test_s1_model():
 
 def load_scan(scan_id: str, detection: str = "hallucination"):
     cfg = {
-        "application_name": "sdk_squad_v2",
-        "sub_application_name": "data",
+        "application_name": "sdk_testing",
+        "sub_application_name": "zones_size_test",
     }
     be = NSBackend(cfg)
     scan = be.load_scan(scan_id, detection)
@@ -198,7 +198,7 @@ def test_dataset_load():
     pass
 
 
-# load_scan("664d809ff39d0f158c7d079d", "hallucination")
+load_scan("66ad0140b2d466a1795d91a3", "hallucination")
 # test_detector_creation()
 # test_generation()
 # test_sdk()
