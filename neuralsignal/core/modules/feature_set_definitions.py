@@ -1,6 +1,7 @@
 import logging
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
-from neuralsignal.core.modules.tensors import process_tensor_dict_into_zones
+from neuralsignal.core.modules.tensors\
+    import process_tensor_dict_into_zones_by_layer
 
 logging.basicConfig(level=sdk_config.logging_level())
 
@@ -13,13 +14,14 @@ def process_zone_size_by_layer(
     tzs = cfg['target_zone_size']  # What zone sizes are targeted
     default_tzs = tzs['default']  # Default if a layer isn't listed in tzs
     field_to_process = cfg['field_to_process']  # inputs or outputs?
+    layer_names_to_include = cfg['layer_names_to_include']
+    layer_indexes_to_include = cfg['layer_indexes_to_include']
 
     vals = scan[field_to_process]
 
-    for idx, lyr in enumerate(vals.keys()):
-        curr_zs = czs[lyr]
-        target_zs = tzs[lyr] if lyr in tzs else default_tzs
-        tensor_dict = {lyr, field_to_process[lyr]}
-        out = process_tensor_dict_into_zones(
-            tensor_dict, target_zs, current_zone_size=curr_zs)
-        )
+    retVal = process_tensor_dict_into_zones_by_layer(
+        vals, tzs, scan['layer_id_to_name'], czs, default_tzs,
+        layer_indexes_to_include, layer_names_to_include
+    )
+
+    return retVal

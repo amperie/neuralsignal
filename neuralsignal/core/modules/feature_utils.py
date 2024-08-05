@@ -36,3 +36,34 @@ def get_layer_zone_size(
         if lyr_match in layer_name:
             return zones_by_layer[lyr_match]
     return default_zone_size
+
+
+def include_layer(
+        layer_names_to_include, layer_name,
+        layer_indexes_to_include, curr_idx
+        ) -> bool:
+
+    inc_layer_name = (
+        is_layer_string_match_in_list(
+            layer_name, layer_names_to_include
+            )
+        if layer_names_to_include is not None else False
+        )
+    inc_index_layer = (
+        curr_idx in layer_indexes_to_include
+        if layer_indexes_to_include is not None else False
+        )
+    inc_all_layers = (
+        layer_indexes_to_include is None and
+        layer_names_to_include is None
+    )
+    # If we're not including this layer, skip it
+    # Skip if neither is included
+    # Also skip if both params are set to None
+    # which means we include all layers
+    if not (inc_layer_name or inc_index_layer) and\
+            not inc_all_layers:
+        retVal = False
+    else:
+        retVal = True
+    return retVal
