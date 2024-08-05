@@ -6,6 +6,7 @@ from neuralsignal.core.modules.feature_utils import get_current_zone_size
 from neuralsignal.core.modules.feature_utils\
     import is_layer_string_match_in_list
 from neuralsignal.core.modules.feature_utils import get_layer_zone_size
+from neuralsignal.core.modules.feature_utils import include_layer
 
 logging.basicConfig(level=sdk_config.logging_level())
 
@@ -97,26 +98,9 @@ def process_tensor_dict_into_zones_by_layer(
         # Check if we're including this layer before processing it
         # Both these params will be none by default which means we
         # include all layers
-        inc_layer_name = (
-            is_layer_string_match_in_list(
-                lyr_name, layer_names_to_include
-                )
-            if layer_names_to_include is not None else False
-            )
-        inc_index_layer = (
-            idx in layer_indexes_to_include
-            if layer_indexes_to_include is not None else False
-            )
-        inc_all_layers = (
-            layer_indexes_to_include is None and
-            layer_names_to_include is None
-        )
-        # If we're not including this layer, skip it
-        # Skip if neither is included
-        # Also skip if both params are set to None
-        # which means we include all layers
-        if not (inc_layer_name or inc_index_layer) and\
-                not inc_all_layers:
+        if not include_layer(
+                layer_names_to_include, lyr_name,
+                layer_indexes_to_include, idx):
             continue
 
         zs = get_layer_zone_size(lyr_name, zones_by_layer, default_zone_size)
