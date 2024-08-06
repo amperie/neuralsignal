@@ -32,14 +32,14 @@ class FeatureProcessor:
 
     def __init__(self, config: dict):
         self.config = config
-        self.feature_configs = config["feature_configs"]
+        self.feature_sets = config["feature_configs"]
         self.scan = None
 
     def set_scan(self, scan):
         self.scan = scan
 
     def process_feature_set(self, feature_set_name: str):
-        if feature_set_name not in self.feature_configs:
+        if feature_set_name not in self.feature_sets:
             raise ValueError(
                 f"Feature set {feature_set_name} not found in config"
                 f": {self.feature_configs}"
@@ -52,7 +52,7 @@ class FeatureProcessor:
 
     def process_all_feature_sets(self):
         retVal = {}
-        for feature_set_name in self.feature_configs.keys():
+        for feature_set_name in self.feature_sets.keys():
             retVal[feature_set_name] = self.process_feature_set(
                 feature_set_name
             )
