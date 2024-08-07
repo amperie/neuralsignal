@@ -4,6 +4,8 @@ from neuralsignal.core.modules.neuralsignal_config import sdk_config
 logging.basicConfig(level=sdk_config.logging_level())
 
 
+# TODO: Redo this to use class definition
+
 class FeatureProcessor:
     """Feature processing class to create features
     for training and at inference time. It takes the
@@ -27,7 +29,7 @@ class FeatureProcessor:
             - column_values: list of column values
     """
     default_config = {
-        "feature_configs": {},
+        "feature_sets": {},
     }
 
     def __init__(self, config: dict):
