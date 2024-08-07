@@ -67,3 +67,13 @@ def include_layer(
     else:
         retVal = True
     return retVal
+
+
+def transform_tensor_dict_into_columns(
+        tensor_dict: dict):
+    pass
+
+
+def transform_tensor_dict_into_pandas(
+        tensor_dict: dict):
+    pass
