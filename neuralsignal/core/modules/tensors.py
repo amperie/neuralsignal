@@ -2,10 +2,10 @@ import torch
 import logging
 import torch.nn.functional as F
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
-from neuralsignal.core.modules.feature_sets.feature_utils import get_current_zone_size
 from neuralsignal.core.modules.feature_sets.feature_utils\
-    import is_layer_string_match_in_list
-from neuralsignal.core.modules.feature_sets.feature_utils import get_layer_zone_size
+    import get_current_zone_size
+from neuralsignal.core.modules.feature_sets.feature_utils\
+    import get_layer_zone_size
 from neuralsignal.core.modules.feature_sets.feature_utils import include_layer
 
 logging.basicConfig(level=sdk_config.logging_level())
