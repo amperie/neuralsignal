@@ -1,16 +1,20 @@
-from feature_set_base import FeatureSetBase
+import torch
+from neuralsignal.core.modules.feature_sets.feature_set_base\
+    import FeatureSetBase
 from neuralsignal.core.modules.tensors\
     import process_tensor_dict_into_zones_by_layer
 from neuralsignal.core.modules.feature_sets.feature_utils\
     import transform_tensor_dict_into_columns
-from neuralsignal.core.modules.feature_sets.feature_utils\
-    import transform_tensor_dict_into_pandas
+import pandas as pd
 
 
 class FeatureSetZones(FeatureSetBase):
 
-    def __init__(self, processing_function, config: dict):
-        super().__init__(processing_function, config)
+    def __init__(self, config: dict):
+        super().__init__(config)
+
+    def get_feature_set_name(self) -> str:
+        return "zones"
 
     def process_feature_set(self, scan: dict):
         """
@@ -34,7 +38,7 @@ class FeatureSetZones(FeatureSetBase):
             tuple: Tensor dictionary, Dictionary of zone sizes
 
         """
-
+        self.scan = scan
         czs = scan['zone_sizes_by_layer']  # Current zone sizes by layer
         tzs = self.config['target_zone_size']  # What zone sizes are targeted
         default_tzs = tzs['default']  # Default if a layer isn't listed in tzs
@@ -52,13 +56,45 @@ class FeatureSetZones(FeatureSetBase):
 
         # Return the right format results
         if output_format == "name_and_value_columns":
-            return transform_tensor_dict_into_columns(processed)
+            return self._transform_tensor_dict_into_columns(processed)
         elif output_format == "tensor_dict":
             return processed
         elif output_format == "pandas":
-            return transform_tensor_dict_into_pandas(processed)
+            return self._transform_tensor_dict_into_pandas(processed)
         else:
             raise ValueError(
                 "output_format must be one of 'name_and_value_columns', "
                 "'tensor_dict' or 'pandas'"
                 )
+
+            return transform_tensor_dict_into_columns(processed)
+
+    def _transform_tensor_dict_into_columns(
+            self, processed: tuple
+            ) -> tuple:
+
+        td = processed[0]
+        zs = processed[1]
+        lyrs = self.scan['layer_id_to_name']
+        col_names = []
+        col_vals = []
+
+        for included_idx, key in enumerate(td.keys()):
+            t = td[key]
+            if len(t.shape) > 1:
+                t = torch.mean(t, dim=0)
+            t = t.tolist()
+            for idx, val in enumerate(t):
+                zone_idx = self.scan['layer_order'].index(key)
+                col_name = f"zones__{zs[key]}_{lyrs[key]}_{included_idx}_"\
+                    f"{zone_idx}_{idx}"
+
+                col_names.append(col_name)
+                col_vals.append(val)
+
+        return (col_names, col_vals)
+
+    def _transform_tensor_dict_into_pandas(
+            self, processed: tuple) -> tuple:
+        cols = self._transform_tensor_dict_into_columns(processed)
+        return pd.DataFrame([cols[1]], columns=cols[0])

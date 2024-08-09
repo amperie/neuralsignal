@@ -194,6 +194,26 @@ def load_scan(scan_id: str, detection: str = "hallucination"):
     return scan
 
 
+def test_feature_processor():
+    from neuralsignal.core.modules.feature_sets.feature_set_zones\
+        import FeatureSetZones
+    from neuralsignal.core.modules.feature_sets.feature_processor\
+        import FeatureProcessor
+    scan = load_scan("66ad0140b2d466a1795d91a3", "hallucination")
+    cfg = {
+        "target_zone_size": {"default": 256},
+        "field_to_process": "outputs",
+        "layer_names_to_include": [".o", ".q"],
+        "layer_indexes_to_include": [],
+        "output_format": "pandas",
+    }
+    fsz = FeatureSetZones(cfg)
+    fp = FeatureProcessor([fsz])
+    fp.set_scan(scan)
+    retVal = fp.process_all_feature_sets(output_format="pandas")
+    print(retVal)
+
+
 def test_dataset_load():
     pass
 
@@ -202,6 +222,7 @@ def test_dataset_load():
 # test_detector_creation()
 # test_generation()
 # test_sdk()
+test_feature_processor()
 test_ds_runner()
 test_ds_create()
 # test_s1_model()
