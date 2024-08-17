@@ -92,15 +92,15 @@ def test_sdk():
 def test_ds_runner():
 
     d = sdk_config.get_detector_config("hallucination")
-    d['application_name'] = "sdk_squad_v2"
-    d['sub_application_name'] = "data"
+    d['application_name'] = "sdk_testing"
+    d['sub_application_name'] = "zones_size_test"
     d = Detector(d)
 
     cfg = {
         "dataset": "HaluBench",
         "detectors": [d],
-        "application_name": "halubench",
-        "sub_application_name": "data",
+        "application_name": "sdk_testing",
+        "sub_application_name": "zones_size_test",
         "max_new_tokens": 1,
         "row_limit": 0,
         "preprocess_dataset": True,
@@ -108,9 +108,19 @@ def test_ds_runner():
             "source_ds": "DROP",
             "rows": 40
         },
-        "backend_config": {
-            "backend_type": "file_backend",
+        "indirect_instrumentation_config": {
+            "collector_config": {
+                "zone_size": 64,
+                "zone_size_by_layer": {
+                    "SelfAttention.o": 1,
+                    "SelfAttention.q": 4
+                },
+                "layer_names_to_include": [
+                    "SelfAttention.o", "SelfAttention.q", "norm"],
+                "layer_indexes_to_include": [2],
+            }
         }
+
     }
     dsr = DatasetRunner(cfg)
     dsr.run()
@@ -176,22 +186,82 @@ def test_s1_model():
 
 def load_scan(scan_id: str, detection: str = "hallucination"):
     cfg = {
-        "application_name": "sdk_squad_v2",
-        "sub_application_name": "data",
+        "application_name": "sdk_testing",
+        "sub_application_name": "zones_size_test",
     }
     be = NSBackend(cfg)
     scan = be.load_scan(scan_id, detection)
     return scan
 
 
+def test_feature_processor():
+    from neuralsignal.core.modules.feature_sets.feature_set_zones\
+        import FeatureSetZones
+    from neuralsignal.core.modules.feature_sets.feature_processor\
+        import FeatureProcessor
+    scan = load_scan("66c032dd912d4864ef63c786", "hallucination")
+    cfg = {
+        "target_zone_size": {"default": 256, ".o": 32, ".q": 64},
+        "field_to_process": "outputs",
+        "layer_names_to_include": [".o", ".q"],
+        "layer_indexes_to_include": [],
+        "output_format": "pandas",
+    }
+    fsz = FeatureSetZones(cfg)
+    fp = FeatureProcessor([fsz])
+    fp.set_scan(scan)
+    retVal = fp.process_all_feature_sets()
+    print(retVal)
+
+
+def test_ds_create_feature_processor():
+    from neuralsignal.core.modules.feature_sets.feature_set_zones\
+        import FeatureSetZones
+    from neuralsignal.core.modules.feature_sets.feature_processor\
+        import FeatureProcessor
+    cfg = {
+        "target_zone_size": {"default": 512, ".o": 1024, ".q": 2048},
+        "field_to_process": "outputs",
+        "layer_names_to_include": [".o", ".q", "act"],
+        "layer_indexes_to_include": [],
+        "output_format": "pandas",
+    }
+    fsz = FeatureSetZones(cfg)
+    fp = FeatureProcessor([fsz])
+
+    cfg = {
+        "application_name": "sdk_attention_test",
+        "sub_application_name": "squad_v2_right_wrong_pairs",
+        "row_limit": 20,
+        "write_to_file": True,
+        "build_in_memory": True,
+        "file_out": "J:\\Temp\\test.csv",
+        "detector_name": "hallucination",
+        "query": {},
+        # "query": {'$and': [{'metadata.row': {'$gt': 200}},
+        # "query": {'$and': [{'metadata.row': {'$gt': 200}}, 
+        # {'metadata.type': {'$ne': 'qa_rewrite_wrong'}}]},
+        "zone_size": 1024,
+        "use_full_zone_names": True,
+        "use_gt_as_target": True,
+        "passthrough_fields": ['zone_size'],
+        "feature_processor": fp,
+        }
+
+    dc = DatasetCreator(cfg)
+    retVal = dc.create_dataset(cfg['query'])
+    return retVal
+
+
 def test_dataset_load():
     pass
 
 
-# load_scan("664d809ff39d0f158c7d079d", "hallucination")
+# load_scan("66ad0140b2d466a1795d91a3", "hallucination")
 # test_detector_creation()
 # test_generation()
-# test_sdk()
+test_ds_create_feature_processor()
+test_feature_processor()
 test_ds_runner()
 test_ds_create()
 # test_s1_model()
