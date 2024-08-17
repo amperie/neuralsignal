@@ -6,6 +6,8 @@ from neuralsignal.core.modules.detector import Detector
 from neuralsignal.datasets.dataset_runner import DatasetRunner
 from neuralsignal.datasets.dataset_creator import DatasetCreator
 from neuralsignal.datasets.s1_trainer import S1Trainer
+from neuralsignal.core.modules.feature_sets.feature_processor\
+    import FeatureProcessor
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
@@ -76,6 +78,10 @@ def create_dataset(cfg: dict):
             cfg['detector_name'] = d
             file_out = file_out_template.replace("{detector}", d)
             cfg['file_out'] = file_out
+            fsc = cfg['feature_set_configs']
+            fp = FeatureProcessor(feature_set_configs=fsc)
+            cfg['feature_processor'] = fp
+
             dc = DatasetCreator(cfg)
             query = cfg['query']
             dc.create_dataset(query)
