@@ -103,6 +103,15 @@ class GenerationInstance:
         if "generation_correlation_id" in self.data:
             flat_data["generation_correlation_id"] =\
                 self.data["generation_correlation_id"]
+        if "layer_indexes_to_include" in self.data:
+            flat_data["layer_indexes_to_include"] =\
+                self.data["layer_indexes_to_include"]
+        if "layer_names_to_include" in self.data:
+            flat_data["layer_names_to_include"] =\
+                self.data["layer_names_to_include"]
+        if "zone_size_by_layer" in self.data:
+            flat_data["zone_size_by_layer"] =\
+                self.data["zone_size_by_layer"]
         detections = {}
         for d in self.detections.keys():
             detections[d] = self.detections[d].get_data()
