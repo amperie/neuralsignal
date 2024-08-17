@@ -113,7 +113,7 @@ def test_ds_runner():
                 "zone_size": 64,
                 "zone_size_by_layer": {
                     "SelfAttention.o": 1,
-                    "SelfAttention.q": 256
+                    "SelfAttention.q": 4
                 },
                 "layer_names_to_include": [
                     "SelfAttention.o", "SelfAttention.q", "norm"],
@@ -199,9 +199,9 @@ def test_feature_processor():
         import FeatureSetZones
     from neuralsignal.core.modules.feature_sets.feature_processor\
         import FeatureProcessor
-    scan = load_scan("66ad0140b2d466a1795d91a3", "hallucination")
+    scan = load_scan("66c032dd912d4864ef63c786", "hallucination")
     cfg = {
-        "target_zone_size": {"default": 256},
+        "target_zone_size": {"default": 256, ".o": 32, ".q": 64},
         "field_to_process": "outputs",
         "layer_names_to_include": [".o", ".q"],
         "layer_indexes_to_include": [],
@@ -210,7 +210,7 @@ def test_feature_processor():
     fsz = FeatureSetZones(cfg)
     fp = FeatureProcessor([fsz])
     fp.set_scan(scan)
-    retVal = fp.process_all_feature_sets(output_format="pandas")
+    retVal = fp.process_all_feature_sets()
     print(retVal)
 
 

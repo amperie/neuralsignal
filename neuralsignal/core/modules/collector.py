@@ -143,6 +143,8 @@ class Collector:
                                 layer_indexes_to_include
                             retVal["layer_names_to_include"] =\
                                 layer_names_to_include
+                            retVal['zones_by_layer'] =\
+                                zones_by_layer
                             rv = ret_zbl[0]
                             zbl = ret_zbl[1]
                             zbl['default'] = self.zone_size
@@ -171,6 +173,8 @@ class Collector:
                                 layer_indexes_to_include
                             retVal["layer_names_to_include"] =\
                                 layer_names_to_include
+                            retVal['zones_by_layer'] =\
+                                zones_by_layer
                             rv = ret_zbl[0]
                             zbl = ret_zbl[1]
                             zbl['default'] = self.zone_size
@@ -211,10 +215,15 @@ class Collector:
             retVal['layer_passes'] = self.layer_passes
             retVal['layer_passes_by_name'] = self.layer_passes_by_name
 
-        retVal['layer_indexes_to_include'] =\
-            self.config["layer_indexes_to_include"]
-        retVal['layer_names_to_include'] =\
-            self.config["layer_names_to_include"]
+        if "layer_indexes_to_include" in self.config:
+            retVal['layer_indexes_to_include'] =\
+                self.config["layer_indexes_to_include"]
+        if "layer_names_to_include" in self.config:
+            retVal['layer_names_to_include'] =\
+                self.config["layer_names_to_include"]
+        if "zone_size_by_layer" in self.config:
+            retVal['zone_size_by_layer'] =\
+                self.config["zone_size_by_layer"]
 
         retVal['zone_size'] = self.zone_size
         return retVal
