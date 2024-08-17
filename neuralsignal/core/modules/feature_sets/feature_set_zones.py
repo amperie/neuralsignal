@@ -39,7 +39,10 @@ class FeatureSetZones(FeatureSetBase):
 
         """
         self.scan = scan
-        czs = scan['zone_sizes_by_layer']  # Current zone sizes by layer
+        if "zone_sizes_by_layer" in scan:
+            czs = scan['zone_sizes_by_layer']  # Current zone sizes by layer
+        else:
+            czs = {'default': scan['zone_size']}
         tzs = self.config['target_zone_size']  # What zone sizes are targeted
         default_tzs = tzs['default']  # Default if a layer isn't listed in tzs
         field_to_process = self.config['field_to_process']  # inputs or output?

@@ -37,3 +37,15 @@ class FeatureProcessor:
             retVal[key] = self.process_feature_set(feature_set, output_format)
 
         return retVal
+
+    def featurize(self, output_format="name_and_value_columns"):
+        processed = self.process_all_feature_sets(
+            output_format="name_and_value_columns"
+            )
+
+        cols = []
+        vals = []
+        for fs in processed.keys():
+            cols = cols + processed[fs][0]
+            vals = vals + processed[fs][1]
+        return (cols, vals)
