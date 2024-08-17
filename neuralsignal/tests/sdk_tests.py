@@ -214,6 +214,45 @@ def test_feature_processor():
     print(retVal)
 
 
+def test_ds_create_feature_processor():
+    from neuralsignal.core.modules.feature_sets.feature_set_zones\
+        import FeatureSetZones
+    from neuralsignal.core.modules.feature_sets.feature_processor\
+        import FeatureProcessor
+    cfg = {
+        "target_zone_size": {"default": 512, ".o": 1024, ".q": 2048},
+        "field_to_process": "outputs",
+        "layer_names_to_include": [".o", ".q", "act"],
+        "layer_indexes_to_include": [],
+        "output_format": "pandas",
+    }
+    fsz = FeatureSetZones(cfg)
+    fp = FeatureProcessor([fsz])
+
+    cfg = {
+        "application_name": "sdk_attention_test",
+        "sub_application_name": "squad_v2_right_wrong_pairs",
+        "row_limit": 20,
+        "write_to_file": True,
+        "build_in_memory": True,
+        "file_out": "J:\\Temp\\test.csv",
+        "detector_name": "hallucination",
+        "query": {},
+        # "query": {'$and': [{'metadata.row': {'$gt': 200}},
+        # "query": {'$and': [{'metadata.row': {'$gt': 200}}, 
+        # {'metadata.type': {'$ne': 'qa_rewrite_wrong'}}]},
+        "zone_size": 1024,
+        "use_full_zone_names": True,
+        "use_gt_as_target": True,
+        "passthrough_fields": ['zone_size'],
+        "feature_processor": fp,
+        }
+
+    dc = DatasetCreator(cfg)
+    retVal = dc.create_dataset(cfg['query'])
+    return retVal
+
+
 def test_dataset_load():
     pass
 
@@ -221,7 +260,7 @@ def test_dataset_load():
 # load_scan("66ad0140b2d466a1795d91a3", "hallucination")
 # test_detector_creation()
 # test_generation()
-# test_sdk()
+test_ds_create_feature_processor()
 test_feature_processor()
 test_ds_runner()
 test_ds_create()

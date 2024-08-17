@@ -24,10 +24,11 @@ def process_zones_avg(tensor_in, reduction_ratio, zone_stride=None)\
     try:
         retVal = F.avg_pool1d(
             tensor_in, kernel_size=reduction_ratio, stride=zone_stride)
-    except RuntimeError:
+    except RuntimeError as e:
         # TODO: There should be a better way of checking this
         logging.error(
             f"Could not reduce tensor of shape {tensor_in.shape} "
+            f"by {reduction_ratio} to zone size of {zone_stride}: {e}"
         )
         retVal = tensor_in
     return retVal
@@ -106,6 +107,12 @@ def process_tensor_dict_into_zones_by_layer(
         zs = get_layer_zone_size(lyr_name, zones_by_layer, default_zone_size)
         curr_zs = get_current_zone_size(lyr, current_zone_sizes)
         reduction_ratio = int(zs / curr_zs)
+        if reduction_ratio < 1:
+            raise ValueError(
+                f"Layer {lyr_name} has a zone size of {zs} "
+                f"that is smaller than the current zone size of {curr_zs}. "
+                "Reduction ratio must be greater than 1."
+            )
         retTensorDict[lyr] = process_zones_avg(
             tensor_dict[lyr], reduction_ratio)
         retLayerSizes[lyr] = zs
