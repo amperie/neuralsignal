@@ -227,7 +227,7 @@ class SDK:
         # Make them both simultaneously
         # Build retVal from scratch with only the data that is going
         # back to the user/caller
-        # gis styas the same, just need to add the relevant detections
+        # gis stays the same, just need to add the relevant detections
 
         batch_idx = 0
         retVal = []

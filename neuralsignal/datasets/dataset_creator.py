@@ -8,6 +8,8 @@ from neuralsignal.core.modules.tensors\
     import featurize_crossmodel_deltas_by_layer_name
 from neuralsignal.core.modules.tensors import featurize_layer_distributions
 from neuralsignal.core.modules.tensors import featurize_embedding_vector
+from neuralsignal.core.modules.feature_sets.feature_processor\
+    import FeatureProcessor
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
@@ -65,177 +67,12 @@ class DatasetCreator:
         self.config = {**self.default_config, **config}
         if self.config["file_out"] is None and self.config["write_to_file"]:
             raise ValueError("Missing file_out in config")
+        if "feature_processor" in config:
+            self.feature_processor = config["feature_processor"]
         self.be = NSBackend(config)
 
-    def create_dataset_old(self, query: dict):
-        """
-        Creates an S1 dataset from a query.
-        Returns a tuple:
-        retVal[0] = path to file out if write_to_file is True
-        retVal[1] = pandas dataframe if build_in_memory is True
-        Exception is raised if both these configs are set to False
-        """
-        if not self.config["write_to_file"] and\
-                not self.config["build_in_memory"]:
-            raise ValueError(
-                "Specify either write_to_file or build_in_memory or both")
-        logging.info(
-            f"Building dataset with query: {query} "
-            f"row_limit: {self.config['row_limit']}"
-            )
-
-        if self.config["write_to_file"] and\
-                self.config["overwrite_dataset_file"] and\
-                os.path.isfile(self.config["file_out"]):
-            logging.info(
-                f"Overwriting dataset: {self.config['file_out']}")
-            os.remove(self.config["file_out"])
-
-        # Setup the query with the detection
-        if self.config["detector_name"] != "*":
-            query['detector_name'] =\
-                self.config['detector_name']
-        # Query for the documents to use for the dataset
-        cursor = self.be.iterate_scans(
-            query, row_limit=self.config["row_limit"])
-
-        # Get the doc count of the query
-        doc_count = self.be.get_scan_iterator_count(query)
-        logging.info(
-            f"Processing {min(doc_count, self.config['row_limit'])} "
-            f"of {doc_count} documents from query: {query}")
-
-        # Setup for a couple different ways that the dataset
-        # can be built. To file or in memory or both
-        if self.config["write_to_file"]:
-            f = open(self.config["file_out"], 'a')
-
-        if self.config["build_in_memory"]:
-            data = []
-
-        # Iterate over the scans but build header first
-        # if required
-
-        header = ""
-        header_written = False
-        iteration = 1
-
-        for s in cursor:
-            # Get the scan first so we can process the header if needed
-            scan_data = s.data if "data" in s else s
-
-            # Featurize the tensor
-            t = featurize_tensor_dict(
-                scan_data['outputs'], self.config["zone_size"],
-                scan_data['zone_size'], scan_data['layer_id_to_name']
-            )
-
-            # Featurize the delta layers if needed
-            dlt = featurize_delta_layers(
-                self.config["featurize_delta_layers"],
-                scan_data['inputs'], scan_data['outputs'],
-                scan_data['layer_id_to_name']
-            )
-
-            # TODO: Redo all this shit spaghetti code
-
-            # Write the header if required
-            if not header_written and self.config["write_header"]:
-                logging.info("Processing header")
-                header = "target,"
-
-                # Add the passthrough fields names
-                for pt in self.config["passthrough_fields"]:
-                    header += f"{pt},"
-                # Add the output if needed
-                if self.config['include_output']:
-                    header += "out,"
-
-                # Add the delta layers features
-                if len(self.config["featurize_delta_layers"]) > 0:
-                    for i in range(0, len(dlt[0])):
-                        header += f"{dlt[0][i]},"
-
-                # Add the zones data
-                for i in range(0, len(t[1])):
-                    if self.config["use_full_zone_names"]:
-                        header += f"{t[2][i]},"
-                    else:
-                        header += f"{t[1][i]},"
-                if self.config['write_to_file']:
-                    f.write(f'{header}\n')
-                header_written = True
-
-            # Process the scans
-            if iteration % 100 == 0:
-                logging.info(f"Iteration {iteration} of {doc_count}")
-
-            if self.config["write_to_file"]:
-                row = ""
-
-                if len(self.config["featurize_delta_layers"]) > 0:
-                    for i in range(0, len(dlt[1])):
-                        row += f"{dlt[1][i]},"
-
-                row += ','.join(map(str, t[0])) + "\n"
-
-                # Add passthrough field data
-                pt_fields = ""
-                for pt in self.config["passthrough_fields"]:
-                    # Split the pt field in case it's a nested field
-                    # Like metadata.type
-                    sp = pt.split(".")
-                    if len(sp) == 1:
-                        pt_fields += str(scan_data[pt]).replace(",", "") + ","
-                    else:
-                        pt_fields +=\
-                            str(scan_data[sp[0]][sp[1]]).replace(",", "") + ","
-                if pt_fields != "":
-                    row = pt_fields + row
-
-                if self.config['include_output']:
-                    row =\
-                        str(scan_data['decoded_output']).replace(",", "") +\
-                        ',' + row
-                row = str(int(scan_data['ground_truth'])) + ',' + row
-                f.write(row)
-            if self.config["build_in_memory"]:
-                row = t[0]
-
-                # Add passthrough field data
-                pt_fields = []
-                for pt in self.config["passthrough_fields"]:
-                    # Split the pt field in case it's a nested field
-                    # Like metadata.type
-                    sp = pt.split(".")
-                    if len(sp) == 1:
-                        pt_fields.append(scan_data[pt])
-                    else:
-                        pt_fields.append(scan_data[sp[0]][sp[1]])
-                if len(pt_fields) > 0:
-                    row = pt_fields + row
-
-                if self.config['include_output']:
-                    row = [scan_data['output'].replace(",", "")] + row
-                row = [int(scan_data['ground_truth'])] + row
-                data.append(row)
-            iteration += 1
-
-        # Build return values
-        file_retVal = None
-        memory_retVal = None
-
-        if self.config["write_to_file"]:
-            f.flush()
-            f.close()
-            file_retVal = self.config["file_out"]
-
-        if self.config["build_in_memory"]:
-            memory_retVal =\
-                pd.DataFrame(data, columns=header.split(",")[:-1])
-
-        logging.info("Done processing")
-        return (file_retVal, memory_retVal)
+    def set_feature_processor(self, feature_processor: FeatureProcessor):
+        self.feature_processor = feature_processor
 
     def add_columns(
             self,
@@ -251,7 +88,7 @@ class DatasetCreator:
         values = ",".join(str(elem) for elem in existing_columns[1]) + "\n"
         return (header, values)
 
-    def create_dataset(self, query: dict):
+    def create_dataset_old(self, query: dict):
         """
         Creates an S1 dataset from a query.
         Returns a tuple:
@@ -401,6 +238,131 @@ class DatasetCreator:
                 curr_row = self.add_columns(
                     features[0], features[1], curr_row
                 )
+
+            # Write to file and/or memory
+            row_strings = self.get_column_strings(curr_row)
+
+            # Write the header if required
+            if not header_written and self.config["write_header"]\
+                    and self.config['write_to_file']:
+                logging.info("Processing header")
+                f.write(f'{row_strings[0]}')
+                header_written = True
+
+            # Write the data
+            if self.config['write_to_file']:
+                f.write(f'{row_strings[1]}')
+
+            # Now do the memory writing
+            if self.config['build_in_memory']:
+                in_memory_data.append(curr_row[1])
+                column_names = curr_row[0]
+
+            iteration += 1
+
+        # Build return values
+        file_retVal = None
+        memory_retVal = None
+
+        if self.config["write_to_file"]:
+            f.flush()
+            f.close()
+            file_retVal = self.config["file_out"]
+
+        if self.config["build_in_memory"]:
+            memory_retVal =\
+                pd.DataFrame(in_memory_data, columns=column_names)
+
+        logging.info("Done processing")
+        return (file_retVal, memory_retVal)
+
+    def create_dataset(self, query: dict):
+        """
+        Creates an S1 dataset from a query.
+        Returns a tuple:
+        retVal[0] = path to file out if write_to_file is True
+        retVal[1] = pandas dataframe if build_in_memory is True
+        Exception is raised if both these configs are set to False
+        """
+        if not self.config["write_to_file"] and\
+                not self.config["build_in_memory"]:
+            raise ValueError(
+                "Specify either write_to_file or build_in_memory or both")
+        logging.info(
+            f"Building dataset with query: {query} "
+            f"row_limit: {self.config['row_limit']}"
+            )
+
+        if self.config["write_to_file"] and\
+                self.config["overwrite_dataset_file"] and\
+                os.path.isfile(self.config["file_out"]):
+            logging.info(
+                f"Overwriting dataset: {self.config['file_out']}")
+            os.remove(self.config["file_out"])
+
+        # Setup the query with the detection
+        if self.config["detector_name"] != "*":
+            query['detector_name'] =\
+                self.config['detector_name']
+        # Query for the documents to use for the dataset
+        cursor = self.be.iterate_scans(
+            query, row_limit=self.config["row_limit"])
+
+        # Get the doc count of the query
+        doc_count = self.be.get_scan_iterator_count(query)
+        logging.info(
+            f"Processing {min(doc_count, self.config['row_limit'])} "
+            f"of {doc_count} documents from query: {query}")
+
+        # Setup for a couple different ways that the dataset
+        # can be built. To file or in memory or both
+        if self.config["write_to_file"]:
+            f = open(self.config["file_out"], 'a')
+
+        header_written = False
+        iteration = 1
+        in_memory_data = []
+        fp = self.feature_processor
+
+        for s in cursor:
+
+            if iteration % 100 == 0:
+                logging.info(f"Iteration {iteration} of {doc_count}")
+
+            # Get the scan first so we can process the header if needed
+            scan_data = s.data if "data" in s else s
+            fp.set_scan(scan_data)
+
+            # Build the header and row
+            header = []
+            values = []
+            curr_row = (header, values)
+
+            # Add Target
+            curr_row = self.add_columns(
+                ['target'], [int(scan_data['ground_truth'])], curr_row)
+
+            # Add pass-through fields
+            for pt in self.config["passthrough_fields"]:
+                nested_name = pt.split(".")
+                if len(nested_name) == 1:
+                    pt_val = str(scan_data[pt]).replace(",", "")
+                else:
+                    pt_val =\
+                        str(scan_data[nested_name[0]][nested_name[1]])\
+                        .replace(",", "")
+
+                curr_row = self.add_columns(
+                    [f"{pt}"], [f"{pt_val}"], curr_row
+                )
+
+            # Featurize what we need
+            features = fp.featurize()
+
+            # Add features
+            curr_row = self.add_columns(
+                features[0], features[1], curr_row
+            )
 
             # Write to file and/or memory
             row_strings = self.get_column_strings(curr_row)

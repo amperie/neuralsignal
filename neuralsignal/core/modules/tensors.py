@@ -2,6 +2,11 @@ import torch
 import logging
 import torch.nn.functional as F
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
+from neuralsignal.core.modules.feature_sets.feature_utils\
+    import get_current_zone_size
+from neuralsignal.core.modules.feature_sets.feature_utils\
+    import get_layer_zone_size
+from neuralsignal.core.modules.feature_sets.feature_utils import include_layer
 
 logging.basicConfig(level=sdk_config.logging_level())
 
@@ -19,10 +24,11 @@ def process_zones_avg(tensor_in, reduction_ratio, zone_stride=None)\
     try:
         retVal = F.avg_pool1d(
             tensor_in, kernel_size=reduction_ratio, stride=zone_stride)
-    except RuntimeError:
+    except RuntimeError as e:
         # TODO: There should be a better way of checking this
         logging.error(
             f"Could not reduce tensor of shape {tensor_in.shape} "
+            f"by {reduction_ratio} to zone size of {zone_stride}: {e}"
         )
         retVal = tensor_in
     return retVal
@@ -53,6 +59,64 @@ def process_tensor_dict_into_zones(
         retVal[key] = process_zones_avg(
             tensor_dict[key], reduction_ratio, zone_stride)
     return retVal
+
+
+def process_tensor_dict_into_zones_by_layer(
+        tensor_dict: dict, zones_by_layer: dict,
+        layer_id_to_name: dict, current_zone_sizes: dict,
+        default_zone_size: int, layer_indexes_to_include: list,
+        layer_names_to_include: list
+        ) -> tuple:
+    """
+    Process a dictionary of tensors into zones by layer.
+
+    Args:
+        tensor_dict (dict): A dictionary of tensors, where the keys are layer
+            IDs and the values are tensors.
+        zones_by_layer (dict): A dictionary that maps layer IDs to lists of
+            corresponding zone sizes.
+        layer_id_to_name (dict): A dictionary that maps layer IDs to their
+            corresponding names.
+        current_zone_sizes (dict): A dictionary that maps layer IDs to their
+            current zone sizes. A value of {'default': x} indicates that all
+            layers without an entry have a zone size of x. An int value of x
+            indicates that all layers have a zone size of x.
+        default_zone_size (int): The default zone size layers without an entry
+            will be compressed to
+
+    Returns:
+        tuple: A tuple containing two dictionaries:
+            - zone_values (dict): A dictionary that maps layer IDs to their
+                reduced tensors
+            - zone_sizes (dict): A dictionary that maps layer IDs to the
+                zone sizes they were reduced to
+    """
+
+    retTensorDict = {}
+    retLayerSizes = {}
+    for idx, lyr in enumerate(tensor_dict.keys()):
+        lyr_name = layer_id_to_name[lyr]
+        # Check if we're including this layer before processing it
+        # Both these params will be none by default which means we
+        # include all layers
+        if not include_layer(
+                layer_names_to_include, lyr_name,
+                layer_indexes_to_include, idx):
+            continue
+
+        zs = get_layer_zone_size(lyr_name, zones_by_layer, default_zone_size)
+        curr_zs = get_current_zone_size(lyr, current_zone_sizes)
+        reduction_ratio = int(zs / curr_zs)
+        if reduction_ratio < 1:
+            raise ValueError(
+                f"Layer {lyr_name} has a zone size of {zs} "
+                f"that is smaller than the current zone size of {curr_zs}. "
+                "Reduction ratio must be greater than 1."
+            )
+        retTensorDict[lyr] = process_zones_avg(
+            tensor_dict[lyr], reduction_ratio)
+        retLayerSizes[lyr] = zs
+    return (retTensorDict, retLayerSizes)
 
 
 def process_tensor_dict_to_lists(dict_in: dict) -> dict:
