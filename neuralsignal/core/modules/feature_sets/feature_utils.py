@@ -43,6 +43,9 @@ def include_layer(
         layer_indexes_to_include, curr_idx
         ) -> bool:
 
+    if "all" in layer_names_to_include:
+        return True
+
     inc_layer_name = (
         is_layer_string_match_in_list(
             layer_name, layer_names_to_include
