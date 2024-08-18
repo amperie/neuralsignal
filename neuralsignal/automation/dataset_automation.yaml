@@ -1,4 +1,4 @@
-run_data_collection: True
+run_data_collection: False
 create_dataset: True
 create_s1_model: True
 
@@ -25,6 +25,15 @@ indirect_config:
   quantization: "no_quantization"
   device: "cpu"
 
+# Data collection
+dataset: HaluBench
+max_new_tokens: 1
+truncation_length: 3000
+data_collection_row_limit: 1000
+batch_size: 1
+preprocess_dataset: True
+preprocess_params: {"source_ds": "DROP", "rows": 1000}
+
 # indirect instrumentation config
 indirect_instrumentation_config:
   instrument_encoder: True
@@ -35,27 +44,18 @@ indirect_instrumentation_config:
   collector_config:
     mode: additive
     data_to_save: ["inputs", "outputs", "layer_info", "topology"]
-    zone_size: 128
+    zone_size: 256
     zone_size_by_layer: {
-      SelfAttention.o: 1,
-      SelfAttention.v: 1,
+      SelfAttention.o: 128,
+      SelfAttention.v: 128,
     }
     layer_names_to_include: ['all'] # "all" to include all
-    layer_indexes_to_include: [] # None to include all layers
-
-# Data collection
-dataset: HaluBench
-max_new_tokens: 1
-truncation_length: 3000
-data_collection_row_limit: 100
-batch_size: 1
-preprocess_dataset: True
-preprocess_params: {"source_ds": "DROP", "rows": 100}
+    layer_indexes_to_include: []
 
 # Dataset builder
 write_to_file: True
 build_in_memory: False
-file_out: HaluBench_lynx_halueval__{detector}.csv
+file_out: "{dataset}_{model}_{detector}.csv"
 query: {}
 zone_size: 1024
 use_full_zone_names: True
@@ -64,7 +64,7 @@ passthrough_fields: []
 feature_set_configs: [
   {
     name: "zones",
-    target_zone_size: {"default": 1024, "SelfAttention.o": 1, "SelfAttention.v": 1},
+    target_zone_size: {"default": 1024, "SelfAttention.o": 128, "SelfAttention.v": 128},
     field_to_process: "outputs",
     layer_names_to_include: ["SelfAttention.o", "SelfAttention.v", "act"],
     layer_indexes_to_include: [],
@@ -75,7 +75,7 @@ feature_set_configs: [
 model_name: HaluBench
 description: Zones only
 modeling_row_limit: 0
-max_evals: 50
+max_evals: 5
 seed: 43
 params:
   description: model_desc

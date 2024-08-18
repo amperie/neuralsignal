@@ -8,6 +8,7 @@ from neuralsignal.datasets.dataset_creator import DatasetCreator
 from neuralsignal.datasets.s1_trainer import S1Trainer
 from neuralsignal.core.modules.feature_sets.feature_processor\
     import FeatureProcessor
+from neuralsignal.core.modules.utils import get_name_from_template
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
@@ -76,7 +77,17 @@ def create_dataset(cfg: dict):
         detector = sdk_config.get_detector_config(d)
         if detector['enabled']:
             cfg['detector_name'] = d
-            file_out = file_out_template.replace("{detector}", d)
+            # file_out = file_out_template.replace("{detector}", d)
+
+            file_out = get_name_from_template(
+                file_out_template,
+                {
+                    "dataset": cfg['dataset'],
+                    "detector": d,
+                    "model": cfg['indirect_config']["indirect_model"]
+                }
+                )
+
             cfg['file_out'] = file_out
             fsc = cfg['feature_set_configs']
             fp = FeatureProcessor(feature_set_configs=fsc)
@@ -120,8 +131,17 @@ def create_s1_model(cfg: dict):
                 # Set up modeling parameters
                 cfg['row_limit'] = rl
                 cfg['detector_name'] = d
-                cfg['dataset_path'] =\
-                    file_out_template.replace("{detector}", d)
+
+                file_out = get_name_from_template(
+                    file_out_template,
+                    {
+                        "dataset": cfg['dataset'],
+                        "detector": d,
+                        "model": cfg['indirect_config']["indirect_model"]
+                    }
+                    )
+                cfg['dataset_path'] = file_out
+
                 cfg['model_name'] = cfg['model_name'] + "_" + d
                 d_cfg = sdk_config.get_detector_config(d)
                 cfg['params'] = {
