@@ -23,6 +23,12 @@ class NSBackendImplV1:
         config['col'] = config['sub_application_name']
         self.mng = MongoBackend(config)
         mlflow.set_tracking_uri(config['mlflow_uri'])
+        self.mlflow_uri = config['mlflow_uri']
+        self.mlflow_register_model = config['mlflow_register_model']
+        if self.mlflow_uri == "databricks":
+            self.mlflow_experiment_path = config['mlflow_experiment_path']
+            os.environ['DATABRICKS_HOST'] = config['DATABRICKS_HOST']
+            os.environ['DATABRICKS_TOKEN'] = config['DATABRICKS_TOKEN']
 
     # Interface methods
     def save_scan(self, scan) -> None:
@@ -90,13 +96,20 @@ class NSBackendImplV1:
         """
         experiment_name =\
             f"{self.config['application_name']}"
+
+        if self.mlflow_uri == "databricks":
+            experiment_name =\
+                f"{self.config['mlflow_experiment_path']}/{experiment_name}"
+
         if "run_name" in model.config:
             run_name = model.config["run_name"]
         else:
             run_name =\
                 f"{self.config['sub_application_name']}"
         model.config["mlflow_info"] = save_to_mlflow(
-            model, self.config["mlflow_uri"], experiment_name, run_name)
+            model, self.config["mlflow_uri"], experiment_name, run_name,
+            self.mlflow_register_model)
+
         model.config['model_id'] = model.config['mlflow_info']._model_uri
         model.set_id(model.config['mlflow_info']._model_uri)
         return model
