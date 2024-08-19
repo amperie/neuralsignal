@@ -48,6 +48,20 @@ class FeatureProcessor:
     def add_feature_set(self, feature_set):
         self.feature_sets.append(feature_set)
 
+    def get_feature_set_names(self, as_string=False):
+        retVal = []
+        for fs in self.feature_sets:
+            retVal.append(fs.get_feature_set_name())
+        if as_string:
+            retVal = "_".join(retVal)
+        return retVal
+
+    def get_feature_set_configs(self):
+        retVal = []
+        for fs in self.feature_sets:
+            retVal.append(fs.config)
+        return retVal
+
     def set_scan(self, scan):
         self.scan = scan
 
