@@ -6,12 +6,19 @@ from neuralsignal.core.modules.neuralsignal_config import sdk_config
 logging.basicConfig(level=sdk_config.logging_level())
 
 
-def save_to_mlflow(model, mlflow_uri, experiment_name, run_name=None):
+def save_to_mlflow(
+        model, mlflow_uri, experiment_name, run_name=None,
+        register_model=False
+        ):
     logging.info(f"Saving model to MLflow experiment {experiment_name}")
     if run_name is None:
         run_name = model.model_name
     mlflow.set_tracking_uri(mlflow_uri)
-    mlflow.set_experiment(experiment_name)
+    try:
+        mlflow.set_experiment(experiment_name)
+    except mlflow.exceptions.MlflowException:
+        pass
+
     mlflow_run = mlflow.start_run(
         run_name=run_name,
         description=model['description'],
@@ -24,13 +31,16 @@ def save_to_mlflow(model, mlflow_uri, experiment_name, run_name=None):
         mlflow.log_params(model['params'])
         mlflow.set_tags(model['tags'])
 
-        # Log model
-        registered_model_name = f"{experiment_name}"
-        mlflow_model_info = mlflow.sklearn.log_model(
-            sk_model=model.model,
-            artifact_path="S1",
-            registered_model_name=registered_model_name,
-        )
+        if register_model:
+            # Log model
+            registered_model_name = f"{experiment_name.split('/')[-1]}"
+            mlflow_model_info = mlflow.sklearn.log_model(
+                sk_model=model.model,
+                artifact_path="S1",
+                registered_model_name=registered_model_name,
+            )
+        else:
+            registered_model_info = None
 
         # Log figures
         if "figures" in model.config:

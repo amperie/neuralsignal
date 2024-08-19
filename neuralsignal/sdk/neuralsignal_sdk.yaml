@@ -50,6 +50,7 @@ backend_config:
   db: sdk_testing
   col: col
   mlflow_uri: "http://z600.lan:8000"
+  mlflow_experiment_path: "/Users/pablo@neuralsignal.ai/ns_mlflow/"
 
 # Detectors available
 detectors:

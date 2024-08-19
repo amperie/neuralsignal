@@ -13,7 +13,11 @@ sub_application_name: hb
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
-  mlflow_uri: "http://z600.lan:8000"
+  mlflow_uri: "databricks"
+  mlflow_experiment_path: "/Users/pablo@neuralsignal.ai/ns_mlflow"
+  mlflow_register_model: False
+  DATABRICKS_HOST: "https://adb-3426620886840199.19.azuredatabricks.net/"
+  DATABRICKS_TOKEN: "dapi614c7116b0f6480963e9858ee06907c6-3"
 indirect_config:
   # indirect_model: "microsoft/Phi-3-mini-128k-instruct"
   # indirect_model: "google/flan-t5-xl"
