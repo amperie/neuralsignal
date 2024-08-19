@@ -110,6 +110,8 @@ class NSBackendImplV1:
             model, self.config["mlflow_uri"], experiment_name, run_name,
             self.mlflow_register_model)
 
-        model.config['model_id'] = model.config['mlflow_info']._model_uri
-        model.set_id(model.config['mlflow_info']._model_uri)
+        if self.mlflow_register_model:
+            model.config['model_id'] = model.config['mlflow_info']._model_uri
+            model.set_id(model.config['mlflow_info']._model_uri)
+
         return model
