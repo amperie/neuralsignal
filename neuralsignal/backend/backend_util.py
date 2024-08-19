@@ -40,7 +40,7 @@ def save_to_mlflow(
                 registered_model_name=registered_model_name,
             )
         else:
-            registered_model_info = None
+            mlflow_model_info = None
 
         # Log figures
         if "figures" in model.config:
