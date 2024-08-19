@@ -59,7 +59,7 @@ file_out: "{dataset}_{model}_{detector}.csv"
 query: {}
 zone_size: 1024
 use_full_zone_names: True
-dataset_row_limit: 20000
+dataset_row_limit: 200
 passthrough_fields: []
 feature_set_configs: [
   {

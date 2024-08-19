@@ -142,7 +142,12 @@ def create_s1_model(cfg: dict):
                     )
                 cfg['dataset_path'] = file_out
 
-                cfg['model_name'] = cfg['model_name'] + "_" + d
+                cfg['model_name'] = f"{cfg['dataset']}_ {d}"\
+                    f"_{cfg['feature_processor'].get_feature_set_names(True)}"
+                fscs = cfg['feature_processor'].get_feature_set_configs()
+                cfg['description'] = "Feature Sets: "\
+                    f"{fscs}"
+
                 d_cfg = sdk_config.get_detector_config(d)
                 cfg['params'] = {
                     "zone_size": cfg['zone_size'],
@@ -155,6 +160,11 @@ def create_s1_model(cfg: dict):
                     "s1_model_for_detector": d_cfg['S1_model'],
                     "prompt": d_cfg['prompt'],
                 }
+
+                for fsc in fscs:
+                    name = f"feature_set_{fsc['name']}"
+                    cfg['params'][name] = fsc
+
                 cfg['run_name'] = cfg['model_name']
                 mt = S1Trainer(cfg)
                 m = mt.train_model()
@@ -188,9 +198,12 @@ def run_automation(cfg: dict):
 ##########################################################
 
 try:
-    if platform.system() == "Windows" or platform.system() == "Darwin":
+    if platform.system() == "Windows":
         yaml_config =\
             "neuralsignal/neuralsignal/automation/dataset_automation.yaml"
+    elif platform.system() == "Darwin":
+        yaml_config =\
+            "neuralsignal/automation/dataset_automation.yaml"
     else:
         yaml_config = sys.argv[1]
 except IndexError:
