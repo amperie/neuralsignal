@@ -49,8 +49,11 @@ backend_config:
   mongo_url: mongodb://hp.lan:27017/
   db: sdk_testing
   col: col
-  mlflow_uri: "http://z600.lan:8000"
-  mlflow_experiment_path: "/Users/pablo@neuralsignal.ai/ns_mlflow/"
+  mlflow_uri: "databricks"
+  mlflow_experiment_path: "/Users/pablo@neuralsignal.ai/ns_mlflow"
+  mlflow_register_model: False
+  DATABRICKS_HOST: "https://adb-3426620886840199.19.azuredatabricks.net/"
+  DATABRICKS_TOKEN: "dapi614c7116b0f6480963e9858ee06907c6-3"
 
 # Detectors available
 detectors:
