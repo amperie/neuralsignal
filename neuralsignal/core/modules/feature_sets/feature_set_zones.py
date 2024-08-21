@@ -16,9 +16,6 @@ class FeatureSetZones(FeatureSetBase):
     def get_feature_set_name(self) -> str:
         return "zones"
 
-    def get_config(self) -> dict:
-        return self.config
-
     def process_feature_set(self, scan: dict):
         """
         Process the zone sizes by layer for a given scan and configuration.
