@@ -15,10 +15,10 @@ logging.basicConfig(level=sdk_config.logging_level())
 
 
 def get_config(
-        cfg_file_path: str = "neuralsignal/automation/dataset_automation.yaml"
+        cfg_file_path: str = None
         ) -> dict:
     try:
-        if cfg_file_path != "neuralsignal/automation/dataset_automation.yaml":
+        if cfg_file_path is None:
             if platform.system() == "Windows":
                 yaml_config =\
                     "neuralsignal/neuralsignal/automation/dataset_automation.yaml"
