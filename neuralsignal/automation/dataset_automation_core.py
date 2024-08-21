@@ -222,7 +222,7 @@ def run_experiment(cfg: dict):
     """Runs the experiment"""
     if "cfg_file_path" in cfg:
         cfp = cfg['cfg_file_path']
-        default_cfg = get_config(config_file_path=cfp)
+        default_cfg = get_config(cfg_file_path=cfp)
     else:
         default_cfg = get_config()
 
