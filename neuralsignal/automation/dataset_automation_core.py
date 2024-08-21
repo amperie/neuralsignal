@@ -100,7 +100,12 @@ def create_dataset(cfg: dict):
                 )
 
             cfg['file_out'] = file_out
-            if cfg['feature_set_configs'] is None:
+
+            # Hierarchy of feature set processor setup
+            if "feature_processor" in cfg:
+                fp = cfg['feature_processor']
+            elif "feature_sets" in cfg and\
+                    cfg['feature_sets'] is not None:
                 fp = FeatureProcessor(
                     feature_sets=cfg['feature_sets'])
             else:
