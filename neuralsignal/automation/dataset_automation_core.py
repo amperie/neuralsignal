@@ -18,7 +18,7 @@ def get_config(
         cfg_file_path: str = "neuralsignal/automation/dataset_automation.yaml"
         ) -> dict:
     try:
-        if cfg_file_path is not None:
+        if cfg_file_path != "neuralsignal/automation/dataset_automation.yaml":
             if platform.system() == "Windows":
                 yaml_config =\
                     "neuralsignal/neuralsignal/automation/dataset_automation.yaml"
