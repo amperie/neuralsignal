@@ -188,7 +188,7 @@ def create_s1_model(cfg: dict):
 
                 if "feature_processor" in cfg and\
                         cfg['feature_processor'] is not None:
-                    for fs in cfg['feature_processor']:
+                    for fs in cfg['feature_processor'].feature_sets:
                         name = f"feature_set_{fs.get_feature_set_name()}"
                         cfg['params'][name] = fs.get_config()
 
