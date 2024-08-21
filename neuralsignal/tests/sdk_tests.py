@@ -199,8 +199,6 @@ def test_feature_processor():
     #    import FeatureSetZones
     from neuralsignal.core.modules.feature_sets.feature_processor\
         import FeatureProcessor
-    from neuralsignal.core.modules.feature_sets.feature_set_factory\
-        import make_feature_set
 
     scan = load_scan("66c032dd912d4864ef63c786", "hallucination")
     zones_cfg = {
