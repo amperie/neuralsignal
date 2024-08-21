@@ -220,7 +220,11 @@ def run_automation(cfg: dict):
 
 def run_experiment(cfg: dict):
     """Runs the experiment"""
-    default_cfg = get_config()
+    if "cfg_file_path" in cfg:
+        cfp = cfg['cfg_file_path']
+        default_cfg = get_config(config_file_path=cfp)
+    else:
+        default_cfg = get_config()
 
     config = {**default_cfg, **cfg}
     config['feature_set_configs'] = None
