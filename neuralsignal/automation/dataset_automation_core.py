@@ -14,7 +14,9 @@ from neuralsignal.core.modules.neuralsignal_config import sdk_config
 logging.basicConfig(level=sdk_config.logging_level())
 
 
-def get_config(cfg_file_path: str = None) -> dict:
+def get_config(
+        cfg_file_path: str = "neuralsignal/automation/dataset_automation.yaml"
+        ) -> dict:
     try:
         if cfg_file_path is not None:
             if platform.system() == "Windows":
