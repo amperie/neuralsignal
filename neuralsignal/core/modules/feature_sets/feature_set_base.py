@@ -19,3 +19,6 @@ class FeatureSetBase:
         raise NotImplementedError(
             "get_feature_set_name must be implemented in inherited classes"
             )
+
+    def get_config(self) -> dict:
+        return self.config
