@@ -1,6 +1,6 @@
 run_data_collection: True
-create_dataset: True
-create_s1_model: True
+create_dataset: False
+create_s1_model: False
 
 # Iterable Configs
 detector_names: ['hallucination']
@@ -8,8 +8,8 @@ modeling_row_limits: [10000]
   # quantizations: ['no_quantization', 'int8', 'int4']
 
 # General Configs
-application_name: sdk_automation_test
-sub_application_name: hb
+application_name: sdk_testing
+sub_application_name: zones_size_test
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
@@ -52,6 +52,7 @@ indirect_instrumentation_config:
     zone_size_by_layer: {
       SelfAttention.o: 128,
       SelfAttention.v: 128,
+      .wo: 1,
     }
     layer_names_to_include: ['all'] # "all" to include all
     layer_indexes_to_include: []
