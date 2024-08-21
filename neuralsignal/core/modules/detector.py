@@ -97,8 +97,9 @@ class Detector:
                 self.config["S1_model_instance"] is not None:
             self.model == self.config["S1_model_instance"]
             logging.info(f"Loaded S1 model directly: {self.model}")
-        elif self.config["S1_model"] is None and\
-                self.config["S1_model_path"] is None:
+        elif (self.config["S1_model"] is None and
+                self.config["S1_model_path"] is None) or (
+                self.config['enable_prediction'] is False):
             # No model should be loaded, probably just running data collection
             self.model = None
             self.enable_prediction = False
