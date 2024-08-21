@@ -186,9 +186,11 @@ def create_s1_model(cfg: dict):
                     "prompt": d_cfg['prompt'],
                 }
 
-                for fsc in fscs:
-                    name = f"feature_set_{fsc['name']}"
-                    cfg['params'][name] = fsc
+                if "feature_processor" in cfg and\
+                        cfg['feature_processor'] is not None:
+                    for fs in cfg['feature_processor']:
+                        name = f"feature_set_{fs.get_feature_set_name()}"
+                        cfg['params'][name] = fs.get_config()
 
                 cfg['run_name'] = cfg['model_name']
                 mt = S1Trainer(cfg)
