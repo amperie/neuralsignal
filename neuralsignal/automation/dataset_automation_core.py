@@ -14,16 +14,19 @@ from neuralsignal.core.modules.neuralsignal_config import sdk_config
 logging.basicConfig(level=sdk_config.logging_level())
 
 
-def get_config() -> dict:
+def get_config(cfg_file_path: str = None) -> dict:
     try:
-        if platform.system() == "Windows":
-            yaml_config =\
-                "neuralsignal/neuralsignal/automation/dataset_automation.yaml"
-        elif platform.system() == "Darwin":
-            yaml_config =\
-                "neuralsignal/automation/dataset_automation.yaml"
+        if cfg_file_path is not None:
+            if platform.system() == "Windows":
+                yaml_config =\
+                    "neuralsignal/neuralsignal/automation/dataset_automation.yaml"
+            elif platform.system() == "Darwin":
+                yaml_config =\
+                    "neuralsignal/automation/dataset_automation.yaml"
+            else:
+                yaml_config = sys.argv[1]
         else:
-            yaml_config = sys.argv[1]
+            yaml_config = cfg_file_path
     except IndexError:
         raise ValueError(
             "Usage: python dataset_automation.py <yaml config file>")

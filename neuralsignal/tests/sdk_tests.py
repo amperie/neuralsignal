@@ -8,6 +8,11 @@ from neuralsignal.datasets.dataset_runner import DatasetRunner
 from neuralsignal.datasets.dataset_creator import DatasetCreator
 from neuralsignal.datasets.s1_trainer import S1Trainer
 from neuralsignal.backend.ns_backend import NSBackend
+from neuralsignal.core.modules.feature_sets.feature_set_zones\
+    import FeatureSetZones
+from neuralsignal.core.modules.feature_sets.feature_processor\
+    import FeatureProcessor
+from neuralsignal.automation.dataset_automation_core import run_experiment
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 
@@ -218,10 +223,6 @@ def test_feature_processor():
 
 
 def test_ds_create_feature_processor():
-    from neuralsignal.core.modules.feature_sets.feature_set_zones\
-        import FeatureSetZones
-    from neuralsignal.core.modules.feature_sets.feature_processor\
-        import FeatureProcessor
     cfg = {
         "target_zone_size": {"default": 512, ".o": 1024, ".q": 2048},
         "field_to_process": "outputs",
@@ -256,14 +257,24 @@ def test_ds_create_feature_processor():
     return retVal
 
 
-def test_dataset_load():
-    pass
+def test_run_experiment():
+    cfg = {
+        "target_zone_size": {"default": 512, ".o": 1024, ".q": 2048},
+        "field_to_process": "outputs",
+        "layer_names_to_include": [".o", ".q", "act"],
+        "layer_indexes_to_include": [],
+        "output_format": "pandas",
+    }
+    fsz = FeatureSetZones(cfg)
+    fp = FeatureProcessor([fsz])
+    run_experiment({"feature_processor": fp})
 
 
 # load_scan("66ad0140b2d466a1795d91a3", "hallucination")
 # test_detector_creation()
 # test_generation()
 # test_ds_create_feature_processor()
+test_run_experiment()
 test_feature_processor()
 test_ds_runner()
 test_ds_create()
