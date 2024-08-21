@@ -214,9 +214,7 @@ def run_automation(cfg: dict):
 
 
 def run_experiment(cfg: dict):
-
-    if "feature_sets" not in cfg:
-        raise ValueError("feature_sets must be provided in config")
+    """Runs the experiment"""
     default_cfg = get_config()
 
     config = {**default_cfg, **cfg}
