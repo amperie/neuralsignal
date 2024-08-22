@@ -14,10 +14,16 @@ class FeatureSetLogitLens(FeatureSetBase):
 
         login(hf_token)
 
+        if torch.cuda.is_available():
+            dev_map = "cuda:0"
+        else:
+            dev_map = "cpu"
+
         self.model = AutoModelForSeq2SeqLM.from_pretrained(
                                 model_name,
-                                device_map="auto",
+                                device_map=dev_map,
                                 )
+        self.dev_map = dev_map
         self.unembed = self.model.lm_head
 
     def __init__(self, config: dict):
@@ -62,6 +68,7 @@ class FeatureSetLogitLens(FeatureSetBase):
                 # Layer is in the list to process
                 # Get the logits from it by feeding it into the unembed matrix
                 t = scan['outputs'][lyr]
+                t = t.to(self.dev_map)
                 logits = self.unembed.forward(t)
                 cols.append(f"logits_std_{lyr_name}_{idx}")
                 vals.append(torch.std(logits).item())
