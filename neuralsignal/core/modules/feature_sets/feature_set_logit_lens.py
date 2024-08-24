@@ -1,5 +1,5 @@
 import torch
-from tqdm import tqdm
+import time
 from neuralsignal.core.modules.feature_sets.feature_set_base\
     import FeatureSetBase
 from neuralsignal.core.modules.feature_sets.feature_utils\
@@ -61,9 +61,10 @@ class FeatureSetLogitLens(FeatureSetBase):
         cols = []
         vals = []
         idx = 0
+        elapsed = time.time()
 
         layers_to_process = self.config['layers_to_process']
-        for lyr in tqdm(scan['outputs'].keys()):
+        for lyr in scan['outputs'].keys():
             lyr_name = scan['layer_id_to_name'][lyr]
             if is_layer_string_match_in_list(lyr_name, layers_to_process):
                 # Layer is in the list to process
@@ -76,6 +77,9 @@ class FeatureSetLogitLens(FeatureSetBase):
                 cols.append(f"logits_mean_{lyr_name}_{idx}")
                 vals.append(torch.mean(logits).item())
                 idx += 1
+
+        elapsed = time.time() - elapsed
+        print(f"LogitLens took {elapsed} seconds")
 
         # Return the right format results
         output_format = self.config['output_format']
