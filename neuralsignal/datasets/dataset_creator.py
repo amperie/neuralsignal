@@ -1,6 +1,6 @@
 import logging
 import os
-import tqdm
+from tqdm import tqdm
 import pandas as pd
 from neuralsignal.backend.ns_backend import NSBackend
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
