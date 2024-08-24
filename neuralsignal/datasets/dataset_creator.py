@@ -1,5 +1,6 @@
 import logging
 import os
+import tqdm
 import pandas as pd
 from neuralsignal.backend.ns_backend import NSBackend
 from neuralsignal.core.modules.tensors import featurize_tensor_dict
@@ -324,7 +325,7 @@ class DatasetCreator:
         in_memory_data = []
         fp = self.feature_processor
 
-        for s in cursor:
+        for s in tqdm(cursor):
 
             if iteration % 100 == 0:
                 logging.info(f"Iteration {iteration} of {doc_count}")
