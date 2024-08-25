@@ -289,7 +289,7 @@ def datasets_dictionary(
         sds = params['source_ds']
         retVal = raw_dataset.filter(lambda row: row["source_ds"] == sds)
         if "rows" in params:
-            rows = params['rows']
+            rows = min(retVal.num_rows, params['rows'])
         else:
             rows = retVal.num_rows
         retVal = retVal.shuffle()

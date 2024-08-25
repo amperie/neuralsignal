@@ -2,11 +2,14 @@
 
 from neuralsignal.core.modules.feature_sets.feature_set_zones\
     import FeatureSetZones
+from neuralsignal.core.modules.feature_sets.feature_set_logit_lens\
+    import FeatureSetLogitLens
 from neuralsignal.core.modules.feature_sets.feature_set_base\
     import FeatureSetBase
 
 fs = {
-    "zones": FeatureSetZones
+    "zones": FeatureSetZones,
+    "logit_lens": FeatureSetLogitLens,
 }
 
 
@@ -18,5 +21,5 @@ def make_feature_set(
         return fs[feature_set_name](cfg)
     else:
         raise ValueError(
-            f"Feature set {feature_set_name} does not exist"
+            f"Feature set {feature_set_name} is not registered."
             )
