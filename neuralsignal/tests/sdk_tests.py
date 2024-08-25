@@ -191,8 +191,8 @@ def test_s1_model():
 
 def load_scan(scan_id: str, detection: str = "hallucination"):
     cfg = {
-        "application_name": "sdk_testing",
-        "sub_application_name": "zones_size_test",
+        "application_name": "sdk_testing_zs_1",
+        "sub_application_name": "hb_drop",
     }
     be = NSBackend(cfg)
     scan = be.load_scan(scan_id, detection)
@@ -204,19 +204,29 @@ def test_feature_processor():
     #    import FeatureSetZones
     from neuralsignal.core.modules.feature_sets.feature_processor\
         import FeatureProcessor
+    from neuralsignal.core.modules.feature_sets.feature_set_t_f_diff\
+        import FeatureSetTrueFalseDiff
 
-    scan = load_scan("66c032dd912d4864ef63c786", "hallucination")
-    zones_cfg = {
+    scan = load_scan("66caa52bd6b651131619e073", "hallucination")
+    """zones_cfg = {
         "name": "zones",
         "target_zone_size": {"default": 256, ".o": 512, ".q": 1024},
         "field_to_process": "outputs",
         "layer_names_to_include": [".o", ".q"],
         "layer_indexes_to_include": [],
         "output_format": "pandas",
-    }
+    }"""
     # fsz = make_feature_set("zones", cfg)
     # fsz = FeatureSetZones(cfg)
-    fp = FeatureProcessor(feature_set_configs=[zones_cfg])
+    cfg = {
+        "model_name": "google/flan-t5-large",
+        "hf_token": "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",
+        "layers_to_process": [".wo"],
+    }
+
+    tf = FeatureSetTrueFalseDiff(cfg)
+
+    fp = FeatureProcessor(feature_sets=[tf])
     fp.set_scan(scan)
     retVal = fp.process_all_feature_sets()
     print(retVal)
@@ -274,7 +284,7 @@ def test_run_experiment():
 # test_detector_creation()
 # test_generation()
 # test_ds_create_feature_processor()
-test_run_experiment()
+# test_run_experiment()
 test_feature_processor()
 test_ds_runner()
 test_ds_create()
