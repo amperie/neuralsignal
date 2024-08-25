@@ -1,15 +1,10 @@
-import torch
-import transformers
 from neuralsignal.core.modules.feature_sets.feature_set_base\
     import FeatureSetBase
-from neuralsignal.core.modules.tensors\
-    import process_tensor_dict_into_zones_by_layer
 from neuralsignal.core.modules.feature_sets.feature_utils\
     import is_layer_string_match_in_list
 import pandas as pd
 from transformers import AutoModelForSeq2SeqLM
-from transformers import BitsAndBytesConfig
-from huggingface_hub import notebook_login, login
+from huggingface_hub import login
 
 
 class FeatureSetTrueFalseDiff(FeatureSetBase):
@@ -18,17 +13,9 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
 
         login(hf_token)
 
-        bnb_config = BitsAndBytesConfig(
-            load_in_8bit=True,
-            bnb_8bit_use_double_quant=True,
-            bnb_8bit_quant_type="nf4",
-            bnb_8bit_compute_dtype=torch.bfloat16
-            )
-        
         self.model = AutoModelForSeq2SeqLM.from_pretrained(
                                 model_name,
                                 device_map="cuda:0",
-                                #quantization_config=bnb_config
                                 )
         self.unembed = self.model.lm_head
 
