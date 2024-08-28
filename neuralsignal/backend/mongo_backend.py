@@ -111,14 +111,14 @@ class MongoBackend:
             id = str(scan["_id"])
             scan["original_device"] =\
                 next(iter(scan['outputs'].values())).device
-            scan = move_scan_to_device(scan, "cpu")
+            cached_scan = move_scan_to_device(scan, "cpu")
             if len(self.scan_cache.keys()) < self.scan_cache_size:
                 # Still have room in the cache so insert
-                MongoBackend.scan_cache[id] = scan
+                MongoBackend.scan_cache[id] = cached_scan
             else:
                 # Remove the oldest scan in the cache first
                 (k := next(iter(self.scan_cache)), self.scan_cache.pop(k))
-                MongoBackend.scan_cache[id] = scan
+                MongoBackend.scan_cache[id] = cached_scan
 
     # Interface methods
 
