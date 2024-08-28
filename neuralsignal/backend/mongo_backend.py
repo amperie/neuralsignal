@@ -43,6 +43,11 @@ class MongoBackend:
             self.client = pymongo.MongoClient(self.mongo_url)
             self.db = self.client[self.db]
             self.col = self.db[self.col]
+            if "scan_cache_size" in config:
+                self.scan_cache_size = config["scan_cache_size"]
+                self.scan_cache = {}
+            else:
+                self.scan_cache_size = 0
         except KeyError as e:
             raise ValueError(f"Missing configuration parameter {e}")
         except Exception as e:
@@ -82,6 +87,29 @@ class MongoBackend:
         q[f"detections.{d}"] = {"$ne": None}
         return q
 
+    def check_cache(self, scan: dict):
+        """
+        The whole scan object has to be sent in as an argument
+        Check if the scan is in the cache. If it is, return the cached version
+        Otherwise, return None
+        """
+        id = str(scan["_id"])
+        if id in self.scan_cache:
+            return self.scan_cache[id]
+        else:
+            return None
+
+    def add_to_cache(self, scan: dict):
+        if self.scan_cache_size > 0:
+            id = str(scan["_id"])
+            if len(self.scan_cache.keys()) < self.scan_cache_size:
+                # Still have room in the cache so insert
+                self.scan_cache[id] = scan
+            else:
+                # Remove the oldest scan in the cache first
+                (k := next(iter(self.scan_cache)), self.scan_cache.pop(k))
+                self.scan_cache[id] = scan
+
     # Interface methods
 
     def save_scan(self, scan) -> ObjectId:
@@ -108,7 +136,13 @@ class MongoBackend:
         data = self.col.find_one({"_id": id})
         if data is None:
             return None
-        return self.deserialize_scan(data)
+        cs = self.check_cache(data)
+        if cs is None:
+            scan = self.deserialize_scan(data)
+            self.add_to_cache(scan)
+            return scan
+        else:
+            return cs
 
     def query(self, query: dict) -> list:
         return self.col.find(query)
@@ -123,7 +157,12 @@ class MongoBackend:
         else:
             mng_cursor = self.query(q).limit(row_limit)
         for scan in mng_cursor:
-            scan = self.deserialize_scan(scan)
+            cs = self.check_cache(scan)
+            if cs is None:
+                scan = self.deserialize_scan(scan)
+                self.add_to_cache(scan)
+            else:
+                scan = cs
             yield scan
 
     def get_scan_iterator_count(self, query: dict) -> int:
