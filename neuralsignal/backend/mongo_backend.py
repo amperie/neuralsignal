@@ -33,6 +33,10 @@ class MongoBackend:
         - db: database name
         - collection: collection name
     """
+
+    # Define this as a static variable so it can be shared across instances
+    scan_cache = {}
+
     def __init__(self, config: dict) -> None:
         self.config = config
         try:
@@ -45,7 +49,6 @@ class MongoBackend:
             self.col = self.db[self.col]
             if "scan_cache_size" in config:
                 self.scan_cache_size = config["scan_cache_size"]
-                self.scan_cache = {}
             else:
                 self.scan_cache_size = 0
         except KeyError as e:
@@ -94,8 +97,8 @@ class MongoBackend:
         Otherwise, return None
         """
         id = str(scan["_id"])
-        if id in self.scan_cache:
-            return self.scan_cache[id]
+        if id in MongoBackend.scan_cache:
+            return MongoBackend.scan_cache[id]
         else:
             return None
 
@@ -104,11 +107,11 @@ class MongoBackend:
             id = str(scan["_id"])
             if len(self.scan_cache.keys()) < self.scan_cache_size:
                 # Still have room in the cache so insert
-                self.scan_cache[id] = scan
+                MongoBackend.scan_cache[id] = scan
             else:
                 # Remove the oldest scan in the cache first
                 (k := next(iter(self.scan_cache)), self.scan_cache.pop(k))
-                self.scan_cache[id] = scan
+                MongoBackend.scan_cache[id] = scan
 
     # Interface methods
 
