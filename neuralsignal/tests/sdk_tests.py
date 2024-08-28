@@ -208,6 +208,7 @@ def test_feature_processor():
         import FeatureSetTrueFalseDiff
 
     scan = load_scan("66caa52bd6b651131619e073", "hallucination")
+    scan = load_scan("66caa52bd6b651131619e073", "hallucination")
     """zones_cfg = {
         "name": "zones",
         "target_zone_size": {"default": 256, ".o": 512, ".q": 1024},
