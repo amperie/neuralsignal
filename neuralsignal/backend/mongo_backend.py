@@ -100,7 +100,7 @@ class MongoBackend:
         id = str(scan["_id"])
         if id in MongoBackend.scan_cache:
             retVal = MongoBackend.scan_cache[id]
-            if "original_device" in scan:
+            if "original_device" in retVal:
                 retVal = move_scan_to_device(retVal, scan["original_device"])
             return retVal
         else:
