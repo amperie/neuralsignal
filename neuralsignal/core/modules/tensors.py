@@ -295,3 +295,12 @@ def featurize_tensor_dict(
 
 def tensor_mean(t_in: torch.Tensor, dim=0) -> torch.Tensor:
     return torch.mean(t_in, dim=dim)
+
+
+def move_scan_to_device(scan, device="cpu"):
+    for k, v in scan.items():
+        if isinstance(v, torch.Tensor):
+            scan[k] = v.to(device)
+        if isinstance(v, dict):
+            move_scan_to_device(v, device)
+    return scan
