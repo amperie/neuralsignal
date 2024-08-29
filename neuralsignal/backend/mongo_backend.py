@@ -167,22 +167,8 @@ class MongoBackend:
 
     def add_to_cache(self, scan: dict):
         cache_usage = len(self.scan_cache.keys())
-        hd_cache_usage = len(self.scan_hd_cache)
-
-        # Are we using the cache?
-        if self.scan_cache_size > 0:
-            _id = str(scan["_id"])
-            scan["original_device"] =\
-                next(iter(scan['outputs'].values())).device
-            cached_scan = copy_scan_to_device(scan, "cpu")
-            if cache_usage < self.scan_cache_size:
-                # Still have room in the cache so insert
-                MongoBackend.scan_cache[_id] = cached_scan
-            else:
-                # Remove the oldest scan in the cache first
-                (k := next(iter(self.scan_cache)), self.scan_cache.pop(k))
-                MongoBackend.scan_cache[_id] = cached_scan
-        if cache_usage % 10 == 0:
+        self._route_to_cache(scan)
+        if cache_usage % 2 == 0:
             logging.debug(f"Mongo cache usage: {cache_usage}")
 
     # Interface methods
