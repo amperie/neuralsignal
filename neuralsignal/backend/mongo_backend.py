@@ -142,8 +142,8 @@ class MongoBackend:
         # Starting simple and just filling up memory cache
         # Then filling up hard drive cache. That's it
 
-        cache_usage = len(self.scan_cache.keys())
-        hd_cache_usage = len(self.scan_hd_cache)
+        cache_usage = len(MongoBackend.scan_cache.keys())
+        hd_cache_usage = len(MongoBackend.scan_hd_cache)
 
         if self.scan_cache_size > 0:
             cached_scan = copy_scan_to_device(scan, "cpu")
@@ -166,8 +166,8 @@ class MongoBackend:
                 reduce_hd_cache()
 
     def add_to_cache(self, scan: dict):
-        cache_usage = len(self.scan_cache.keys())
         self._route_to_cache(scan)
+        cache_usage = len(MongoBackend.scan_cache.keys())
         if cache_usage % 2 == 0:
             logging.debug(f"Mongo cache usage: {cache_usage}")
 
