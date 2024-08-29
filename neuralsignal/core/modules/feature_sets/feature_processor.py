@@ -48,6 +48,9 @@ class FeatureProcessor:
     def add_feature_set(self, feature_set):
         self.feature_sets.append(feature_set)
 
+    def set_feature_sets(self, feature_sets: list):
+        self.feature_sets = feature_sets
+
     def get_feature_set_names(self, as_string=False):
         retVal = []
         for fs in self.feature_sets:
