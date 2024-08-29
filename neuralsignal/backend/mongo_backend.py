@@ -11,7 +11,7 @@ from neuralsignal.core.modules.tensors import copy_scan_to_device
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
-
+logging.getLogger("pymongo").setLevel(logging.ERROR)
 
 class CPU_Unpickler(pickle.Unpickler):
     def find_class(self, module, name):
