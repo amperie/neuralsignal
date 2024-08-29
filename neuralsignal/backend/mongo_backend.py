@@ -13,6 +13,7 @@ from neuralsignal.core.modules.neuralsignal_config import sdk_config
 logging.basicConfig(level=sdk_config.logging_level())
 logging.getLogger("pymongo").setLevel(logging.ERROR)
 
+
 class CPU_Unpickler(pickle.Unpickler):
     def find_class(self, module, name):
         if module == 'torch.storage' and name == '_load_from_bytes':
@@ -98,9 +99,10 @@ class MongoBackend:
         Check if the scan is in the cache. If it is, return the cached version
         Otherwise, return None
         """
-        id = str(scan["_id"])
+        _id = str(scan["_id"])
         if id in MongoBackend.scan_cache:
-            retVal = MongoBackend.scan_cache[id]
+            logging.info(f"Mongo cache hit: {_id}")
+            retVal = MongoBackend.scan_cache[_id]
             if "original_device" in retVal:
                 retVal = copy_scan_to_device(retVal, retVal["original_device"])
             return retVal
@@ -121,8 +123,8 @@ class MongoBackend:
                 # Remove the oldest scan in the cache first
                 (k := next(iter(self.scan_cache)), self.scan_cache.pop(k))
                 MongoBackend.scan_cache[_id] = cached_scan
-            if cache_usage % 10 == 0:
-                logging.debug(f"Mongo cache usage: {cache_usage}")
+        if cache_usage % 10 == 0:
+            logging.debug(f"Mongo cache usage: {cache_usage}")
 
     # Interface methods
 
