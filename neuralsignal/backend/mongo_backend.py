@@ -110,12 +110,12 @@ class MongoBackend:
             return None
 
     def add_to_cache(self, scan: dict):
+        cache_usage = len(self.scan_cache.keys())
         if self.scan_cache_size > 0:
             _id = str(scan["_id"])
             scan["original_device"] =\
                 next(iter(scan['outputs'].values())).device
             cached_scan = copy_scan_to_device(scan, "cpu")
-            cache_usage = len(self.scan_cache.keys())
             if cache_usage < self.scan_cache_size:
                 # Still have room in the cache so insert
                 MongoBackend.scan_cache[_id] = cached_scan
