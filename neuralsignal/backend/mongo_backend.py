@@ -8,8 +8,9 @@ import torch
 import copy
 from neuralsignal.core.modules.utils import serialize
 from neuralsignal.core.modules.tensors import copy_scan_to_device
+from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=sdk_config.logging_level())
 
 
 class CPU_Unpickler(pickle.Unpickler):
@@ -112,13 +113,16 @@ class MongoBackend:
             scan["original_device"] =\
                 next(iter(scan['outputs'].values())).device
             cached_scan = copy_scan_to_device(scan, "cpu")
-            if len(self.scan_cache.keys()) < self.scan_cache_size:
+            cache_usage = len(self.scan_cache.keys())
+            if cache_usage < self.scan_cache_size:
                 # Still have room in the cache so insert
                 MongoBackend.scan_cache[_id] = cached_scan
             else:
                 # Remove the oldest scan in the cache first
                 (k := next(iter(self.scan_cache)), self.scan_cache.pop(k))
                 MongoBackend.scan_cache[_id] = cached_scan
+            if cache_usage % 10 == 0:
+                logging.debug(f"Mongo cache usage: {cache_usage}")
 
     # Interface methods
 
