@@ -1,5 +1,6 @@
 import torch
 import logging
+import copy
 import torch.nn.functional as F
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.core.modules.feature_sets.feature_utils\
@@ -304,3 +305,8 @@ def move_scan_to_device(scan, device="cpu"):
         if isinstance(v, dict):
             move_scan_to_device(v, device)
     return scan
+
+
+def copy_scan_to_device(scan, device="cpu"):
+    copied_scan = copy.deepcopy(scan)
+    return move_scan_to_device(copied_scan, device)

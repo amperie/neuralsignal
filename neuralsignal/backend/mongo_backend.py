@@ -7,7 +7,7 @@ import io
 import torch
 import copy
 from neuralsignal.core.modules.utils import serialize
-from neuralsignal.core.modules.tensors import move_scan_to_device
+from neuralsignal.core.modules.tensors import copy_scan_to_device
 
 logging.basicConfig(level=logging.INFO)
 
@@ -101,24 +101,24 @@ class MongoBackend:
         if id in MongoBackend.scan_cache:
             retVal = MongoBackend.scan_cache[id]
             if "original_device" in retVal:
-                retVal = move_scan_to_device(retVal, retVal["original_device"])
+                retVal = copy_scan_to_device(retVal, retVal["original_device"])
             return retVal
         else:
             return None
 
     def add_to_cache(self, scan: dict):
         if self.scan_cache_size > 0:
-            id = str(scan["_id"])
+            _id = str(scan["_id"])
             scan["original_device"] =\
                 next(iter(scan['outputs'].values())).device
-            cached_scan = move_scan_to_device(scan, "cpu")
+            cached_scan = copy_scan_to_device(scan, "cpu")
             if len(self.scan_cache.keys()) < self.scan_cache_size:
                 # Still have room in the cache so insert
-                MongoBackend.scan_cache[id] = cached_scan
+                MongoBackend.scan_cache[_id] = cached_scan
             else:
                 # Remove the oldest scan in the cache first
                 (k := next(iter(self.scan_cache)), self.scan_cache.pop(k))
-                MongoBackend.scan_cache[id] = cached_scan
+                MongoBackend.scan_cache[_id] = cached_scan
 
     # Interface methods
 
