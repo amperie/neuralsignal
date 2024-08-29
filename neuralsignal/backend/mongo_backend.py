@@ -100,8 +100,8 @@ class MongoBackend:
         Otherwise, return None
         """
         _id = str(scan["_id"])
-        if id in MongoBackend.scan_cache:
-            logging.info(f"Mongo cache hit: {_id}")
+        if _id in MongoBackend.scan_cache:
+            logging.debug(f"Mongo cache hit: {_id}")
             retVal = MongoBackend.scan_cache[_id]
             if "original_device" in retVal:
                 retVal = copy_scan_to_device(retVal, retVal["original_device"])
