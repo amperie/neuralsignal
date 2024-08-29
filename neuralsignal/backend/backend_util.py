@@ -73,7 +73,8 @@ def count_files_in_dir(dir_path: str, extension: str) -> int:
 
 def save_scan_to_disk(scan, directory_path):
     os.makedirs(directory_path, exist_ok=True)
-    fp = f"{directory_path}/{str(scan["_id"])}.scan"
+    _id = str(scan["_id"])
+    fp = f"{directory_path}/{_id}.scan"
     with open(fp, 'wb') as handle:
         pickle.dump(scan, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
