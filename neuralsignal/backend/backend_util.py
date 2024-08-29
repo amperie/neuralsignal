@@ -1,6 +1,7 @@
 import logging
 import mlflow
 import os
+import pickle
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
@@ -68,3 +69,31 @@ def count_files_in_dir(dir_path: str, extension: str) -> int:
         if extension in f:
             ct += 1
     return ct
+
+
+def save_scan_to_disk(scan, directory_path):
+    os.makedirs(directory_path, exist_ok=True)
+    fp = f"{directory_path}/{str(scan["_id"])}.scan"
+    with open(fp, 'wb') as handle:
+        pickle.dump(scan, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def load_scan_from_disk(scan_id, directory_path):
+    fp = f"{directory_path}/{str(scan_id)}.scan"
+    with open(fp, 'rb') as handle:
+        retVal = pickle.load(handle)
+    return retVal
+
+
+def reduce_hd_cache(size: int, directory_path):
+    curr_size = count_files_in_dir(directory_path, ".scan")
+    while curr_size > size:
+        delete_oldest_file(directory_path)
+
+
+def delete_oldest_file(directory_path, extension="scan"):
+    list_of_all_files = os.listdir(directory_path)
+    list_of_files = [x for x in list_of_all_files if f".{extension}" in x]
+    full_path = [f"{directory_path}/{x}" for x in list_of_files]
+    oldest_file = min(full_path, key=os.path.getctime)
+    os.remove(oldest_file)

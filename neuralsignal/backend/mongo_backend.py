@@ -8,6 +8,9 @@ import torch
 import copy
 from neuralsignal.core.modules.utils import serialize
 from neuralsignal.core.modules.tensors import copy_scan_to_device
+from neuralsignal.backend.backend_util import reduce_hd_cache
+from neuralsignal.backend.backend_util import save_scan_to_disk
+from neuralsignal.backend.backend_util import load_scan_from_disk
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
@@ -39,6 +42,7 @@ class MongoBackend:
 
     # Define this as a static variable so it can be shared across instances
     scan_cache = {}
+    scan_hd_cache = []
 
     def __init__(self, config: dict) -> None:
         self.config = config
@@ -52,8 +56,11 @@ class MongoBackend:
             self.col = self.db[self.col]
             if "scan_cache_size" in config:
                 self.scan_cache_size = config["scan_cache_size"]
+                self.scan_hd_cache_size = config["scan_hd_cache_size"]
+                self.scan_cache_directory = config["scan_cache_directory"]
             else:
                 self.scan_cache_size = 0
+                self.scan_hd_cache_size = 0
         except KeyError as e:
             raise ValueError(f"Missing configuration parameter {e}")
         except Exception as e:
@@ -101,16 +108,68 @@ class MongoBackend:
         """
         _id = str(scan["_id"])
         if _id in MongoBackend.scan_cache:
-            logging.debug(f"Mongo cache hit: {_id}")
+            # Check the memory cache first
+            logging.debug(f"Mongo memory cache hit: {_id}")
             retVal = MongoBackend.scan_cache[_id]
+            if "original_device" in retVal:
+                retVal = copy_scan_to_device(retVal, retVal["original_device"])
+            return retVal
+        elif _id in MongoBackend.scan_hd_cache:
+            # Check the hard drive cache
+            logging.debug(f"Mongo hard drive cache hit: {_id}")
+            retVal = load_scan_from_disk(_id, self.scan_cache_directory)
             if "original_device" in retVal:
                 retVal = copy_scan_to_device(retVal, retVal["original_device"])
             return retVal
         else:
             return None
 
+    def _insert_to_memory_cache(self, scan: dict):
+        _id = str(scan["_id"])
+        scan["original_device"] =\
+            next(iter(scan['outputs'].values())).device
+        MongoBackend.scan_cache[_id] = scan
+
+    def _insert_to_hd_cache(self, scan: dict):
+        _id = str(scan["_id"])
+        scan["original_device"] =\
+            next(iter(scan['outputs'].values())).device
+        save_scan_to_disk(scan, self.scan_cache_directory)
+        MongoBackend.scan_hd_cache.append(_id)
+
+    def _route_to_cache(self, scan: dict):
+        # Logic that decides what cache to write scan to
+        # Starting simple and just filling up memory cache
+        # Then filling up hard drive cache. That's it
+
+        cache_usage = len(self.scan_cache.keys())
+        hd_cache_usage = len(self.scan_hd_cache)
+
+        if self.scan_cache_size > 0:
+            cached_scan = copy_scan_to_device(scan, "cpu")
+            # We are using cache
+            if cache_usage < self.scan_cache_size:
+                # Memory cache
+                self._insert_to_memory_cache(cached_scan)
+            elif hd_cache_usage < self.scan_hd_cache_size:
+                # Hard drive cache
+                self._insert_to_hd_cache(cached_scan)
+            else:
+                # Both caches are full
+                # Insert to memory cache
+                # Move the oldest scan to the hard drive cache
+                # Then reduce the disk cache
+                self._insert_to_memory_cache(cached_scan)
+                oldest = next(iter(MongoBackend.scan_cache.keys()))
+                oldest_scan = MongoBackend.scan_cache.pop(oldest)
+                self._insert_to_hd_cache(oldest_scan)
+                reduce_hd_cache()
+
     def add_to_cache(self, scan: dict):
         cache_usage = len(self.scan_cache.keys())
+        hd_cache_usage = len(self.scan_hd_cache)
+
+        # Are we using the cache?
         if self.scan_cache_size > 0:
             _id = str(scan["_id"])
             scan["original_device"] =\

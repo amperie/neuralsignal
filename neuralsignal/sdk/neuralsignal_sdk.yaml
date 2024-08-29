@@ -49,7 +49,9 @@ backend_config:
   mongo_url: mongodb://hp.lan:27017/
   db: sdk_testing
   col: col
-  scan_cache_size: 100
+  scan_cache_directory: ./cache
+  scan_cache_size: 2
+  scan_hd_cache_size: 3
   mlflow_uri: "databricks"
   mlflow_experiment_path: "/Users/pablo@neuralsignal.ai/ns_mlflow"
   mlflow_register_model: False
