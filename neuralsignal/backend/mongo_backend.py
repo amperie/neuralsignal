@@ -125,7 +125,7 @@ class MongoBackend:
             if "original_device" in retVal:
                 retVal = copy_scan_to_device(retVal, retVal["original_device"])
             logging.debug(
-                f"Getting scan - HD cache: {retVal['_id']} to target device"
+                f"Getting scan - HD cache: {retVal['_id']} to target device "
                 f"{next(iter(retVal['outputs'].values())).device}"
                 )
             return retVal
