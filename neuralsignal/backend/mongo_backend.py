@@ -180,9 +180,15 @@ class MongoBackend:
         scan["original_device"] =\
             next(iter(scan['outputs'].values())).device
         self._route_to_cache(scan)
-        cache_usage = len(MongoBackend.scan_cache.keys())
+        memory_usage = len(MongoBackend.scan_cache.keys())
+        hd_usage = len(MongoBackend.scan_hd_cache)
+        cache_usage = memory_usage + hd_usage
+
         if cache_usage % 10 == 0:
-            logging.debug(f"Mongo cache usage: {cache_usage}")
+            logging.debug(
+                f"Mongo cache. Memory: {cache_usage}/{self.scan_cache_size}\n"
+                f"HD: {hd_usage}/{self.scan_hd_cache_size}\n"
+                )
 
     # Interface methods
 
