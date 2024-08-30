@@ -113,6 +113,10 @@ class MongoBackend:
             retVal = MongoBackend.scan_cache[_id]
             if "original_device" in retVal:
                 retVal = copy_scan_to_device(retVal, retVal["original_device"])
+            logging.debug(
+                f"Getting scan from cache: {retVal['_id']} "
+                f"from device {next(iter(retVal['outputs'].values())).device}"
+                )
             return retVal
         elif _id in MongoBackend.scan_hd_cache:
             # Check the hard drive cache
@@ -120,6 +124,10 @@ class MongoBackend:
             retVal = load_scan_from_disk(_id, self.scan_cache_directory)
             if "original_device" in retVal:
                 retVal = copy_scan_to_device(retVal, retVal["original_device"])
+            logging.debug(
+                f"Getting scan from cache: {retVal['_id']} "
+                f"from device {next(iter(retVal['outputs'].values())).device}"
+                )
             return retVal
         else:
             return None
@@ -167,9 +175,14 @@ class MongoBackend:
                     self, self.scan_hd_cache_size, self.scan_cache_directory)
 
     def add_to_cache(self, scan: dict):
+        logging.debug(
+            f"Adding scan to cache: {scan['_id']} "
+            f"from device {next(iter(scan['outputs'].values())).device}"
+            )
+
         self._route_to_cache(scan)
         cache_usage = len(MongoBackend.scan_cache.keys())
-        if cache_usage % 2 == 0:
+        if cache_usage % 10 == 0:
             logging.debug(f"Mongo cache usage: {cache_usage}")
 
     # Interface methods
