@@ -96,6 +96,17 @@ def reduce_hd_cache(mng, size: int, directory_path):
         curr_size = count_files_in_dir(directory_path, ".scan")
 
 
+def get_list_of_files(
+        directory_path, extension="scan", stem_only=True):
+    list_of_all_files = os.listdir(directory_path)
+    if not stem_only:
+        list_of_files = [x for x in list_of_all_files if f".{extension}" in x]
+    else:
+        list_of_files =\
+            [Path(x).stem for x in list_of_all_files if f".{extension}" in x]
+    return list_of_files
+
+
 def delete_oldest_file(directory_path, extension="scan"):
     list_of_all_files = os.listdir(directory_path)
     list_of_files = [x for x in list_of_all_files if f".{extension}" in x]

@@ -11,6 +11,7 @@ from neuralsignal.core.modules.tensors import copy_scan_to_device
 from neuralsignal.backend.backend_util import reduce_hd_cache
 from neuralsignal.backend.backend_util import save_scan_to_disk
 from neuralsignal.backend.backend_util import load_scan_from_disk
+from neuralsignal.backend.backend_util import get_list_of_files
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
@@ -58,6 +59,7 @@ class MongoBackend:
                 self.scan_cache_size = config["scan_cache_size"]
                 self.scan_hd_cache_size = config["scan_hd_cache_size"]
                 self.scan_cache_directory = config["scan_cache_directory"]
+                self._initialize_hd_cache()
             else:
                 self.scan_cache_size = 0
                 self.scan_hd_cache_size = 0
@@ -99,6 +101,10 @@ class MongoBackend:
         q.pop('detector_name')
         q[f"detections.{d}"] = {"$ne": None}
         return q
+
+    def _initialize_hd_cache(self):
+        p = self.scan_cache_directory
+        MongoBackend.scan_hd_cache = get_list_of_files(p, "scan", True)
 
     def check_cache(self, scan: dict):
         """
