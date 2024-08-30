@@ -105,6 +105,10 @@ class MongoBackend:
     def _initialize_hd_cache(self):
         p = self.scan_cache_directory
         MongoBackend.scan_hd_cache = get_list_of_files(p, "scan", True)
+        logging.debug(
+            f"Initialized HD cache with {len(MongoBackend.scan_hd_cache)} "
+            f"scans from {p}"
+        )
 
     def check_cache(self, scan: dict):
         """
