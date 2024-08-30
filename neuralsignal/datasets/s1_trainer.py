@@ -12,6 +12,7 @@ import time
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.backend.ns_backend import NSBackend
 from neuralsignal.core.modules.s1_model import S1Model
+from neuralsignal.core.modules.utils import dict_to_str
 
 logging.basicConfig(level=sdk_config.logging_level())
 
@@ -76,6 +77,9 @@ class S1Trainer:
 
         if "hyperopt_space" in config:
             self.configure_hyperopt_space(config)
+        logging.debug(
+            f"Hyperopt space: {dict_to_str(self.config['hyperopt_space'])}"
+            )
         self.data_loaded = False
         self.metrics = self.config["metrics"]
         self.params = self.config["params"]

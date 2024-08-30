@@ -38,3 +38,10 @@ def get_name_from_template(
     if file_safe:
         retVal = string_to_filename(retVal)
     return retVal
+
+
+def dict_to_str(d):
+    retVal = ""
+    for k in d:
+        retVal += f"'{k}': {str(d[k])}\n"
+    return retVal
