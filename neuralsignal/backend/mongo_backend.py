@@ -170,8 +170,14 @@ class MongoBackend:
                 # Move the oldest scan to the hard drive cache
                 # Then reduce the disk cache
                 self._insert_to_memory_cache(cached_scan)
+                tmp_size = len(MongoBackend.scan_cache.keys())
                 oldest = next(iter(MongoBackend.scan_cache.keys()))
                 oldest_scan = MongoBackend.scan_cache.pop(oldest)
+                logging.debug(
+                    f"Removing from memory cache: {oldest} "
+                    f"from size {tmp_size} to "
+                    f"{len(MongoBackend.scan_cache.keys())}"
+                    )
                 self._insert_to_hd_cache(oldest_scan)
                 reduce_hd_cache(
                     self, self.scan_hd_cache_size, self.scan_cache_directory)
