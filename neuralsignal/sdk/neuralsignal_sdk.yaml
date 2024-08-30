@@ -1,6 +1,6 @@
 # NeuralSignal SDK configuration
 home: ./sdk_home
-logging_level: INFO
+logging_level: DEBUG
 # Evaluation mode can be indirect or direct
 evaluation_mode: indirect
 application_name: default # Needs to be defined when initializing
@@ -52,6 +52,7 @@ backend_config:
   scan_cache_directory: /tmp/cache
   scan_cache_size: 100
   scan_hd_cache_size: 1000
+  scan_cache_directory: /tmp/cache
   mlflow_uri: "databricks"
   mlflow_experiment_path: "/Users/pablo@neuralsignal.ai/ns_mlflow"
   mlflow_register_model: False
