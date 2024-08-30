@@ -114,8 +114,8 @@ class MongoBackend:
             if "original_device" in retVal:
                 retVal = copy_scan_to_device(retVal, retVal["original_device"])
             logging.debug(
-                f"Getting scan from cache: {retVal['_id']} "
-                f"from device {next(iter(retVal['outputs'].values())).device}"
+                f"Getting scan - RAM cache: {retVal['_id']} to target device "
+                f"{next(iter(retVal['outputs'].values())).device}"
                 )
             return retVal
         elif _id in MongoBackend.scan_hd_cache:
@@ -125,8 +125,8 @@ class MongoBackend:
             if "original_device" in retVal:
                 retVal = copy_scan_to_device(retVal, retVal["original_device"])
             logging.debug(
-                f"Getting scan from cache: {retVal['_id']} "
-                f"from device {next(iter(retVal['outputs'].values())).device}"
+                f"Getting scan - HD cache: {retVal['_id']} to target device"
+                f"{next(iter(retVal['outputs'].values())).device}"
                 )
             return retVal
         else:
@@ -154,7 +154,7 @@ class MongoBackend:
             logging.debug(
                 f"Adding scan to cache: {cached_scan['_id']} "
                 "from device "
-                f"{next(iter(cached_scan['outputs'].values())).device}"
+                f"{next(iter(scan['outputs'].values())).device}"
                 )
             # We are using cache
             if cache_usage < self.scan_cache_size:
