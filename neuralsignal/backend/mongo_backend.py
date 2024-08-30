@@ -152,17 +152,22 @@ class MongoBackend:
 
         if self.scan_cache_size > 0:
             cached_scan = copy_scan_to_device(scan, "cpu")
-            logging.debug(
-                f"Adding scan to cache: {cached_scan['_id']} "
-                "from device "
-                f"{next(iter(scan['outputs'].values())).device}"
-                )
             # We are using cache
             if cache_usage < self.scan_cache_size:
                 # Memory cache
+                logging.debug(
+                    f"Adding scan to memory cache: {cached_scan['_id']} "
+                    "from device "
+                    f"{next(iter(scan['outputs'].values())).device}"
+                    )
                 self._insert_to_memory_cache(cached_scan)
             elif hd_cache_usage < self.scan_hd_cache_size:
                 # Hard drive cache
+                logging.debug(
+                    f"Adding scan to hd cache: {cached_scan['_id']} "
+                    "from device "
+                    f"{next(iter(scan['outputs'].values())).device}"
+                    )
                 self._insert_to_hd_cache(cached_scan)
             else:
                 # Both caches are full
@@ -192,8 +197,8 @@ class MongoBackend:
 
         if cache_usage % 10 == 0:
             logging.debug(
-                f"Mongo cache. Memory: {cache_usage}/{self.scan_cache_size}\n"
-                f"HD: {hd_usage}/{self.scan_hd_cache_size}\n"
+                f"Mongo cache. Memory: {memory_usage}/{self.scan_cache_size}\n"
+                f"HD: {hd_usage}/{self.scan_hd_cache_size}"
                 )
 
     # Interface methods
