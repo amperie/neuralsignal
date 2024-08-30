@@ -51,6 +51,15 @@ class S1Trainer:
         "metadata": {},
     }
 
+    def configure_hyperopt_space(self, config):
+        # Hyperopt config from yaml should be:
+        # {"param_name": [min_val, max_val]}
+        hos = config['hyperopt_space']
+        hoc = {}
+        for k, v in hos.items():
+            hoc[k] = hp.uniform(k, v[0], v[1])
+        self.config['hyperopt_space'] = hoc
+
     def __init__(self, config) -> None:
 
         # Application_name and sub_name are required
@@ -65,6 +74,8 @@ class S1Trainer:
         if self.config['dataset_path'] is None:
             raise ValueError("Dataset path is not set")
 
+        if "hyperopt_space" in config:
+            self.configure_hyperopt_space(config)
         self.data_loaded = False
         self.metrics = self.config["metrics"]
         self.params = self.config["params"]
