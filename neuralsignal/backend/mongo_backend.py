@@ -134,14 +134,10 @@ class MongoBackend:
 
     def _insert_to_memory_cache(self, scan: dict):
         _id = str(scan["_id"])
-        scan["original_device"] =\
-            next(iter(scan['outputs'].values())).device
         MongoBackend.scan_cache[_id] = scan
 
     def _insert_to_hd_cache(self, scan: dict):
         _id = str(scan["_id"])
-        scan["original_device"] =\
-            next(iter(scan['outputs'].values())).device
         save_scan_to_disk(scan, self.scan_cache_directory)
         MongoBackend.scan_hd_cache.append(_id)
 
@@ -155,6 +151,11 @@ class MongoBackend:
 
         if self.scan_cache_size > 0:
             cached_scan = copy_scan_to_device(scan, "cpu")
+            logging.debug(
+                f"Adding scan to cache: {cached_scan['_id']} "
+                "from device "
+                f"{next(iter(cached_scan['outputs'].values())).device}"
+                )
             # We are using cache
             if cache_usage < self.scan_cache_size:
                 # Memory cache
@@ -175,11 +176,8 @@ class MongoBackend:
                     self, self.scan_hd_cache_size, self.scan_cache_directory)
 
     def add_to_cache(self, scan: dict):
-        logging.debug(
-            f"Adding scan to cache: {scan['_id']} "
-            f"from device {next(iter(scan['outputs'].values())).device}"
-            )
-
+        scan["original_device"] =\
+            next(iter(scan['outputs'].values())).device
         self._route_to_cache(scan)
         cache_usage = len(MongoBackend.scan_cache.keys())
         if cache_usage % 10 == 0:
