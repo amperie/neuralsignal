@@ -6,6 +6,7 @@ import pickle
 import io
 import torch
 import copy
+import os
 from neuralsignal.core.modules.utils import serialize
 from neuralsignal.core.modules.tensors import copy_scan_to_device
 from neuralsignal.backend.backend_util import reduce_hd_cache
@@ -104,6 +105,7 @@ class MongoBackend:
 
     def _initialize_hd_cache(self):
         p = self.scan_cache_directory
+        os.makedirs(p, exist_ok=True)
         MongoBackend.scan_hd_cache = get_list_of_files(p, "scan", True)
         logging.debug(
             f"Initialized HD cache with {len(MongoBackend.scan_hd_cache)} "
