@@ -130,6 +130,7 @@ class MongoBackend:
                 )
             return retVal
         else:
+            logging.debug(f"Mongo cache miss: {_id}")
             return None
 
     def _insert_to_memory_cache(self, scan: dict):
