@@ -2,6 +2,7 @@ import logging
 import mlflow
 import os
 import pickle
+from pathlib import Path
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
@@ -86,10 +87,13 @@ def load_scan_from_disk(scan_id, directory_path):
     return retVal
 
 
-def reduce_hd_cache(size: int, directory_path):
+def reduce_hd_cache(mng, size: int, directory_path):
     curr_size = count_files_in_dir(directory_path, ".scan")
     while curr_size > size:
-        delete_oldest_file(directory_path)
+        df = delete_oldest_file(directory_path)
+        _id = Path(df).stem
+        mng.scan_hd_cache.remove(_id)
+        curr_size = count_files_in_dir(directory_path, ".scan")
 
 
 def delete_oldest_file(directory_path, extension="scan"):
@@ -98,3 +102,4 @@ def delete_oldest_file(directory_path, extension="scan"):
     full_path = [f"{directory_path}/{x}" for x in list_of_files]
     oldest_file = min(full_path, key=os.path.getctime)
     os.remove(oldest_file)
+    return oldest_file

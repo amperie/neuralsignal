@@ -50,8 +50,8 @@ backend_config:
   db: sdk_testing
   col: col
   scan_cache_directory: /tmp/cache
-  scan_cache_size: 2
-  scan_hd_cache_size: 3
+  scan_cache_size: 100
+  scan_hd_cache_size: 1000
   mlflow_uri: "databricks"
   mlflow_experiment_path: "/Users/pablo@neuralsignal.ai/ns_mlflow"
   mlflow_register_model: False

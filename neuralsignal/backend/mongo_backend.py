@@ -163,7 +163,8 @@ class MongoBackend:
                 oldest = next(iter(MongoBackend.scan_cache.keys()))
                 oldest_scan = MongoBackend.scan_cache.pop(oldest)
                 self._insert_to_hd_cache(oldest_scan)
-                reduce_hd_cache()
+                reduce_hd_cache(
+                    self, self.scan_hd_cache_size, self.scan_cache_directory)
 
     def add_to_cache(self, scan: dict):
         self._route_to_cache(scan)
