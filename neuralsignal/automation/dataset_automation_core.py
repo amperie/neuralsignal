@@ -223,6 +223,12 @@ def run_automation(cfg: dict):
 
 def run_experiment(cfg: dict):
     """Runs the experiment"""
+    default_cfg = {
+        "create_dataset": True,
+        "create_s1_model": True,
+    }
+    cfg = {**default_cfg, **cfg}
+
     if "cfg_file_path" in cfg:
         cfp = cfg['cfg_file_path']
         default_cfg = get_config(cfg_file_path=cfp)
@@ -231,5 +237,7 @@ def run_experiment(cfg: dict):
 
     config = {**default_cfg, **cfg}
     config['feature_set_configs'] = None
-    create_dataset(config)
-    create_s1_model(config)
+    if cfg['create_dataset']:
+        create_dataset(config)
+    if cfg['create_s1_model']:
+        create_s1_model(config)
