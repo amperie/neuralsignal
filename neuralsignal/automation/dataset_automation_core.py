@@ -237,6 +237,8 @@ def run_experiment(cfg: dict):
 
     config = {**default_cfg, **cfg}
     config['feature_set_configs'] = None
+    if cfg["run_data_collection"]:
+        run_data_collection(config)
     if cfg['create_dataset']:
         create_dataset(config)
     if cfg['create_s1_model']:
