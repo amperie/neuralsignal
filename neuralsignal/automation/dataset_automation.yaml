@@ -83,7 +83,7 @@ feature_set_configs: [
 model_name: HaluBench
 description: Zones only
 modeling_row_limit: 0
-max_evals: 5
+max_evals: 50
 seed: 43
 params:
   description: model_desc
