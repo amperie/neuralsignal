@@ -67,7 +67,19 @@ detectors:
           Question {input}\n
           Answer: {output}\n Context: {context}\nRemember to output only true or false.
     enabled: True
-
+  - behavior_name: "halu_prompt2"
+    S1_model: null
+    S1_model_path: runs:/e2b9a4d5e9024d769d321490a05b8b13/S1
+    mlflow_uri: "http://z600.lan:8000"
+    prompt: >
+          Question: Analyze the following text and determine if the answer is correct. 
+          The text contains the question, the answer and the background information. 
+          Answer with only one word - true or false. True if the answer is correct,
+          and false if the answer is incorrect. 
+          The background information contains the answer to the question.\n
+          Context: The question is: {input}\n The answer is: {output}\n 
+          The background information is: {context}\n
+    enabled: True
   - behavior_name: "input_toxicity"
     S1_model: null
     S1_model_path: runs:/8bfd97e2e6744256862d6c714c9d03a6/S1
