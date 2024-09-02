@@ -29,8 +29,8 @@ indirect_config:
   # indirect_model: "t5-small"
   indirect_batch_size: 1
   # no_quantization, int8 or int4
-  quantization: "no_quantization"
-  device: "cuda"
+  quantization: "int4"
+  device: "auto"
 
 # Data collection
 dataset: HaluBench

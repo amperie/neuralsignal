@@ -7,7 +7,7 @@ application_name: default # Needs to be defined when initializing
 sub_application_name: default # Needs to be defined when initializing
 
 # Generation Configs
-max_new_tokens: 128
+max_new_tokens: 1
 truncation_length: 0
 use_dynamic_batch_size: True
 max_oom_count: 20
