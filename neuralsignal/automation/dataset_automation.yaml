@@ -13,6 +13,9 @@ sub_application_name: zones_size_test
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
+  scan_cache_size: 2
+  scan_hd_cache_size: 1000
+  scan_cache_directory: /tmp/cache
   mlflow_uri: "databricks"
   mlflow_experiment_path: "/Users/pablo@neuralsignal.ai/ns_mlflow"
   mlflow_register_model: False
