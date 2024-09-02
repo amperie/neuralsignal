@@ -69,7 +69,7 @@ detectors:
     enabled: True
   - behavior_name: "halu_prompt2"
     S1_model: null
-    S1_model_path: runs:/e2b9a4d5e9024d769d321490a05b8b13/S1
+    S1_model_path: null
     mlflow_uri: "http://z600.lan:8000"
     prompt: >
           Question: Analyze the following text and determine if the answer is correct. 
