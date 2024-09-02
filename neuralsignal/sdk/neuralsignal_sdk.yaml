@@ -19,13 +19,13 @@ featurize_delta_layers: ["encoder.T5Block.T5LayerSelfAttention.SelfAttention.o"]
 
 # Evaluation mode config
 indirect_config:
-  indirect_model: "t5-small"
+  indirect_model: "google/flan-t5-large"
     #indirect_model: "t5-small"
-  zone_size: 512
+  zone_size: 1024
   indirect_batch_size: 1
   # no_quantization, int8 or int4
   quantization: "no_quantization"
-  device: "cpu"
+  device: "cuda"
   use_dynamic_batch_size: True
   max_oom_count: 50 # SDK will disable itself after this
 
@@ -39,7 +39,7 @@ indirect_instrumentation_config:
   collector_config:
     mode: additive
     data_to_save: ["inputs", "outputs", "layer_info", "topology"]
-    zone_size: 512
+    zone_size: 1024
 
 # Backend config
 save_scans: True
@@ -49,10 +49,6 @@ backend_config:
   mongo_url: mongodb://hp.lan:27017/
   db: sdk_testing
   col: col
-  scan_cache_directory: /tmp/cache
-  scan_cache_size: 100
-  scan_hd_cache_size: 1000
-  scan_cache_directory: /tmp/cache
   mlflow_uri: "databricks"
   mlflow_experiment_path: "/Users/pablo@neuralsignal.ai/ns_mlflow"
   mlflow_register_model: False
@@ -71,6 +67,7 @@ detectors:
           Question {input}\n
           Answer: {output}\n Context: {context}\nRemember to output only true or false.
     enabled: True
+
   - behavior_name: "input_toxicity"
     S1_model: null
     S1_model_path: runs:/8bfd97e2e6744256862d6c714c9d03a6/S1
