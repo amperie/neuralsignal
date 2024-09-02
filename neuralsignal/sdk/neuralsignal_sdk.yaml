@@ -1,6 +1,6 @@
 # NeuralSignal SDK configuration
 home: ./sdk_home
-logging_level: DEBUG
+logging_level: INFO
 # Evaluation mode can be indirect or direct
 evaluation_mode: indirect
 application_name: default # Needs to be defined when initializing
