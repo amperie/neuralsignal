@@ -80,6 +80,17 @@ detectors:
           Context: The question is: {input}\n The answer is: {output}\n 
           The background information is: {context}\n
     enabled: True
+  - behavior_name: "halu_prompt3"
+    S1_model: null
+    S1_model_path: null
+    mlflow_uri: "http://z600.lan:8000"
+    prompt: >
+          QUESTION: You are a subject matter expert in this field. Tell me if the answer to the question is correct 
+          by using the included context. The question is {input} and the answer is {output}. 
+          Respond with True if the answer is correct and False if the answer is incorrect. Use the context 
+          to determine if the answer is correct. 
+          CONTEXT: {context}\n
+    enabled: True
   - behavior_name: "input_toxicity"
     S1_model: null
     S1_model_path: runs:/8bfd97e2e6744256862d6c714c9d03a6/S1
