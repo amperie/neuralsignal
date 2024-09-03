@@ -46,8 +46,13 @@ class MongoBackend:
     scan_cache = {}
     scan_hd_cache = []
 
+    default_config = {
+        "cache_scan_on_load": True,
+        "cache_scan_on_write": True,
+    }
+
     def __init__(self, config: dict) -> None:
-        self.config = config
+        self.config = {**self.default_config, **config}
         try:
             self.config = config
             self.mongo_url = config['mongo_url']
@@ -60,6 +65,8 @@ class MongoBackend:
                 self.scan_cache_size = config["scan_cache_size"]
                 self.scan_hd_cache_size = config["scan_hd_cache_size"]
                 self.scan_cache_directory = config["scan_cache_directory"]
+                self.cache_on_load = config["cache_scan_on_load"]
+                self.cache_on_save = config["cache_scan_on_write"]
                 self._initialize_hd_cache()
             else:
                 self.scan_cache_size = 0
@@ -223,6 +230,8 @@ class MongoBackend:
         if "inputs" in data:
             data["inputs"] =\
                 self.write_serialized_to_GridFS(serialize(data["inputs"]))
+        if self.cache_on_save:
+            self.add_to_cache(data)
         return self.write_dict_to_mongo(data)
 
     def deserialize_scan(self, scan):
@@ -242,7 +251,8 @@ class MongoBackend:
         cs = self.check_cache(data)
         if cs is None:
             scan = self.deserialize_scan(data)
-            self.add_to_cache(scan)
+            if self.cache_on_load:
+                self.add_to_cache(scan)
             return scan
         else:
             return cs
@@ -263,7 +273,8 @@ class MongoBackend:
             cs = self.check_cache(scan)
             if cs is None:
                 scan = self.deserialize_scan(scan)
-                self.add_to_cache(scan)
+                if self.cache_on_load:
+                    self.add_to_cache(scan)
             else:
                 scan = cs
             yield scan
