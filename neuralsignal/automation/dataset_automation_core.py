@@ -224,6 +224,7 @@ def run_automation(cfg: dict):
 def run_experiment(cfg: dict):
     """Runs the experiment"""
     default_cfg = {
+        "run_data_collection": True,
         "create_dataset": True,
         "create_s1_model": True,
     }
