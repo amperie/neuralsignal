@@ -46,13 +46,13 @@ class MongoBackend:
     scan_cache = {}
     scan_hd_cache = []
 
-    default_config = {
-        "cache_scan_on_load": True,
-        "cache_scan_on_write": True,
-    }
-
     def __init__(self, config: dict) -> None:
-        self.config = {**self.default_config, **config}
+
+        default_config = {
+            "cache_scan_on_load": True,
+            "cache_scan_on_write": True,
+        }
+        self.config = {**default_config, **config}
         try:
             self.config = config
             self.mongo_url = config['mongo_url']
