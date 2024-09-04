@@ -52,7 +52,7 @@ class MongoBackend:
             "cache_scan_on_load": True,
             "cache_scan_on_write": True,
         }
-        self.config = {**default_config, **config}
+        config = {**default_config, **config}
         try:
             self.config = config
             self.mongo_url = config['mongo_url']
