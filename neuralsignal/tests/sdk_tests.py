@@ -285,7 +285,12 @@ def test_run_experiment():
     }
     fsz = FeatureSetZones(cfg)
     fp = FeatureProcessor([fsz])
-    run_experiment({"feature_processor": fp})
+    cfg = {
+        "detector_names": ['halu_prompt4_oneshot'],
+        "scan_cache_directory": "J:\\Temp\\scan_cache",
+        "feature_processor": fp,
+    }
+    run_experiment(cfg)
 
 
 # load_scan("66ad0140b2d466a1795d91a3", "hallucination")
