@@ -46,13 +46,13 @@ class MongoBackend:
     scan_cache = {}
     scan_hd_cache = []
 
-    default_config = {
-        "cache_scan_on_load": True,
-        "cache_scan_on_write": True,
-    }
-
     def __init__(self, config: dict) -> None:
-        self.config = {**self.default_config, **config}
+
+        default_config = {
+            "cache_scan_on_load": True,
+            "cache_scan_on_write": True,
+        }
+        config = {**default_config, **config}
         try:
             self.config = config
             self.mongo_url = config['mongo_url']
@@ -170,7 +170,10 @@ class MongoBackend:
         hd_cache_usage = len(MongoBackend.scan_hd_cache)
 
         if self.scan_cache_size > 0:
-            cached_scan = copy_scan_to_device(scan, "cpu")
+            if "already_copied" in scan:
+                cached_scan = scan
+            else:
+                cached_scan = copy_scan_to_device(scan, "cpu")
             # We are using cache
             if cache_usage < self.scan_cache_size:
                 # Memory cache
@@ -224,15 +227,20 @@ class MongoBackend:
 
     def save_scan(self, scan) -> ObjectId:
         data = scan.get_flattened_data()
+        if self.cache_on_save:
+            cached_data = copy_scan_to_device(data, "cpu")
+            cached_data['already_copied'] = True
         if "outputs" in data:
             data["outputs"] =\
                 self.write_serialized_to_GridFS(serialize(data["outputs"]))
         if "inputs" in data:
             data["inputs"] =\
                 self.write_serialized_to_GridFS(serialize(data["inputs"]))
+        _id = self.write_dict_to_mongo(data)
         if self.cache_on_save:
-            self.add_to_cache(data)
-        return self.write_dict_to_mongo(data)
+            cached_data['_id'] = _id
+            self.add_to_cache(cached_data)
+        return _id
 
     def deserialize_scan(self, scan):
         if "inputs" in scan:
