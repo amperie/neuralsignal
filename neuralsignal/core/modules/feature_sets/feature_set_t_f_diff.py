@@ -1,3 +1,4 @@
+import torch
 from neuralsignal.core.modules.feature_sets.feature_set_base\
     import FeatureSetBase
 from neuralsignal.core.modules.feature_sets.feature_utils\
@@ -13,10 +14,16 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
 
         login(hf_token)
 
+        if torch.cuda.is_available():
+            dev_map = "cuda:0"
+        else:
+            dev_map = "cpu"
+
         self.model = AutoModelForSeq2SeqLM.from_pretrained(
                                 model_name,
-                                device_map="cuda:0",
+                                device_map=dev_map,
                                 )
+        self.dev_map = dev_map
         self.unembed = self.model.lm_head
 
     def __init__(self, config: dict):
@@ -61,7 +68,7 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
                 # Layer is in the list to process
                 # Get the logits from it by feeding it into the unembed matrix
                 t = scan['outputs'][lyr]
-                t = t.to("cuda:0")
+                t = t.to(self.dev_map)
                 logits = self.unembed.forward(t)
                 # print(logits.shape)
                 p_true = logits[-1][10998].item()
