@@ -129,7 +129,9 @@ def create_dataset(cfg: dict):
 
 
 def create_s1_model(cfg: dict):
-    """Creates a S1 model from a dataset
+    """Creates a S1 model from a dataset. By default it loads
+    the data from a file specfiied in cfg['dataset_path'].
+    If cfg['dataframe'] is specified, it loads from the dataframe
 
     Args:
         cfg (dict): Config should include:
@@ -194,7 +196,12 @@ def create_s1_model(cfg: dict):
                         cfg['params'][name] = fs.get_config()
 
                 cfg['run_name'] = cfg['model_name']
+
                 mt = S1Trainer(cfg)
+                # Load from a dataframe instead if cfg['dataframe'] is present
+                if 'dataframe' in cfg:
+                    mt.load_data_from_dataframe(cfg['dataframe'])
+
                 m = mt.train_model()
                 models.append(m)
     return models

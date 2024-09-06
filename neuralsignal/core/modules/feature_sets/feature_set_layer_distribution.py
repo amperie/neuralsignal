@@ -4,40 +4,22 @@ from neuralsignal.core.modules.feature_sets.feature_set_base\
 from neuralsignal.core.modules.feature_sets.feature_utils\
     import is_layer_string_match_in_list
 import pandas as pd
-from transformers import AutoModelForSeq2SeqLM
-from huggingface_hub import login
 
 
-class FeatureSetTrueFalseDiff(FeatureSetBase):
-
-    def _load_model(self, model_name: str, hf_token: str):
-
-        login(hf_token)
-
-        if torch.cuda.is_available():
-            dev_map = "cuda:0"
-        else:
-            dev_map = "cpu"
-
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(
-                                model_name,
-                                device_map=dev_map,
-                                )
-        self.dev_map = dev_map
-        self.unembed = self.model.lm_head
+class FeatureSetLayerDistribution(FeatureSetBase):
 
     def __init__(self, config: dict):
         """
         cfg must contain the following configuration:
-        model_name: model from where to get the unembedding matrix
-        hf_token: huggingface token
         layers_to_process: list of layer name string matches to process
+        bin_count: how many bins to use to capture distribution
+        field_to_process: name of the field to process
+            (can be inputs, outputs, or deltas)
         """
         super().__init__(config)
-        self._load_model(config['model_name'], config['hf_token'])
 
     def get_feature_set_name(self) -> str:
-        return "T-F-diff"
+        return "layer_distribution"
 
     def process_feature_set(self, scan: dict):
         """
@@ -62,25 +44,27 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
         idx = 0
 
         layers_to_process = self.config['layers_to_process']
-        for lyr in scan['outputs'].keys():
+        field_to_process = self.config['field_to_process']
+        bin_count = self.config['bin_count']
+
+        for i, lyr in enumerate(scan['layer_order']):
             lyr_name = scan['layer_id_to_name'][lyr]
+
             if is_layer_string_match_in_list(lyr_name, layers_to_process):
                 # Layer is in the list to process
-                # Get the logits from it by feeding it into the unembed matrix
-                t = scan['outputs'][lyr]
-                t = t.to(self.dev_map)
-                logits = self.unembed.forward(t)
-                # print(logits.shape)
-                p_true = logits[-1][10998].item()
-                p_false = logits[-1][10747].item()
-                # print(f"{p_true}....{p_false}")
-                cols.append(f"t_f_diff_{lyr_name}_{idx}")
-                vals.append(p_true - p_false)
-                cols.append(f"t_logit_{lyr_name}_{idx}")
-                vals.append(p_true)
-                cols.append(f"f_logit_{lyr_name}_{idx}")
-                vals.append(p_false)
-                idx += 1
+                if field_to_process == 'deltas':
+                    t = scan['outputs'][lyr] - scan['inputs'][lyr]
+                else:
+                    t = scan[field_to_process][lyr]
+                # t = t.to(self.dev_map)
+            # Build feature names for all bins
+            for b in range(bin_count):
+                col_name = f"bin_{b}_{field_to_process}_{lyr_name}_{idx}"
+                col_name = self.make_column_name(col_name)
+                cols.append(col_name)
+
+            hist = torch.histc(t, bin_count)
+            vals.append(hist.tolist())
 
         # Return the right format results
         output_format = self.config['output_format']

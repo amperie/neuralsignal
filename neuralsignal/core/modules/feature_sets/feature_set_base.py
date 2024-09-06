@@ -22,3 +22,6 @@ class FeatureSetBase:
 
     def get_config(self) -> dict:
         return self.config
+
+    def make_column_name(self, column_name: str):
+        return f"{self.get_feature_set_name()}__{column_name}"
