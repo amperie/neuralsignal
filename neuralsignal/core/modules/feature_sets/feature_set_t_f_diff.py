@@ -14,16 +14,10 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
 
         login(hf_token)
 
-        if torch.cuda.is_available():
-            dev_map = "cuda:0"
-        else:
-            dev_map = "cpu"
-
         self.model = AutoModelForSeq2SeqLM.from_pretrained(
                                 model_name,
-                                device_map=dev_map,
+                                device_map=self.dev_map,
                                 )
-        self.dev_map = dev_map
         self.unembed = self.model.lm_head
 
     def __init__(self, config: dict):
@@ -34,6 +28,13 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
         layers_to_process: list of layer name string matches to process
         """
         super().__init__(config)
+
+        if torch.cuda.is_available():
+            dev_map = "cuda:0"
+        else:
+            dev_map = "cpu"
+        self.dev_map = dev_map
+
         if "unembed_layer" in config:
             self.unembed = config["unembed_layer"]
         else:
