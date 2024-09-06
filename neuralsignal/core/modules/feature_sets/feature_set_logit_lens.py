@@ -16,7 +16,7 @@ class FeatureSetLogitLens(FeatureSetBase):
         login(hf_token)
 
         if torch.cuda.is_available():
-            dev_map = "cuda:0"
+            dev_map = "auto"
         else:
             dev_map = "cpu"
 
