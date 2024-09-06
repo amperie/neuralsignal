@@ -201,6 +201,10 @@ def create_s1_model(cfg: dict):
                 # Load from a dataframe instead if cfg['dataframe'] is present
                 if 'dataframe' in cfg:
                     mt.load_data_from_dataframe(cfg['dataframe'])
+                    logging.info(
+                        "S1 trainer loaded dataframe of shape "
+                        f"{cfg['dataframe'].shape}"
+                    )
 
                 m = mt.train_model()
                 models.append(m)
