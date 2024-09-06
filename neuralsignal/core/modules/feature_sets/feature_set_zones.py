@@ -89,8 +89,9 @@ class FeatureSetZones(FeatureSetBase):
             t = t.tolist()
             for idx, val in enumerate(t):
                 zone_idx = self.scan['layer_order'].index(key)
-                col_name = f"zones__{zs[key]}_{lyrs[key]}_{included_idx}_"\
+                col_name = f"{zs[key]}_{lyrs[key]}_{included_idx}_"\
                     f"{zone_idx}_{idx}"
+                col_name = self.make_column_name(col_name)
 
                 col_names.append(col_name)
                 col_vals.append(val)

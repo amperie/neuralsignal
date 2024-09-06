@@ -72,9 +72,10 @@ class FeatureSetLogitLens(FeatureSetBase):
                 t = scan['outputs'][lyr]
                 t = t.to(self.dev_map)
                 logits = self.unembed.forward(t)
-                cols.append(f"logits_std_{lyr_name}_{idx}")
+                cols = self.add_column(f"std_{lyr_name}_{idx}", cols)
+                cols.append(self.make_column_name(f"std_{lyr_name}_{idx}"))
                 vals.append(torch.std(logits).item())
-                cols.append(f"logits_mean_{lyr_name}_{idx}")
+                cols.append(self.make_column_name(f"mean_{lyr_name}_{idx}"))
                 vals.append(torch.mean(logits).item())
                 idx += 1
 

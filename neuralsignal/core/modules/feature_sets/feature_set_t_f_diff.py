@@ -74,11 +74,11 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
                 p_true = logits[-1][10998].item()
                 p_false = logits[-1][10747].item()
                 # print(f"{p_true}....{p_false}")
-                cols.append(f"t_f_diff_{lyr_name}_{idx}")
+                cols.append(self.make_column_name(f"{lyr_name}_{idx}"))
                 vals.append(p_true - p_false)
-                cols.append(f"t_logit_{lyr_name}_{idx}")
+                cols.append(self.make_column_name(f"t_logit_{lyr_name}_{idx}"))
                 vals.append(p_true)
-                cols.append(f"f_logit_{lyr_name}_{idx}")
+                cols.append(self.make_column_name(f"f_logit_{lyr_name}_{idx}"))
                 vals.append(p_false)
                 idx += 1
 
