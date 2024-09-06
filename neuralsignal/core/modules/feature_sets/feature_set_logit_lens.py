@@ -64,7 +64,6 @@ class FeatureSetLogitLens(FeatureSetBase):
         cols = []
         vals = []
         idx = 0
-        elapsed = time.time()
 
         layers_to_process = self.config['layers_to_process']
         for lyr in scan['outputs'].keys():
@@ -80,9 +79,6 @@ class FeatureSetLogitLens(FeatureSetBase):
                 cols.append(self.make_column_name(f"mean_{lyr_name}_{idx}"))
                 vals.append(torch.mean(logits).item())
                 idx += 1
-
-        elapsed = time.time() - elapsed
-        print(f"LogitLens took {elapsed} seconds")
 
         # Return the right format results
         output_format = self.config['output_format']

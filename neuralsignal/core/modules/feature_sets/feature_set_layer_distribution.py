@@ -57,14 +57,14 @@ class FeatureSetLayerDistribution(FeatureSetBase):
                 else:
                     t = scan[field_to_process][lyr]
                 # t = t.to(self.dev_map)
-            # Build feature names for all bins
-            for b in range(bin_count):
-                col_name = f"bin_{b}_{field_to_process}_{lyr_name}_{idx}"
-                col_name = self.make_column_name(col_name)
-                cols.append(col_name)
+                # Build feature names for all bins
+                for b in range(bin_count):
+                    col_name = f"bin_{b}_{field_to_process}_{lyr_name}_{idx}"
+                    col_name = self.make_column_name(col_name)
+                    cols.append(col_name)
 
-            hist = torch.histc(t, bin_count)
-            vals.append(hist.tolist())
+                hist = torch.histc(t, bin_count)
+                vals.append(hist.tolist())
 
         # Return the right format results
         output_format = self.config['output_format']
