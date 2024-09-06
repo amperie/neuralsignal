@@ -15,7 +15,7 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
         login(hf_token)
 
         if torch.cuda.is_available():
-            dev_map = "auto"
+            dev_map = "cuda:0"
         else:
             dev_map = "cpu"
 
@@ -34,7 +34,10 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
         layers_to_process: list of layer name string matches to process
         """
         super().__init__(config)
-        self._load_model(config['model_name'], config['hf_token'])
+        if "unembed_layer" in config:
+            self.unembed = config["unembed_layer"]
+        else:
+            self._load_model(config['model_name'], config['hf_token'])
 
     def get_feature_set_name(self) -> str:
         return "T-F-diff"
