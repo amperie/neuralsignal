@@ -1,5 +1,4 @@
 import torch
-import time
 from neuralsignal.core.modules.feature_sets.feature_set_base\
     import FeatureSetBase
 from neuralsignal.core.modules.feature_sets.feature_utils\
