@@ -171,14 +171,12 @@ def test_s1_model():
         "application_name": "sdk_squad_v2",
         "sub_application_name": "data",
         "model_name": "testing-s1",
-        "dataset_path": "test.csv",
+        "dataset_path": "/Users/pablo/Code/neuralsignal/halubench_t5-small_hallucination.csv",
         "description": "testing",
         "tags": {"testtag": "testtag"},
         "metadata": {"testmd": "testmd"},
         "row_limit": 1930,
-        "backend_config": {
-            "backend_type": "file_backend",
-        }
+        "create_reduced_feature_model": True
     }
 
     mt = S1Trainer(cfg)
@@ -292,7 +290,7 @@ def test_run_experiment():
     }
     run_experiment(cfg)
 
-
+test_s1_model()
 # load_scan("66ad0140b2d466a1795d91a3", "hallucination")
 # test_detector_creation()
 # test_generation()
