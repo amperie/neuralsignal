@@ -1,7 +1,9 @@
 import logging
+import copy
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
+from hyperopt.pyll.base import Apply
 import xgboost as xgb
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import log_loss
@@ -50,6 +52,8 @@ class S1Trainer:
         "params": {},
         "tags": {},
         "metadata": {},
+        "create_reduced_feature_model": False,
+        "reduced_feature_count": 20,
     }
 
     def configure_hyperopt_space(self, config):
@@ -71,11 +75,13 @@ class S1Trainer:
         if "model_name" not in config:
             raise ValueError("Missing model_name in config")
         self.config = {**self.default_config, **config}
+        self.original_config = copy.deepcopy(self.config)
         # Check if dataset path is set
         if self.config['dataset_path'] is None:
             raise ValueError("Dataset path is not set")
 
-        if "hyperopt_space" in config:
+        if "hyperopt_space" in config and not\
+                isinstance(config['hyperopt_space']['max_depth'], Apply):
             self.configure_hyperopt_space(config)
         logging.debug(
             f"Hyperopt space: {dict_to_str(self.config['hyperopt_space'])}"
@@ -163,6 +169,24 @@ class S1Trainer:
             data = pd.read_csv(self.config['dataset_path'])
 
         self.load_data_from_dataframe(data)
+
+    def _create_reduced_feature_model(self, feature_list: list):
+
+        cfg = copy.deepcopy(self.original_config)
+        cfg['params']['feature_list'] = feature_list
+        cfg['params']['reduced_feature_model'] = True
+        cfg['create_reduced_feature_model'] = False
+        mt = S1Trainer(cfg)
+
+        train_data = pd.concat(
+            [self.y_train, self.X_train[feature_list]], axis=1)
+
+        test_data = pd.concat(
+            [self.y_test, self.X_test[feature_list]], axis=1)
+
+        mt.load_splits_from_dataframe(train_data, test_data)
+        m = mt.train_model()
+        return m
 
     def _hyperparameter_tuning(self, space):
 
@@ -307,12 +331,22 @@ class S1Trainer:
         }
 
         # Feature Importance
+        create_reduced_model = self.config['create_reduced_feature_model']
+        fi_to_save = self.config['reduced_feature_count']
 
         fi =\
             self.best_model.get_booster().get_score(importance_type='gain')
         fi_s = dict(
             sorted(fi.items(), key=lambda x: x[1], reverse=True)[0:20])
         model_cfg['artifacts'] = {'feature_importance': fi_s}
+
+        if create_reduced_model:
+            fi_s = dict(
+                sorted(
+                    fi.items(), key=lambda x: x[1],
+                    reverse=True)[0:fi_to_save])
+            feature_list = list(fi_s.keys())
+            self._create_reduced_feature_model(feature_list)
 
         if "run_name" in self.config:
             model_cfg['run_name'] = self.config['run_name']
