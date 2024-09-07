@@ -75,7 +75,7 @@ class S1Trainer:
         if "model_name" not in config:
             raise ValueError("Missing model_name in config")
         self.config = {**self.default_config, **config}
-        self.original_config = copy.deepcopy(self.config)
+        # self.original_config = copy.deepcopy(self.config)
         # Check if dataset path is set
         if self.config['dataset_path'] is None:
             raise ValueError("Dataset path is not set")
@@ -172,8 +172,8 @@ class S1Trainer:
 
     def _create_reduced_feature_model(self, feature_list: list):
 
-        cfg = copy.deepcopy(self.original_config)
-        cfg.pop("dataframe")
+        cfg = copy.deepcopy(self.config)
+        # cfg.pop("dataframe")
         cfg['params']['feature_list'] = feature_list
         cfg['params']['reduced_feature_model'] = True
         cfg['create_reduced_feature_model'] = False
