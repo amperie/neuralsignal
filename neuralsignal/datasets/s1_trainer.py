@@ -173,6 +173,7 @@ class S1Trainer:
     def _create_reduced_feature_model(self, feature_list: list):
 
         cfg = copy.deepcopy(self.original_config)
+        cfg.pop("dataframe")
         cfg['params']['feature_list'] = feature_list
         cfg['params']['reduced_feature_model'] = True
         cfg['create_reduced_feature_model'] = False
