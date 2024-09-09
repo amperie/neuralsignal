@@ -170,10 +170,16 @@ class S1Trainer:
 
         self.load_data_from_dataframe(data)
 
-    def _create_reduced_feature_model(self, feature_list: list):
+    def create_reduced_feature_model(self, feature_count: int, cfg: dict):
 
-        cfg = copy.deepcopy(self.config)
-        # cfg.pop("dataframe")
+        fi =\
+            self.best_model.get_booster().get_score(importance_type='gain')
+        fi_s = dict(
+            sorted(
+                fi.items(), key=lambda x: x[1],
+                reverse=True)[0:feature_count])
+        feature_list = list(fi_s.keys())
+
         cfg['params']['feature_list'] = feature_list
         cfg['params']['reduced_feature_model'] = True
         cfg['create_reduced_feature_model'] = False
@@ -340,14 +346,6 @@ class S1Trainer:
         fi_s = dict(
             sorted(fi.items(), key=lambda x: x[1], reverse=True)[0:20])
         model_cfg['artifacts'] = {'feature_importance': fi_s}
-
-        if create_reduced_model:
-            fi_s = dict(
-                sorted(
-                    fi.items(), key=lambda x: x[1],
-                    reverse=True)[0:fi_to_save])
-            feature_list = list(fi_s.keys())
-            self._create_reduced_feature_model(feature_list)
 
         if "run_name" in self.config:
             model_cfg['run_name'] = self.config['run_name']
