@@ -25,3 +25,14 @@ class FeatureSetBase:
 
     def make_column_name(self, column_name: str):
         return f"{self.get_feature_set_name()}__{column_name}"
+
+    # For feature sets that require training ahead of time
+    def process_training_data(self, scan_iterator):
+        raise NotImplementedError(
+            "process_training_data must be implemented in inherited classes"
+        )
+
+    def train_feature_set(self, training_config: dict):
+        raise NotImplementedError(
+            "train_feature_set must be implemented in inherited classes"
+        )
