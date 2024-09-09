@@ -208,6 +208,11 @@ def create_s1_model(cfg: dict):
 
                 m = mt.train_model()
                 models.append(m)
+
+                if cfg['create_reduced_feature_model']:
+                    m.create_reduced_feature_model(
+                        cfg['reduced_feature_count'], cfg
+                    )
     return models
 
 
