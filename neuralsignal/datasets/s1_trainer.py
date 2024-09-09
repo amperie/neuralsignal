@@ -338,8 +338,6 @@ class S1Trainer:
         }
 
         # Feature Importance
-        create_reduced_model = self.config['create_reduced_feature_model']
-        fi_to_save = self.config['reduced_feature_count']
 
         fi =\
             self.best_model.get_booster().get_score(importance_type='gain')
