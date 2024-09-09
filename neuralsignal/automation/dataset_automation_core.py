@@ -210,7 +210,7 @@ def create_s1_model(cfg: dict):
                 models.append(m)
 
                 if cfg['create_reduced_feature_model']:
-                    m.create_reduced_feature_model(
+                    mt.create_reduced_feature_model(
                         cfg['reduced_feature_count'], cfg
                     )
     return models
