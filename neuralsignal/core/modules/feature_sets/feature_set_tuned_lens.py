@@ -145,8 +145,8 @@ class FeatureSetTunedLens(FeatureSetBase):
         X_val = self.training_data[split:]
         y_val = self.ground_truth[split:]
 
-        X = torch.stack(X)
-        X_val = torch.stack(X_val)
+        X = torch.stack(X).to(self.dev_map)
+        X_val = torch.stack(X_val).to(self.dev_map)
 
         model = nn.Sequential(
             nn.Linear(dim, hl_dim),
@@ -163,15 +163,16 @@ class FeatureSetTunedLens(FeatureSetBase):
         for epoch in range(n_epochs):
             for i in range(0, len(X), batch_size):
                 Xbatch = X[i:i+batch_size]
-                y_pred = model(Xbatch)
+                y_pred = model(Xbatch).to(self.dev_map)
                 ybatch = y[i:i+batch_size]
-                ybatch = torch.Tensor(ybatch)[:, None]
+                ybatch = torch.Tensor(ybatch)[:, None].to(self.dev_map)
                 loss = loss_fn(y_pred, ybatch)
                 optimizer.zero_grad()
                 loss.backward(retain_graph=True)
                 optimizer.step()
                 logging.debug(
-                    f'TunedLens training epoch {epoch}, batch {i}, loss {loss}')
+                    f'TunedLens training epoch {epoch}, batch {i}, loss {loss}'
+                    )
             logging.debug(
                 f'TunedLens training epoch {epoch}, last loss {loss}')
 
