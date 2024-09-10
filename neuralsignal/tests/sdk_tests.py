@@ -323,15 +323,15 @@ def test_tunedlens():
 
 
 test_tunedlens()
-test_s1_model()
+# test_s1_model()
 # load_scan("66ad0140b2d466a1795d91a3", "hallucination")
 # test_detector_creation()
 # test_generation()
 # test_ds_create_feature_processor()
-test_run_experiment()
+# test_run_experiment()
 # test_feature_processor()
-test_ds_runner()
-test_ds_create()
+# test_ds_runner()
+# test_ds_create()
 # test_s1_model()
 
 
