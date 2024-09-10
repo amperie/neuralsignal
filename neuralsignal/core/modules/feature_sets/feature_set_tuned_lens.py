@@ -137,6 +137,7 @@ class FeatureSetTunedLens(FeatureSetBase):
         training_split = training_config['training_split']
         n_epochs = training_config['epochs']
         batch_size = training_config['batch_size']
+        lr = training_config['learning_rate']
         dataset_size = len(self.training_data)
         split = int(dataset_size*training_split)
         X = self.training_data[0:split]
@@ -157,7 +158,7 @@ class FeatureSetTunedLens(FeatureSetBase):
         )
 
         loss_fn = nn.BCELoss()  # binary cross entropy
-        optimizer = optim.Adam(model.parameters(), lr=0.001)
+        optimizer = optim.Adam(model.parameters(), lr=lr)
 
         for epoch in range(n_epochs):
             for i in range(0, len(X), batch_size):
@@ -167,10 +168,12 @@ class FeatureSetTunedLens(FeatureSetBase):
                 ybatch = torch.Tensor(ybatch)[:, None]
                 loss = loss_fn(y_pred, ybatch)
                 optimizer.zero_grad()
-                loss.backward()
+                loss.backward(retain_graph=True)
                 optimizer.step()
-            logging.info(
-                f'TunedLens training epoch {epoch}, latest loss {loss}')
+                logging.debug(
+                    f'TunedLens training epoch {epoch}, batch {i}, loss {loss}')
+            logging.debug(
+                f'TunedLens training epoch {epoch}, last loss {loss}')
 
         self.model = model
 
