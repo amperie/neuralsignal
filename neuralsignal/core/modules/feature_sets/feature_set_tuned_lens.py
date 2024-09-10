@@ -181,6 +181,6 @@ class FeatureSetTunedLens(FeatureSetBase):
         with torch.no_grad():
             y_pred = model(X_val)
 
-        y_val = torch.Tensor(y_val)[:, None]
+        y_val = torch.Tensor(y_val)[:, None].to(self.dev_map)
         accuracy = (y_pred.round() == y_val).float().mean()
         logging.info(f"TunedLens accuracy {accuracy}")
