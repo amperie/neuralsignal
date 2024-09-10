@@ -313,7 +313,7 @@ def test_tunedlens():
 
     # nsm = fstl.load_model("TL-NN")
 
-    fstl.process_training_data(s, skip_layers=20)
+    fstl.process_training_data(s, skip_layers=40)
     train_cfg = {
         "logits_dim": 32128,
         "hidden_layer_dim": 10000,
