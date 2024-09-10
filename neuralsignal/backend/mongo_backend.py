@@ -51,6 +51,9 @@ class MongoBackend:
         default_config = {
             "cache_scan_on_load": True,
             "cache_scan_on_write": True,
+            "scan_cache_size": 0,
+            "scan_hd_cache_size": 0,
+            "scan_cache_directory": "/tmp/cache"
         }
         config = {**default_config, **config}
         try:

@@ -1,5 +1,4 @@
 import logging
-import copy
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials

@@ -10,6 +10,8 @@ from neuralsignal.datasets.s1_trainer import S1Trainer
 from neuralsignal.backend.ns_backend import NSBackend
 from neuralsignal.core.modules.feature_sets.feature_set_zones\
     import FeatureSetZones
+from neuralsignal.core.modules.feature_sets.feature_set_tuned_lens\
+    import FeatureSetTunedLens
 from neuralsignal.core.modules.feature_sets.feature_processor\
     import FeatureProcessor
 from neuralsignal.automation.dataset_automation_core import run_experiment
@@ -291,6 +293,35 @@ def test_run_experiment():
     }
     run_experiment(cfg)
 
+
+def test_tunedlens():
+    cfg = {
+        "application_name": "sdk_testing_zs_1",
+        "sub_application_name": "hb_drop",
+    }
+    be = NSBackend(cfg)
+    s = be.iterate_scans(
+        {"detector_name": "halu_prompt4_oneshot"}, row_limit=10)
+
+    tl_cfg = {
+        "model_name": "google/flan-t5-large",
+        "hf_token": "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",
+        "layers_to_process": [".wo"],
+    }
+    fstl = FeatureSetTunedLens(tl_cfg)
+    fstl.process_training_data(s)
+    train_cfg = {
+        "logits_dim": 1,
+        "hidden_layer_dim": 10000,
+        "training_split": 0.66,
+        "epochs": 50,
+        "batch_size": 32,
+    }
+    fstl.train_feature_set(train_cfg)
+    print()
+
+
+test_tunedlens()
 test_s1_model()
 # load_scan("66ad0140b2d466a1795d91a3", "hallucination")
 # test_detector_creation()
