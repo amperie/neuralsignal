@@ -295,6 +295,7 @@ def test_run_experiment():
 
 
 def test_tunedlens():
+
     cfg = {
         "application_name": "sdk_testing_zs_1",
         "sub_application_name": "hb_drop",
@@ -309,16 +310,21 @@ def test_tunedlens():
         "layers_to_process": [".wo"],
     }
     fstl = FeatureSetTunedLens(tl_cfg)
-    fstl.process_training_data(s)
+
+    # nsm = fstl.load_model("TL-NN")
+
+    fstl.process_training_data(s, skip_layers=40)
     train_cfg = {
         "logits_dim": 32128,
         "hidden_layer_dim": 10000,
         "training_split": 0.66,
-        "epochs": 50,
+        "epochs": 1,
         "batch_size": 32,
-        "learning_rate": 0.00000001,
+        "learning_rate": 0.00000005,
+        "model_name": "TL-NN"
     }
     fstl.train_feature_set(train_cfg)
+
     print()
 
 
