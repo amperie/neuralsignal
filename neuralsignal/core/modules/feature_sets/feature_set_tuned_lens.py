@@ -6,6 +6,7 @@ from neuralsignal.core.modules.feature_sets.feature_set_base\
     import FeatureSetBase
 from neuralsignal.core.modules.feature_sets.feature_utils\
     import is_layer_string_match_in_list
+from neuralsignal.core.modules.ns_model import NSModel
 import pandas as pd
 from transformers import AutoModelForSeq2SeqLM
 from huggingface_hub import login
@@ -102,7 +103,9 @@ class FeatureSetTunedLens(FeatureSetBase):
                 "'tensor_dict' or 'pandas'"
                 )
 
-    def process_training_data(self, scan_iterator):
+    def process_training_data(
+            self, scan_iterator, skip_layers: int = -1
+            ):
         """
         Process the training data for the feature set.
         """
@@ -112,7 +115,8 @@ class FeatureSetTunedLens(FeatureSetBase):
             layers_to_process = self.config['layers_to_process']
             for lyr in scan['outputs'].keys():
                 lyr_name = scan['layer_id_to_name'][lyr]
-                if is_layer_string_match_in_list(lyr_name, layers_to_process):
+                if is_layer_string_match_in_list(lyr_name, layers_to_process)\
+                        and idx >= skip_layers:
                     # Layer is in the list to process
                     # Get the logits from it by feeding it into the unembed
                     t = scan['outputs'][lyr]
@@ -138,6 +142,7 @@ class FeatureSetTunedLens(FeatureSetBase):
         n_epochs = training_config['epochs']
         batch_size = training_config['batch_size']
         lr = training_config['learning_rate']
+        model_name = training_config['model_name']
         dataset_size = len(self.training_data)
         split = int(dataset_size*training_split)
         X = self.training_data[0:split]
@@ -176,7 +181,7 @@ class FeatureSetTunedLens(FeatureSetBase):
             logging.debug(
                 f'TunedLens training epoch {epoch}, last loss {loss}')
 
-        self.model = model
+        self.nsmodel = model
 
         with torch.no_grad():
             y_pred = model(X_val)
@@ -184,3 +189,16 @@ class FeatureSetTunedLens(FeatureSetBase):
         y_val = torch.Tensor(y_val)[:, None].to(self.dev_map)
         accuracy = (y_pred.round() == y_val).float().mean()
         logging.info(f"TunedLens accuracy {accuracy}")
+
+        # Save the model
+        nsm = NSModel({"name": model_name, "model": model})
+        nsm.add_config(training_config)
+        nsm.add_config({"dev_map": self.dev_map})
+        nsm.add_config({"accuracy": accuracy})
+        self.nsmodel = nsm
+        nsm.save_to_disk()
+
+    def load_model(self, name: str):
+        nsm = NSModel.load_from_disk(name)
+        self.nsmodel = nsm
+        return nsm
