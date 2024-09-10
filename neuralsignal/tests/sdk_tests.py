@@ -316,7 +316,7 @@ def test_tunedlens():
         "training_split": 0.66,
         "epochs": 50,
         "batch_size": 32,
-        "learning_rate": 0.0000001,
+        "learning_rate": 0.00000001,
     }
     fstl.train_feature_set(train_cfg)
     print()
