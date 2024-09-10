@@ -155,7 +155,7 @@ class FeatureSetTunedLens(FeatureSetBase):
             nn.ReLU(),
             nn.Linear(int(hl_dim/2), 1),
             nn.Sigmoid(),
-        )
+        ).to(self.dev_map)
 
         loss_fn = nn.BCELoss()  # binary cross entropy
         optimizer = optim.Adam(model.parameters(), lr=lr)
