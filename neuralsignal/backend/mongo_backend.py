@@ -280,7 +280,9 @@ class MongoBackend:
             mng_cursor = self.query(q)
         else:
             mng_cursor = self.query(q).limit(row_limit)
-        for scan in mng_cursor:
+        for i, scan in enumerate(mng_cursor):
+            if i > row_limit and row_limit != 0:
+                break
             cs = self.check_cache(scan)
             if cs is None:
                 scan = self.deserialize_scan(scan)

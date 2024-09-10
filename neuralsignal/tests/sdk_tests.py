@@ -311,7 +311,7 @@ def test_tunedlens():
     fstl = FeatureSetTunedLens(tl_cfg)
     fstl.process_training_data(s)
     train_cfg = {
-        "logits_dim": 1,
+        "logits_dim": 32128,
         "hidden_layer_dim": 10000,
         "training_split": 0.66,
         "epochs": 50,

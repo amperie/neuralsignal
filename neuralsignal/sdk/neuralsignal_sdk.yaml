@@ -1,6 +1,6 @@
 # NeuralSignal SDK configuration
 home: ./sdk_home
-logging_level: INFO
+logging_level: DEBUG
 # Evaluation mode can be indirect or direct
 evaluation_mode: indirect
 application_name: default # Needs to be defined when initializing
@@ -47,6 +47,9 @@ save_vectors: False
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
+  scan_cache_directory: J:\\Temp\\scan_cache
+  cache_scan_on_load: True
+  scan_cache_size: 20
   db: sdk_testing
   col: col
   mlflow_uri: "databricks"

@@ -164,6 +164,7 @@ class FeatureSetTunedLens(FeatureSetBase):
                 Xbatch = X[i:i+batch_size]
                 y_pred = model(Xbatch)
                 ybatch = y[i:i+batch_size]
+                ybatch = torch.Tensor(ybatch)[:, None]
                 loss = loss_fn(y_pred, ybatch)
                 optimizer.zero_grad()
                 loss.backward()
@@ -176,5 +177,6 @@ class FeatureSetTunedLens(FeatureSetBase):
         with torch.no_grad():
             y_pred = model(X_val)
 
+        y_val = torch.Tensor(y_val)[:, None]
         accuracy = (y_pred.round() == y_val).float().mean()
         logging.info(f"TunedLens accuracy {accuracy}")
