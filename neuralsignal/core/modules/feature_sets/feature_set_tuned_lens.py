@@ -110,8 +110,8 @@ class FeatureSetTunedLens(FeatureSetBase):
         Process the training data for the feature set.
         """
 
-        idx = 0
         for scan in scan_iterator:
+            idx = 0
             layers_to_process = self.config['layers_to_process']
             for lyr in scan['outputs'].keys():
                 lyr_name = scan['layer_id_to_name'][lyr]
