@@ -115,15 +115,15 @@ class FeatureSetTunedLens(FeatureSetBase):
             layers_to_process = self.config['layers_to_process']
             for lyr in scan['outputs'].keys():
                 lyr_name = scan['layer_id_to_name'][lyr]
-                if is_layer_string_match_in_list(lyr_name, layers_to_process)\
-                        and idx >= skip_layers:
+                if is_layer_string_match_in_list(lyr_name, layers_to_process):
                     # Layer is in the list to process
                     # Get the logits from it by feeding it into the unembed
-                    t = scan['outputs'][lyr]
-                    t = t.to(self.dev_map)
-                    logits = self.unembed.forward(t[-1])
-                    self.training_data.append(logits)
-                    self.ground_truth.append(scan['ground_truth'])
+                    if idx > skip_layers:
+                        t = scan['outputs'][lyr]
+                        t = t.to(self.dev_map)
+                        logits = self.unembed.forward(t[-1])
+                        self.training_data.append(logits)
+                        self.ground_truth.append(scan['ground_truth'])
                     idx += 1
         logging.debug(f"Training data length: {len(self.training_data)}")
 
