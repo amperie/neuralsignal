@@ -83,10 +83,10 @@ class FeatureSetTunedLens(FeatureSetBase):
                 t = scan['outputs'][lyr]
                 t = t.to(self.dev_map)
                 logits = self.unembed.forward(t)
-                cols.append(self.make_column_name(f"std_{lyr_name}_{idx}"))
-                vals.append(torch.std(logits).item())
-                cols.append(self.make_column_name(f"mean_{lyr_name}_{idx}"))
-                vals.append(torch.mean(logits).item())
+
+                # TODO: run logits through the model and make features
+                cols.append(self.make_column_name(f"{lyr_name}_{idx}"))
+                vals.append()
                 idx += 1
 
         # Return the right format results
@@ -122,6 +122,8 @@ class FeatureSetTunedLens(FeatureSetBase):
                         t = scan['outputs'][lyr]
                         t = t.to(self.dev_map)
                         logits = self.unembed.forward(t[-1])
+                        t = t.to("cpu")
+                        logits = logits.to("cpu")
                         self.training_data.append(logits)
                         self.ground_truth.append(scan['ground_truth'])
                     idx += 1
