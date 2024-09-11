@@ -23,9 +23,11 @@ class FeatureSetTunedLens(FeatureSetBase):
 
         self.model = AutoModelForSeq2SeqLM.from_pretrained(
                                 model_name,
-                                device_map=self.dev_map,
+                                device_map="cpu",
                                 )
         self.unembed = self.model.lm_head
+        self.model.to("cpu")
+        self.unembed.to(self.dev_map)
 
     def __init__(self, config: dict):
         """
@@ -166,6 +168,7 @@ class FeatureSetTunedLens(FeatureSetBase):
 
         loss_fn = nn.BCELoss()  # binary cross entropy
         optimizer = optim.Adam(model.parameters(), lr=lr)
+        logging.debug(f"Training model {model} for {n_epochs} epochs")
 
         for epoch in range(n_epochs):
             for i in range(0, len(X), batch_size):
