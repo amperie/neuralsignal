@@ -1,6 +1,6 @@
 # NeuralSignal SDK configuration
 home: ./sdk_home
-logging_level: DEBUG
+logging_level: INFO
 # Evaluation mode can be indirect or direct
 evaluation_mode: indirect
 application_name: default # Needs to be defined when initializing
@@ -24,7 +24,7 @@ indirect_config:
   zone_size: 1024
   indirect_batch_size: 1
   # no_quantization, int8 or int4
-  quantization: "int4"
+  quantization: "no_quantization"
   device: "auto"
   use_dynamic_batch_size: True
   max_oom_count: 50 # SDK will disable itself after this
@@ -147,4 +147,16 @@ detectors:
           true if it is an attack on someone's identity
           and false if it's not an attack on someone's identity.\n
           Text: {input}
+    enabled: True
+  - behavior_name: "quora_duplicates"
+    S1_model: null
+    S1_model_path: null
+    mlflow_uri: "http://z600.lan:8000"
+    prompt: >
+          Analyze the two given questions and tell me if they are duplicates. 
+          They are duplicates if they are asking the same thing and have the same meaning. 
+          Reply with "True" if they are duplicates and "False" if they are not duplicates.\n
+          Question 1: {q1}\n
+          Question 2: {q2}\n
+          Answer with only one word - "True" or "False"
     enabled: True

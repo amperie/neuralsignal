@@ -98,19 +98,19 @@ def test_sdk():
 
 def test_ds_runner():
 
-    d = sdk_config.get_detector_config("hallucination")
+    d = sdk_config.get_detector_config("quora_duplicates")
     d['application_name'] = "sdk_testing"
-    d['sub_application_name'] = "zones_size_test"
+    d['sub_application_name'] = "quora"
     d = Detector(d)
 
     cfg = {
-        "dataset": "HaluBench",
+        "dataset": "quora_duplicate_questions",
         "detectors": [d],
         "application_name": "sdk_testing",
-        "sub_application_name": "zones_size_test",
+        "sub_application_name": "quora",
         "max_new_tokens": 1,
         "row_limit": 0,
-        "preprocess_dataset": True,
+        "preprocess_dataset": False,
         "preprocess_params": {
             "source_ds": "DROP",
             "rows": 40
@@ -328,7 +328,7 @@ def test_tunedlens():
     print()
 
 
-test_tunedlens()
+# test_tunedlens()
 # test_s1_model()
 # load_scan("66ad0140b2d466a1795d91a3", "hallucination")
 # test_detector_creation()
@@ -336,7 +336,7 @@ test_tunedlens()
 # test_ds_create_feature_processor()
 # test_run_experiment()
 # test_feature_processor()
-# test_ds_runner()
+test_ds_runner()
 # test_ds_create()
 # test_s1_model()
 

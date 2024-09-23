@@ -209,6 +209,35 @@ def datasets_dictionary(
 
     add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
 
+    # quora duplicate questions
+    def input_processor(row):
+        return {
+                "input": "",
+                "context": "",
+                "output": "",
+                "ground_truth": row["target"],
+                'q1': row["q1"],
+                'q2': row["q2"],
+                "metadata": {
+                    'id': row["id"],
+                    'q1id': row["q1id"],
+                    'q2id': row["q2id"],
+                    'q1': row["q1"],
+                    'q2': row["q2"],
+                    }
+                }
+
+    cfg = {
+        "dataset_type": "local_json_one_per_line",
+        "dataset_name": "quora_duplicate_questions",
+        "local_path": f"{path_prefix}/quora_question.json",
+        "input_processor": input_processor,
+        "row_limit": row_limit,
+        "shuffle_dataset": shuffle,
+    }
+
+    add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
+
     # allenai identity_attack test
     def input_processor(row):
         return {
