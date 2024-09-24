@@ -233,9 +233,10 @@ def run_automation(cfg: dict):
     """
     if cfg['run_data_collection']:
         run_data_collection(cfg)
-    if cfg['create_dataset']:
-        create_dataset(cfg)
-        cfg['dataset_path'] = cfg['file_out']
+
+    create_dataset(cfg, cfg['create_dataset'])
+    cfg['dataset_path'] = cfg['file_out']
+
     if cfg['create_s1_model']:
         cfg['row_limit'] = cfg['modeling_row_limit']
         create_s1_model(cfg)
@@ -258,6 +259,7 @@ def run_experiment(cfg: dict):
 
     config = {**default_cfg, **cfg}
     config['feature_set_configs'] = None
+
     if cfg["run_data_collection"]:
         run_data_collection(config)
 
