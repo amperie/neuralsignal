@@ -53,6 +53,7 @@ def run_data_collection(cfg: dict):
         batch_size (int): Batch size
     """
     # Get all the detectors from config
+    logging.info(f"Running data collection for cfg: {cfg}")
     ds = []
     for d in cfg['detector_names']:
         detector = sdk_config.get_detector_config(d)
@@ -85,6 +86,7 @@ def create_dataset(cfg: dict, create_dataset: bool):
         retVal[0] = path to file out if write_to_file is True
         retVal[1] = pandas dataframe if build_in_memory is True
     """
+    logging.info(f"Running dataset creation for cfg: {cfg}")
 
     cfg['row_limit'] = cfg['dataset_row_limit']
     dataset_paths = []
@@ -150,6 +152,7 @@ def create_s1_model(cfg: dict):
         metadata (dict): Metadata of the model
     """
 
+    logging.info(f"Running S1 model for cfg: {cfg}")
     # Iterate through all the detectors
     models = []
     file_out_template = cfg['file_out']
