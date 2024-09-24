@@ -67,7 +67,7 @@ def run_data_collection(cfg: dict):
     dsr.run()
 
 
-def create_dataset(cfg: dict):
+def create_dataset(cfg: dict, create_dataset: bool):
     """Creates a dataset from a query of scans
 
     Args:
@@ -119,9 +119,10 @@ def create_dataset(cfg: dict):
                 fp = FeatureProcessor(feature_set_configs=fsc)
             cfg['feature_processor'] = fp
 
-            dc = DatasetCreator(cfg)
-            query = cfg['query']
-            dc.create_dataset(query)
+            if create_dataset:
+                dc = DatasetCreator(cfg)
+                query = cfg['query']
+                dc.create_dataset(query)
             dataset_paths.append(file_out)
     # Set this back to the original template for later stages
     cfg['file_out'] = file_out_template
@@ -256,7 +257,8 @@ def run_experiment(cfg: dict):
     config['feature_set_configs'] = None
     if cfg["run_data_collection"]:
         run_data_collection(config)
-    if cfg['create_dataset']:
-        create_dataset(config)
+
+    create_dataset(config, cfg['create_dataset'])
+
     if cfg['create_s1_model']:
         create_s1_model(config)
