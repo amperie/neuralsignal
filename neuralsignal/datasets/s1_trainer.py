@@ -221,6 +221,9 @@ class S1Trainer:
             case "auc":
                 auc = roc_auc_score(self.y_test, pred_proba)
                 return {'loss': -auc, 'status': STATUS_OK, 'model': model}
+            case "f1":
+                f1 = f1_score(self.y_test, pred)
+                return {'loss': -f1, 'status': STATUS_OK, 'model': model}
             case "TN":
                 tn = confusion_matrix(self.y_test, pred)[0, 0]
                 return {'loss': -tn, 'status': STATUS_OK, 'model': model}
