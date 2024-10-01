@@ -1,29 +1,32 @@
 run_data_collection: True
-create_dataset: True
-create_s1_model: True
+create_dataset: False
+create_s1_model: False
 
 # Iterable Configs
-detector_names: ['hallucination']
+detector_names: ['quora_duplicates']
 modeling_row_limits: [10000]
   # quantizations: ['no_quantization', 'int8', 'int4']
 
 # General Configs
-application_name: sdk_halubench_bert_base
-sub_application_name: hb
+application_name: redis
+sub_application_name: quora_duplicates_t5_large
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
-  mlflow_uri: "http://z600.lan:8000"
+  mlflow_uri: "databricks"
+  mlflow_experiment_path: "/Users/pablo@neuralsignal.ai/ns_mlflow"
+  mlflow_register_model: False
+  DATABRICKS_HOST: "https://adb-3426620886840199.19.azuredatabricks.net/"
+  DATABRICKS_TOKEN: "dapi614c7116b0f6480963e9858ee06907c6-3"
+
 indirect_config:
   # indirect_model: "microsoft/Phi-3-mini-128k-instruct"
-  # indirect_model: "google/flan-t5-xl"
-  indirect_model: "google-bert/bert-base-uncased"
-  # indirect_model: "PatronusAI/Llama-3-Patronus-Lynx-8B-Instruct"
-  zone_size: 8
+  indirect_model: "google/flan-t5-large"
+  # indirect_model: "google-bert/bert-base-uncased"
   indirect_batch_size: 1
   # no_quantization, int8 or int4
   quantization: "int8"
-  device: "cuda:0"
+  device: "auto"
 
 # indirect instrumentation config
 indirect_instrumentation_config:
@@ -35,36 +38,47 @@ indirect_instrumentation_config:
   collector_config:
     mode: additive
     data_to_save: ["inputs", "outputs", "layer_info", "topology"]
-    zone_size: 8
+    zone_size: 512
+    zone_size_by_layer: {
+      SelfAttention.o: 1,
+      .wo: 1,
+    }
+    layer_names_to_include: ['all'] # "all" to include all
+    layer_indexes_to_include: []
 
 # Data collection
-dataset: HaluBench
+dataset: quora_duplicate_questions
 max_new_tokens: 1
 truncation_length: 3000
-data_collection_row_limit: 14900
+data_collection_row_limit: 10000
 batch_size: 1
+preprocess_dataset: False
+preprocess_params: {"source_ds": "DROP", "rows": 1000}
 
 # Dataset builder
 write_to_file: True
 build_in_memory: False
-file_out: HaluBench_bert__{detector}.csv
+file_out: "{dataset}_{model}_{detector}.csv"
 query: {}
 zone_size: 1024
 use_full_zone_names: True
-dataset_row_limit: 20000
-featurize_delta_layers: []
-featurize_delta_by_layer_name: []
-featurize_zones_data: True
-featurize_layer_distributions_layers: []
-featurize_layer_distributions_bin_count: 20
-featurize_layer_distributions_deltas: False
-featurize_layer_distributions_absolute: False
-featurize_embedding_vector_layers: []
+dataset_row_limit: 1000
 passthrough_fields: []
+feature_set_configs: [
+  {
+    name: "zones",
+    target_zone_size: {"default": 1024},
+    field_to_process: "outputs",
+    layer_names_to_include: ["all"],
+    layer_indexes_to_include: [],
+  }
+]
+
 
 # S1 Model Build
-model_name: HaluBench
+model_name: quora
 description: Zones only
+create_reduced_feature_model: False
 modeling_row_limit: 0
 max_evals: 50
 seed: 43
@@ -74,3 +88,4 @@ tags:
   runner: dataset_automation
 metadata:
   md: dataset_automation
+
