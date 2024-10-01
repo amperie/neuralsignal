@@ -4,7 +4,8 @@ from sklearn.model_selection import train_test_split
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
 from hyperopt.pyll.base import Apply
 import xgboost as xgb
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import recall_score, precision_score
 from sklearn.metrics import log_loss
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
@@ -297,15 +298,29 @@ class S1Trainer:
         test_accuracy = accuracy_score(self.y_test, pred)
         test_auc = metrics.roc_auc_score(self.y_test, pred_proba)
         test_ll = log_loss(self.y_test, pred_proba)
+        test_f1 = f1_score(self.y_test, pred)
+        test_precision = precision_score(self.y_test, pred)
+        test_recall = recall_score(self.y_test, pred)
+
         logging.info(
             f"Test accuracy: {test_accuracy}")
         logging.info(
             f"Test auc: {test_auc}")
         logging.info(
             f"Test log loss: {test_ll}")
+        logging.info(
+            f"Test f1: {test_f1}")
+        logging.info(
+            f"Test precision: {test_precision}")
+        logging.info(
+            f"Test recall: {test_recall}")
+
         self.metrics['test_accuracy'] = test_accuracy
         self.metrics['test_auc'] = test_auc
         self.metrics['test_ll'] = test_ll
+        self.metrics['test_f1'] = test_f1
+        self.metrics['test_precision'] = test_precision
+        self.metrics['test_recall'] = test_recall
         self.metrics['rows_test'] = len(self.X_test)
         self.metrics['rows_dataset'] = len(self.X)
 
