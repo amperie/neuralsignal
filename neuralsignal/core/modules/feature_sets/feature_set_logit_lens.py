@@ -30,7 +30,7 @@ class FeatureSetLogitLens(FeatureSetBase):
         """
         super().__init__(config)
         if torch.cuda.is_available():
-            dev_map = "auto"
+            dev_map = "cuda:0"
         else:
             dev_map = "cpu"
         self.dev_map = dev_map
