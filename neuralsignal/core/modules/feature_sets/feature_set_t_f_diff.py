@@ -30,8 +30,10 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
         """
         super().__init__(config)
 
-        if torch.cuda.is_available():
-            dev_map = "cuda:1"
+        if "dev_map" in config:
+            dev_map = config["dev_map"]
+        elif torch.cuda.is_available():
+            dev_map = "cuda:0"
         else:
             dev_map = "cpu"
         self.dev_map = dev_map
