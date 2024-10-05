@@ -124,6 +124,7 @@ def create_dataset(cfg: dict, create_dataset: bool):
             if create_dataset:
                 dc = DatasetCreator(cfg)
                 query = cfg['query']
+                logging.info(f"Writing dataset to file: {file_out}")
                 dc.create_dataset(query)
             dataset_paths.append(file_out)
     # Set this back to the original template for later stages
