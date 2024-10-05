@@ -17,6 +17,7 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
         self.model = AutoModelForSeq2SeqLM.from_pretrained(
                                 model_name,
                                 device_map=self.dev_map,
+                                load_in_8bit=True,
                                 )
         self.unembed = self.model.lm_head
 
