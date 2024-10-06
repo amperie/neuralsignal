@@ -65,6 +65,7 @@ class FeatureSetLayerDistribution(FeatureSetBase):
 
                 hist = torch.histc(t, bin_count)
                 vals += hist.tolist()
+                idx += 1
 
         # Return the right format results
         output_format = self.config['output_format']
