@@ -56,6 +56,7 @@ class S1Trainer:
         "metrics": {},
         "params": {},
         "tags": {},
+        "artifacts": {},
         "metadata": {},
         "create_reduced_feature_model": False,
         "reduced_feature_count": 20,
@@ -95,6 +96,7 @@ class S1Trainer:
         self.metrics = self.config["metrics"]
         self.params = self.config["params"]
         self.tags = self.config["tags"]
+        self.artifacts = self.config["artifacts"]
         self.metadata = self.config["metadata"]
         self.params['dataset_path'] = self.config['dataset_path']
         logging.info(f"Initialized S1Trainer with config: {self.config}")
@@ -356,6 +358,7 @@ class S1Trainer:
             'params': self.params,
             'metadata': self.metadata,
             'tags': self.tags,
+            'artifacts': self.artifacts,
             "model": self.best_model
         }
 
@@ -380,7 +383,8 @@ class S1Trainer:
                 cv=kfold, scoring=self.config['cv_metric']
                 )
 
-            self.params[f'cv_{self.config["cv_metric"]}'] = results
+            model_cfg['artifacts'][f'cv_{self.config["cv_metric"]}'] =\
+                dict(enumerate(results.flatten(), 1))
             self.metrics[f'cv_mean_{self.config["cv_metric"]}'] =\
                 results.mean()
             self.metrics[f'cv_std_{self.config["cv_metric"]}'] =\
@@ -400,7 +404,7 @@ class S1Trainer:
             self.best_model.get_booster().get_score(importance_type='gain')
         fi_s = dict(
             sorted(fi.items(), key=lambda x: x[1], reverse=True)[0:20])
-        model_cfg['artifacts'] = {'feature_importance': fi_s}
+        model_cfg['artifacts']['feature_importance'] = fi_s
 
         if "run_name" in self.config:
             model_cfg['run_name'] = self.config['run_name']
