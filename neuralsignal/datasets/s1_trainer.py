@@ -362,7 +362,8 @@ class S1Trainer:
         # Run cross validation
         if self.config['run_cross_validation']:
             cv_params = self.best_params
-            cv_params['early_stopping_rounds'] = None
+            cv_params['early_stopping_rounds'] = 0
+
             cv_model = xgb.XGBClassifier(
                 tree_method='hist', device=self.config['device']
                 )
@@ -372,7 +373,7 @@ class S1Trainer:
                 n_splits=self.config['cv_folds'], random_state=7, shuffle=True
                 )
             results = cross_val_score(
-                model, self.X, self.Y,
+                cv_model, self.X, self.Y,
                 cv=kfold, scoring=self.config['cv_metric']
                 )
 

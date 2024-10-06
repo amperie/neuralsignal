@@ -179,7 +179,8 @@ def test_s1_model():
         "tags": {"testtag": "testtag"},
         "metadata": {"testmd": "testmd"},
         "row_limit": 1930,
-        "create_reduced_feature_model": True
+        "create_reduced_feature_model": True,
+        "run_cross_validation": True,
     }
 
     mt = S1Trainer(cfg)
