@@ -49,9 +49,9 @@ class S1Trainer:
         "xgboost_optimization_metric": "logloss",
         "prediction_threshold": 0.5,
         "max_evals": 2,
-        "early_stopping_rounds": 50,
+        "early_stopping_rounds": 100,
         "run_cross_validation": False,
-        "cv_folds": 5,
+        "cv_folds": 3,
         "cv_metric": "f1",
         "metrics": {},
         "params": {},
@@ -362,7 +362,7 @@ class S1Trainer:
         # Run cross validation
         if self.config['run_cross_validation']:
             logging.info(
-                f"Running cross validation for {self.config['cv_folds']}"
+                f"Running cross validation for {self.config['cv_folds']} folds"
                 )
             cv_params = self.best_params
             cv_params['early_stopping_rounds'] = 0
