@@ -173,8 +173,8 @@ def test_s1_model():
         "application_name": "sdk_squad_v2",
         "sub_application_name": "data",
         "model_name": "testing-s1",
-        # "dataset_path": "/Users/pablo/Code/neuralsignal/halubench_t5-small_hallucination.csv",
-        "dataset_path": "H:\\My Drive\\Code\\NeuralSignal\\halubench_t5-small_hallucination.csv",
+        "dataset_path": "/Users/pablo/Code/neuralsignal/halubench_t5-small_hallucination.csv",
+        # "dataset_path": "H:\\My Drive\\Code\\NeuralSignal\\halubench_t5-small_hallucination.csv",
         "description": "testing",
         "tags": {"testtag": "testtag"},
         "metadata": {"testmd": "testmd"},
@@ -329,7 +329,7 @@ def test_tunedlens():
 
 
 # test_tunedlens()
-# test_s1_model()
+test_s1_model()
 # load_scan("66ad0140b2d466a1795d91a3", "hallucination")
 # test_detector_creation()
 # test_generation()

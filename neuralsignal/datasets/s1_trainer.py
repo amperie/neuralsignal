@@ -4,6 +4,8 @@ from sklearn.model_selection import train_test_split
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
 from hyperopt.pyll.base import Apply
 import xgboost as xgb
+from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_val_score
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.metrics import recall_score, precision_score
 from sklearn.metrics import log_loss
@@ -48,6 +50,9 @@ class S1Trainer:
         "prediction_threshold": 0.5,
         "max_evals": 2,
         "early_stopping_rounds": 50,
+        "run_cross_validation": False,
+        "cv_folds": 5,
+        "cv_metric": "f1",
         "metrics": {},
         "params": {},
         "tags": {},
@@ -353,6 +358,37 @@ class S1Trainer:
             'tags': self.tags,
             "model": self.best_model
         }
+
+        # Run cross validation
+        if self.config['run_cross_validation']:
+            cv_params = self.best_params
+            cv_params['early_stopping_rounds'] = None
+            cv_model = xgb.XGBClassifier(
+                tree_method='hist', device=self.config['device']
+                )
+            cv_model.set_params(**cv_params)
+
+            kfold = KFold(
+                n_splits=self.config['cv_folds'], random_state=7, shuffle=True
+                )
+            results = cross_val_score(
+                model, self.X, self.Y,
+                cv=kfold, scoring=self.config['cv_metric']
+                )
+
+            self.metrics[f'cv_{self.config["cv_metric"]}'] = results
+            self.metrics[f'cv_mean_{self.config["cv_metric"]}'] =\
+                results.mean()
+            self.metrics[f'cv_std_{self.config["cv_metric"]}'] =\
+                results.std()
+            self.params['cv_metric'] = self.config['cv_metric']
+            self.params['cv_folds'] = self.config['cv_folds']
+
+            logging.info(f"CV {self.config['cv_metric']}: {results}")
+            logging.info(
+                f"CV Mean {self.config['cv_metric']}: {results.mean()} "
+                f"STD: {results.std()}"
+                )
 
         # Feature Importance
 
