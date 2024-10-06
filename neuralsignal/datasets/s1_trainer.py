@@ -361,6 +361,9 @@ class S1Trainer:
 
         # Run cross validation
         if self.config['run_cross_validation']:
+            logging.info(
+                f"Running cross validation for {self.config['cv_folds']}"
+                )
             cv_params = self.best_params
             cv_params['early_stopping_rounds'] = 0
 
@@ -377,7 +380,7 @@ class S1Trainer:
                 cv=kfold, scoring=self.config['cv_metric']
                 )
 
-            self.metrics[f'cv_{self.config["cv_metric"]}'] = results
+            self.params[f'cv_{self.config["cv_metric"]}'] = results
             self.metrics[f'cv_mean_{self.config["cv_metric"]}'] =\
                 results.mean()
             self.metrics[f'cv_std_{self.config["cv_metric"]}'] =\
