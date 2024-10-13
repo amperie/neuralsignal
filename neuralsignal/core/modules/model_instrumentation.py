@@ -158,7 +158,13 @@ def generate_from_batch(
 
     input_list = input
 
-    if truncation_length == 0:
+    if batch_size > 1:
+        # If batch size>1 we need padding
+        input_ids = tokenizer(
+            input_list, return_tensors="pt",
+            padding=True, truncation=True).input_ids
+    elif truncation_length == 0:
+        # IF batch = 1 then see if we're truncating
         input_ids = tokenizer(
             input_list, return_tensors="pt",
             padding=False, truncation=False).input_ids
