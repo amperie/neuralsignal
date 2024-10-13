@@ -53,7 +53,6 @@ for row in dataset:
         start = time.time()
         res = ns.evaluate_indirect_output(batch, ds)
         end = time.time()
-        print(f"Elapsed time: {end - start}")
         total_latency += end - start
         rows_processed += len(batch)
         print(f"Elapsed time: {end - start}")
