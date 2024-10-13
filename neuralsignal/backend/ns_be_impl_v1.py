@@ -70,6 +70,8 @@ class NSBackendImplV1:
                 "Downloading from backend."
             )
             model = mlflow.sklearn.load_model(model_id)
+            # Cache model locally
+            logging.info(f"Saving model {model_id} locally to {file_name}")
             with open(file_name, 'wb') as handle:
                 pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
