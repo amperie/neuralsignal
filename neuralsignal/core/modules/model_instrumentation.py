@@ -171,6 +171,7 @@ def generate_from_batch(
     if torch.cuda.is_available():
         input_ids = input_ids.to("cuda")
     try:
+        input_ids = input_ids.to(model.device)
         output = model.generate(
             input_ids, pad_token_id=tokenizer.eos_token_id,
             max_new_tokens=max_new_tokens

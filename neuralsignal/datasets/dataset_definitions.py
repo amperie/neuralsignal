@@ -51,7 +51,7 @@ def datasets_dictionary(
     if platform.system() == "Windows":
         path_prefix = "Y:/"
     if platform.system() == "Darwin":
-        path_prefix = "/Users/pablo/nfs/"
+        path_prefix = "/Users/pablo/nfs-data/"
 
     # diagram_hivemapper - /data/nfs-data/diagram/diagram_dataset.json
     def input_processor(row):
