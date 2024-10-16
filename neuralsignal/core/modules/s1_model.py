@@ -36,6 +36,12 @@ class S1Model:
     def set_id(self, model_id: str):
         self.model_id = model_id
 
+    def set_metadata(self, metadata: dict):
+        self.metadata = metadata
+
+    def get_metadata_item(self, name: str):
+        return self.metadata[name]
+
     def __getitem__(self, name: str):
         return self.config[name]
 
