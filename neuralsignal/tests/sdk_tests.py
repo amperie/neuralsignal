@@ -292,6 +292,24 @@ def test_run_experiment():
         "scan_cache_directory": "J:\\Temp\\scan_cache",
         "feature_processor": fp,
     }
+    exp_cfg = {
+        "run_data_collection": False,
+        "create_dataset": False,
+        "create_s1_model": True,
+        "optimization_metric": "f1",
+        "device": "cuda:0",
+        "detector_names": ['quora_duplicates'],
+        "feature_processor": fp, 
+        "cfg_file_path":"/home/pablo/neuralsignal/neuralsignal/automation/dataset_automation_z440.yaml",
+        "application_name": "redis",
+        "sub_application_name": "quora_duplicates_t5-large",
+        "dataset_row_limit": 1000,
+        "cache_scan_on_load": True,
+        "cache_scan_on_write": True,
+        "create_reduced_feature_model": True,
+        "reduced_feature_count": 50,
+        "run_cross_validation": True,
+            }
     run_experiment(cfg)
 
 
@@ -330,12 +348,12 @@ def test_tunedlens():
 
 
 # test_tunedlens()
-test_s1_model()
+# test_s1_model()
 # load_scan("66ad0140b2d466a1795d91a3", "hallucination")
 # test_detector_creation()
 # test_generation()
 # test_ds_create_feature_processor()
-# test_run_experiment()
+test_run_experiment()
 # test_feature_processor()
 test_ds_runner()
 # test_ds_create()

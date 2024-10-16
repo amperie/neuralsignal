@@ -114,3 +114,7 @@ def delete_oldest_file(directory_path, extension="scan"):
     oldest_file = min(full_path, key=os.path.getctime)
     os.remove(oldest_file)
     return oldest_file
+
+
+def run_uri_to_id(run_uri: str) -> str:
+    return run_uri.split("/")[1]

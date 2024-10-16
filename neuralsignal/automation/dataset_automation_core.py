@@ -196,9 +196,12 @@ def create_s1_model(cfg: dict):
 
                 if "feature_processor" in cfg and\
                         cfg['feature_processor'] is not None:
+                    feature_set_list = []
                     for fs in cfg['feature_processor'].feature_sets:
                         name = f"feature_set_{fs.get_feature_set_name()}"
                         cfg['params'][name] = fs.get_config()
+                        feature_set_list.append(fs.get_feature_set_name())
+                    cfg['params']['feature_set_list'] = feature_set_list
 
                 cfg['run_name'] = cfg['model_name']
 
@@ -215,9 +218,10 @@ def create_s1_model(cfg: dict):
                 models.append(m)
 
                 if cfg['create_reduced_feature_model']:
-                    mt.create_reduced_feature_model(
+                    rm = mt.create_reduced_feature_model(
                         cfg['reduced_feature_count'], cfg
                     )
+                    models.append(rm)
     return models
 
 

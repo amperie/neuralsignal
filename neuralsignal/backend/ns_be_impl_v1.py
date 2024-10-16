@@ -4,6 +4,7 @@ import os
 import pickle
 from neuralsignal.backend.mongo_backend import MongoBackend
 from neuralsignal.core.modules.utils import string_to_filename
+from neuralsignal.backend.backend_util import run_uri_to_id
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.core.modules.s1_model import S1Model
 from neuralsignal.backend.backend_util import save_to_mlflow
@@ -64,16 +65,24 @@ class NSBackendImplV1:
             logging.info(
                 f"Loading model {model_id} locally from {file_name}")
             model = pickle.load(open(file_name, "rb"))
+            model_metadata = pickle.load(open(file_name + ".meta", "rb"))
         else:
             logging.info(
                 f"Model {model_id} not found locally. "
                 "Downloading from backend."
             )
             model = mlflow.sklearn.load_model(model_id)
+            model_id_value = run_uri_to_id(model_id)
+            model_metadata = mlflow.get_run(model_id_value).to_dictionary()
+
             # Cache model locally
             logging.info(f"Saving model {model_id} locally to {file_name}")
             with open(file_name, 'wb') as handle:
-                pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(
+                    model, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            with open(file_name + ".meta", 'wb') as handle:
+                pickle.dump(
+                    model_metadata, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         cfg = {
             'model_id': model_id,
@@ -83,6 +92,7 @@ class NSBackendImplV1:
             'model_name': model_id
         }
         retVal = S1Model(cfg)
+        retVal.set_metadata(model_metadata)
         return retVal
 
     def save_s1_model(self, model: S1Model):
