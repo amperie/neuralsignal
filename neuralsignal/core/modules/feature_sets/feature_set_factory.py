@@ -8,11 +8,14 @@ from neuralsignal.core.modules.feature_sets.feature_set_base\
     import FeatureSetBase
 from neuralsignal.core.modules.feature_sets.feature_set_t_f_diff\
     import FeatureSetTrueFalseDiff
+from neuralsignal.core.modules.feature_sets.feature_set_layer_distribution\
+    import FeatureSetLayerDistribution
 
 fs = {
     "zones": FeatureSetZones,
-    "logit_lens": FeatureSetLogitLens,
-    "tf_diff": FeatureSetTrueFalseDiff
+    "logit-lens": FeatureSetLogitLens,
+    "T-F-diff": FeatureSetTrueFalseDiff,
+    "layer_distribution": FeatureSetLayerDistribution
 }
 
 

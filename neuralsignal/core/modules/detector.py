@@ -113,7 +113,7 @@ class Detector:
         self.behavior_name = self.config["behavior_name"]
         self.prompt = self.config["prompt"]
 
-    def predict(self, input_data: list) -> float:
+    def predict(self, input_scan: list) -> float:
         """Runs the S1 model and returns the probability of
         class 0 being detected
 
@@ -126,7 +126,7 @@ class Detector:
         if not self.enabled or not self.enable_prediction:
             return None
         try:
-            retVal = self.model.predict_proba([input_data])
+            retVal = self.model.predict_proba(input_scan, featurize=True)
             return retVal
         except ValueError as e:
             logging.error(
@@ -137,7 +137,21 @@ class Detector:
             # TODO: Make this better
             return [[-1, -1]]
 
-    def detect(
+    def detect(self, input_scan) -> DetectionResults:
+        """Detects behavior in input data
+        If a threshold is defined, returns a binary value of 0 or 1
+        If a threshold is not defined, returns a probability between 0 and 1
+        """
+        if not self.enabled or not self.enable_prediction:
+            return DetectionResults(self.config["behavior_name"], [-1, -1])
+
+        prob_classes = self.predict(input_scan)
+
+        retVal = DetectionResults(
+            self.config["behavior_name"], prob_classes[0])
+        return retVal
+
+    def detect_old(
             self, input_data,
             current_zone_size=1, target_zone_size=1) -> DetectionResults:
         """Detects behavior in input data
@@ -146,9 +160,14 @@ class Detector:
         """
         if not self.enabled or not self.enable_prediction:
             return DetectionResults(self.config["behavior_name"], [-1, -1])
+        """
         fd = featurize_tensor_dict(
             input_data, target_zone_size, current_zone_size)
         prob_classes = self.predict(fd[0])
+        """
+
+        prob_classes = self.predict(input_data)
+
         retVal = DetectionResults(
             self.config["behavior_name"], prob_classes[0])
         return retVal

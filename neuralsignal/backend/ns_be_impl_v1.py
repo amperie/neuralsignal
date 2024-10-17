@@ -61,7 +61,8 @@ class NSBackendImplV1:
         file_name = string_to_filename(model_id)
         file_name = f"{sdk_config.get('home')}/s1/{file_name}"
         exists = os.path.isfile(file_name)
-        if exists:
+        exists_meta = os.path.isfile(file_name + ".meta")
+        if exists and exists_meta:
             logging.info(
                 f"Loading model {model_id} locally from {file_name}")
             model = pickle.load(open(file_name, "rb"))
