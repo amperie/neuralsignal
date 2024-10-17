@@ -115,20 +115,23 @@ def test_ds_runner():
             "source_ds": "DROP",
             "rows": 40
         },
-        "indirect_instrumentation_config": {
-            "collector_config": {
-                "zone_size": 64,
-                "zone_size_by_layer": {
-                    "SelfAttention.o": 1,
-                    "SelfAttention.q": 4
-                },
-                "layer_names_to_include": [
-                    "SelfAttention.o", "SelfAttention.q", "norm"],
-                "layer_indexes_to_include": [2],
-            }
-        }
-
     }
+    
+    """
+    "indirect_instrumentation_config": {
+        "collector_config": {
+            "zone_size": 64,
+            "zone_size_by_layer": {
+                "SelfAttention.o": 1,
+                "SelfAttention.q": 4
+            },
+            "layer_names_to_include": [
+                "SelfAttention.o", "SelfAttention.q", "norm"],
+            "layer_indexes_to_include": [2],
+        }
+    }
+    """
+    
     dsr = DatasetRunner(cfg)
     dsr.run()
 
