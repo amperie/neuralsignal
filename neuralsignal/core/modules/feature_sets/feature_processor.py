@@ -98,3 +98,7 @@ class FeatureProcessor:
             cols = cols + processed[fs][0]
             vals = vals + processed[fs][1]
         return (cols, vals)
+
+    def featurize_scan(self, scan, output_format="name_and_value_columns"):
+        self.set_scan(scan)
+        return self.featurize(output_format)

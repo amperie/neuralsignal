@@ -3,6 +3,7 @@ import pickle
 import re
 import unicodedata
 import os
+import json
 
 
 def generate_uuid():
@@ -45,3 +46,7 @@ def dict_to_str(d):
     for k in d:
         retVal += f"'{k}': {str(d[k])}\n"
     return retVal
+
+
+def mlflow_str_to_dict(s):
+    return json.loads(s.replace("'", '"'))
