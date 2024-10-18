@@ -603,8 +603,8 @@ def instrument_mpnet(cfg, model, hc: Collector) -> list:
     if cfg["instrument_decoder"]:
 
         add_hook(
-            lyr.lm_head.dense, hc, registered_hooks)
-        lyr.lm_head.dense.ns_name = "lm_head." + \
+            model.lm_head.dense, hc, registered_hooks)
+        model.lm_head.dense.ns_name = "lm_head." + \
             f".dense_{i}"
 
     add_hook(model.lm_head.decoder, hc, registered_hooks)
