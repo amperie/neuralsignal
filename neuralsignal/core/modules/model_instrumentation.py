@@ -259,6 +259,8 @@ def get_model_type(model) -> str:
         return "t5"
     if "bert" in model_name:
         return "bert"
+    if "mpnet" in model_name:
+        return "mpnet"
     if "flan" in model_name:
         return "t5"
     if "JudgeLM" in model_name:
@@ -298,6 +300,8 @@ def instrument_model(cfg, model, hc: Collector) -> list:
 
     if type == "t5":
         return instrument_t5(cfg, model, hc)
+    if type == "mpnet":
+        return instrument_mpnet(cfg, model, hc)
     if type == "bert":
         return instrument_bert(cfg, model, hc)
     if type == "llama2":
@@ -542,6 +546,60 @@ def instrument_bert(cfg, model, hc: Collector) -> list:
     add_hook(model.cls.predictions.decoder, hc, registered_hooks)
     model.cls.predictions.decoder.ns_name = "decoder.output"
     hc.last_layer = id(model.cls.predictions.decoder)
+    return registered_hooks
+
+
+def instrument_mpnet(cfg, model, hc: Collector) -> list:
+    # Keep a list of these so we can de-instrument the model later
+    registered_hooks = []
+    if cfg["instrument_encoder"]:
+
+        for i, lyr in enumerate(model.mpnet.encoder.layer):
+            add_hook(
+                lyr.attention.attn.q, hc, registered_hooks)
+            lyr.attention.attn.q.ns_name = "encoder." + \
+                f".attention.q_{i}"
+            add_hook(
+                lyr.attention.attn.k, hc, registered_hooks)
+            lyr.attention.attn.k.ns_name = "encoder." + \
+                f".attention.k_{i}"
+            add_hook(
+                lyr.attention.attn.v, hc, registered_hooks)
+            lyr.attention.attn.v.ns_name = "encoder." + \
+                f".attention.v_{i}"
+            add_hook(
+                lyr.attention.attn.o, hc, registered_hooks)
+            lyr.attention.attn.o.ns_name = "encoder." + \
+                f".attention.o_{i}"
+            add_hook(
+                lyr.attention.LayerNorm, hc, registered_hooks)
+            lyr.attention.LayerNorm.ns_name = "encoder." + \
+                f".attention.LayerNorm_{i}"
+
+            add_hook(
+                lyr.intermediate.dense, hc, registered_hooks)
+            lyr.intermediate.dense.ns_name = "encoder." + \
+                f".intermediate_dense_{i}"
+            add_hook(
+                lyr.intermediate.intermediate_act_fn, hc, registered_hooks)
+            lyr.intermediate.intermediate_act_fn.ns_name = "encoder." + \
+                f".intermediate_intermediate_act_fn_{i}"
+
+            add_hook(
+                lyr.output.dense, hc, registered_hooks)
+            lyr.output.dense.ns_name = "encoder." + \
+                f".output_dense_{i}"
+
+    if cfg["instrument_decoder"]:
+
+        add_hook(
+            lyr.lm_head.dense, hc, registered_hooks)
+        lyr.lm_head.dense.ns_name = "lm_head." + \
+            f".dense_{i}"
+
+    add_hook(model.lm_head.decoder, hc, registered_hooks)
+    model.lm_head.decoder.ns_name = "decoder.output"
+    hc.last_layer = id(model.lm_head.decoder)
     return registered_hooks
 
 
