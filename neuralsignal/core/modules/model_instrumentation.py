@@ -610,6 +610,12 @@ def instrument_mpnet(cfg, model, hc: Collector) -> list:
     add_hook(model.lm_head.decoder, hc, registered_hooks)
     model.lm_head.decoder.ns_name = "decoder.output"
     hc.last_layer = id(model.lm_head.decoder)
+
+    def generate_trampoline(input_ids):
+        return model(input_ids)
+
+    model.generate = generate_trampoline
+
     return registered_hooks
 
 
