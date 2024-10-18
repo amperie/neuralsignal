@@ -76,4 +76,4 @@ class S1Model:
             inf_data = self.fp.featurize_scan(data)
         else:
             inf_data = data
-        return self.model.predict_proba(inf_data)
+        return self.model.predict_proba([inf_data[1]])

@@ -35,7 +35,10 @@ class Collector:
         # Configuration variables
         self.mode = self.config['mode']
         self.data_to_save = self.config['data_to_save']
-        self.zone_size = self.config['zone_size']
+        if "zone_size_by_layer" in self.config:
+            self.zone_size = self.config['zone_size_by_layer']['default']
+        else:
+            self.zone_size = self.config['zone_size']
         # self.zone_sizes_by_layer = self.config['zone_size_by_layer']
 
         # Additive mode
@@ -122,68 +125,69 @@ class Collector:
         layer_names_to_include = self.config["layer_names_to_include"]
 
         if self.mode == "additive":
-            if self.config["zone_size"] > 1:
-                if "inputs" in self.data_to_save:
-                    retVal["inputs"] = {}
-                    for batch_idx in range(self.batch_size):
-                        if not zones_by_layer:
-                            # We are not doing different zone size per layer
-                            rv = process_tensor_dict_into_zones(
-                                self.inputs[batch_idx],
-                                self.config["zone_size"])
-                            zbl = {"default": self.zone_size}
-                        else:
-                            # We are doing different zone size per layer
-                            ret_zbl = process_tensor_dict_into_zones_by_layer(
-                                self.inputs[batch_idx], zones_by_layer,
-                                self.layer_id_to_name, {'default': 1},
-                                self.zone_size, layer_indexes_to_include,
-                                layer_names_to_include
-                                )
-                            retVal["layer_indexes_to_include"] =\
-                                layer_indexes_to_include
-                            retVal["layer_names_to_include"] =\
-                                layer_names_to_include
-                            retVal['zones_by_layer'] =\
-                                zones_by_layer
-                            rv = ret_zbl[0]
-                            zbl = ret_zbl[1]
-                            zbl['default'] = self.zone_size
-                        retVal["inputs"][batch_idx] = rv
-                        retVal["zone_sizes_by_layer"] = zbl
-                    self.inputs = retVal["inputs"]
-                    self.zone_sizes_by_layer = zbl
-                if "outputs" in self.data_to_save:
-                    retVal["outputs"] = {}
-                    for batch_idx in range(self.batch_size):
-                        if not zones_by_layer:
-                            # We are not doing different zone size per layer
-                            rv = process_tensor_dict_into_zones(
-                                self.outputs[batch_idx],
-                                self.config["zone_size"])
-                            zbl = {"default": self.zone_size}
-                        else:
-                            # We are doing different zone size per layer
-                            ret_zbl = process_tensor_dict_into_zones_by_layer(
-                                self.outputs[batch_idx], zones_by_layer,
-                                self.layer_id_to_name, {'default': 1},
-                                self.zone_size, layer_indexes_to_include,
-                                layer_names_to_include
-                                )
-                            retVal["layer_indexes_to_include"] =\
-                                layer_indexes_to_include
-                            retVal["layer_names_to_include"] =\
-                                layer_names_to_include
-                            retVal['zones_by_layer'] =\
-                                zones_by_layer
-                            rv = ret_zbl[0]
-                            zbl = ret_zbl[1]
-                            zbl['default'] = self.zone_size
-                        retVal["outputs"][batch_idx] = rv
-                        retVal["zone_sizes_by_layer"] = zbl
-                    self.outputs = retVal["outputs"]
-                    self.zone_sizes_by_layer = zbl
-                retVal["zone_sizes_by_layer"] = zbl
+            if "inputs" in self.data_to_save:
+                retVal["inputs"] = {}
+                for batch_idx in range(self.batch_size):
+                    if not zones_by_layer:
+                        # We are not doing different zone size per layer
+                        rv = process_tensor_dict_into_zones(
+                            self.inputs[batch_idx],
+                            self.zone_size)
+                        zbl = {"default": self.zone_size}
+                    else:
+                        # We are doing different zone size per layer
+                        ret_zbl = process_tensor_dict_into_zones_by_layer(
+                            self.inputs[batch_idx], zones_by_layer,
+                            self.layer_id_to_name, {'default': 1},
+                            self.zone_size, layer_indexes_to_include,
+                            layer_names_to_include
+                            )
+                        retVal["layer_indexes_to_include"] =\
+                            layer_indexes_to_include
+                        retVal["layer_names_to_include"] =\
+                            layer_names_to_include
+                        retVal['zones_by_layer'] =\
+                            zones_by_layer
+                        rv = ret_zbl[0]
+                        zbl = ret_zbl[1]
+                        zbl['default'] = self.zone_size
+                    retVal["inputs"][batch_idx] = rv
+                    retVal["zone_sizes_by_layer"] = zbl
+                self.inputs = retVal["inputs"]
+                self.zone_sizes_by_layer = zbl
+            if "outputs" in self.data_to_save:
+                retVal["outputs"] = {}
+                for batch_idx in range(self.batch_size):
+                    if not zones_by_layer:
+                        # We are not doing different zone size per layer
+                        rv = process_tensor_dict_into_zones(
+                            self.outputs[batch_idx],
+                            self.zone_size)
+                        zbl = {"default": self.zone_size}
+                    else:
+                        # We are doing different zone size per layer
+                        ret_zbl = process_tensor_dict_into_zones_by_layer(
+                            self.outputs[batch_idx], zones_by_layer,
+                            self.layer_id_to_name, {'default': 1},
+                            self.zone_size, layer_indexes_to_include,
+                            layer_names_to_include
+                            )
+                        retVal["layer_indexes_to_include"] =\
+                            layer_indexes_to_include
+                        retVal["layer_names_to_include"] =\
+                            layer_names_to_include
+                        retVal['zones_by_layer'] =\
+                            zones_by_layer
+                        rv = ret_zbl[0]
+                        zbl = ret_zbl[1]
+                        zbl['default'] = self.zone_size
+                    retVal["outputs"][batch_idx] = rv
+                    retVal["zone_sizes_by_layer"] = zbl
+                self.outputs = retVal["outputs"]
+                self.zone_sizes_by_layer = zbl
+            retVal["zone_sizes_by_layer"] = zbl
+        else:
+            raise NotImplementedError("Only additive mode is supported")
 
         if "topology" in self.data_to_save:
             self.topology = [

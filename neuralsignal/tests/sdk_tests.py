@@ -99,6 +99,7 @@ def test_sdk():
 def test_ds_runner():
 
     d = sdk_config.get_detector_config("quora_duplicates")
+    d['enable_prediction'] = True
     d['application_name'] = "sdk_testing"
     d['sub_application_name'] = "quora"
     d = Detector(d)
@@ -111,6 +112,7 @@ def test_ds_runner():
         "sub_application_name": "quora",
         "max_new_tokens": 1,
         "row_limit": 0,
+        "enable_detector_prediction": True,
         "preprocess_dataset": False,
         "preprocess_params": {
             "source_ds": "DROP",
@@ -146,7 +148,7 @@ def test_ds_runner():
         }
     }
     """
-    
+
     dsr = DatasetRunner(cfg)
     dsr.run()
 

@@ -15,8 +15,8 @@ zone_size: 1024
 
 # Evaluation mode config
 indirect_config:
-  # indirect_model: "google/flan-t5-large"
-  indirect_model: "t5-small"
+  indirect_model: "google/flan-t5-large"
+  # indirect_model: "t5-small"
   zone_size: 1024
   indirect_batch_size: 1
   # no_quantization, int8 or int4
@@ -147,7 +147,7 @@ detectors:
   - behavior_name: "quora_duplicates"
     S1_model: null
     # S1_model_path: 'runs:/7fd2339b3ea84876a8071d988ab07da3/S1'
-    S1_model_path: 'runs:/a75e6ebd9aed4f87bac94b29b3badd63/S1'
+    S1_model_path: 'runs:/c36ca54661f144db88e72c74364b5750/S1'
     mlflow_uri: "http://z600.lan:8000"
     prompt: >
           Analyze the two given questions and tell me if they are duplicates. 
