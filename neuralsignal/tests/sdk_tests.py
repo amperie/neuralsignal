@@ -102,6 +102,7 @@ def test_ds_runner():
     d['application_name'] = "sdk_testing"
     d['sub_application_name'] = "quora"
     d = Detector(d)
+    d.enable_prediction = True
 
     cfg = {
         "dataset": "quora_duplicate_questions",
@@ -115,15 +116,29 @@ def test_ds_runner():
             "source_ds": "DROP",
             "rows": 40
         },
+        "indirect_instrumentation_config": {
+            "collector_config": {
+                "zone_size": 1,
+                "zone_size_by_layer": {
+                    ".o": 1,
+                    ".wo": 1,
+                    ".act": 1,
+                    "default": 256,
+                },
+                "layer_names_to_include": [
+                    ".o", ".wo", ".act"],
+                "layer_indexes_to_include": [],
+            }
+        }
     }
-    
+
     """
     "indirect_instrumentation_config": {
         "collector_config": {
             "zone_size": 64,
             "zone_size_by_layer": {
                 "SelfAttention.o": 1,
-                "SelfAttention.q": 4
+                "SelfAttention.q": 4,
             },
             "layer_names_to_include": [
                 "SelfAttention.o", "SelfAttention.q", "norm"],

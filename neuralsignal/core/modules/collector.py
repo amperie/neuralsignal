@@ -36,6 +36,7 @@ class Collector:
         self.mode = self.config['mode']
         self.data_to_save = self.config['data_to_save']
         self.zone_size = self.config['zone_size']
+        # self.zone_sizes_by_layer = self.config['zone_size_by_layer']
 
         # Additive mode
         if self.mode == "additive":
