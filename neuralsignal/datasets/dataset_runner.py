@@ -18,6 +18,7 @@ class DatasetRunner:
             "max_new_tokens": 128,
             "preprocess_dataset": False,
             "preprocess_params": {},
+            "enable_detector_prediction": False
         }
 
     def _initialize(self, config: dict):
@@ -40,7 +41,7 @@ class DatasetRunner:
         for d in self.detectors:
             # Since we're just doing data collection
             # We don't want to enable prediction
-            d.enable_prediction = False
+            d.enable_prediction = self.config['enable_detector_prediction']
 
     def __init__(self, config: dict):
         """
