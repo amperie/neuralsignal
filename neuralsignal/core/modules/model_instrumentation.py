@@ -9,6 +9,7 @@ from transformers.models.t5.modeling_t5 import T5LayerFF
 from transformers.models.t5.modeling_t5 import T5LayerSelfAttention
 from transformers.models.t5.modeling_t5 import T5LayerCrossAttention
 from transformers import AutoModelForSeq2SeqLM, AutoModelForCausalLM
+from transformers import AutoModelForMaskedLM
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,6 +32,15 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
         f"Loading model: {model_config['model_name']} with "
         f"config: {model_config}")
     model_type = get_model_type(model_config["model_name"])
+
+    if model_type == "mpnet":
+        model = AutoModelForMaskedLM.from_pretrained(
+            model_config["model_name"],
+            device_map=model_config["device"],
+            trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_config["model_name"])
+        return tokenizer, model
 
     if model_config["quantization"] == "int4":
         bnb_config = BitsAndBytesConfig(
