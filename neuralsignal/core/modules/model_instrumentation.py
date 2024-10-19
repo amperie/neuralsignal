@@ -190,7 +190,7 @@ def generate_from_batch(
     try:
         input_ids = input_ids.to(model.device)
         output = model.generate(
-            input_ids, pad_token_id=tokenizer.eos_token_id,
+            input_ids=input_ids, pad_token_id=tokenizer.eos_token_id,
             max_new_tokens=max_new_tokens
             )
     except NSAbortLLM as e:
@@ -619,8 +619,8 @@ def instrument_mpnet(cfg, model, hc: Collector) -> list:
     model.lm_head.decoder.ns_name = "decoder.output"
     hc.last_layer = id(model.lm_head.decoder)
 
-    def generate_trampoline(*args):
-        return model(args[0])
+    def generate_trampoline(**kwargs):
+        return model(kwargs['input_ids'])
 
     model.generate = generate_trampoline
 
