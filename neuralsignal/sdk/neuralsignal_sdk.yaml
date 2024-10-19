@@ -41,6 +41,7 @@ indirect_instrumentation_config:
       }
     layer_names_to_include: ['all']
     layer_indexes_to_include: []
+    abort_on_layer_index: 250
 
 # Backend config
 save_scans: True
