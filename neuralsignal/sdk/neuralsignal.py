@@ -32,7 +32,7 @@ class DetectionResults:
 
     def __str__(self):
         retVal = f"DetectionResults: {self.input} - {self.output}"\
-                f"- {self.ground_truth} - {self.metadata} - {self.detections}"
+                f"- {self.ground_truth} - {self.metadata} - {self.detections[0]}"
         return retVal
 
 
