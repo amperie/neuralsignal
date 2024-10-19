@@ -1,5 +1,4 @@
 import logging
-import json
 from neuralsignal.core.modules.feature_sets.feature_set_factory\
     import make_feature_set
 from neuralsignal.core.modules.feature_sets.feature_processor\

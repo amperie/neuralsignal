@@ -1,7 +1,11 @@
 import torch
+import logging
 from neuralsignal.core.modules.tensors import process_tensor_dict_into_zones
 from neuralsignal.core.modules.tensors\
     import process_tensor_dict_into_zones_by_layer
+from neuralsignal.core.modules.neuralsignal_config import sdk_config
+
+logging.basicConfig(level=sdk_config.logging_level())
 
 
 class Collector:
@@ -19,6 +23,8 @@ class Collector:
         # Integer index of layers to include in results. none means all
         "layer_names_to_include": None,
         # String matches of layers to include in results. none means all
+        "abort_on_layer_index:": 0,
+        # 0 means don't abort
     }
 
     def __init__(self, config: dict = None) -> None:
@@ -39,7 +45,8 @@ class Collector:
             self.zone_size = self.config['zone_size_by_layer']['default']
         else:
             self.zone_size = self.config['zone_size']
-        # self.zone_sizes_by_layer = self.config['zone_size_by_layer']
+        self.abort_on_layer_index = self.config['abort_on_layer_index']
+        self.curr_layer_index = 0
 
         # Additive mode
         if self.mode == "additive":
@@ -59,6 +66,12 @@ class Collector:
         self.__init__(config=self.config)
 
     def __call__(self, module, module_in, module_out) -> None:
+        # Abort if we have reached the abort_on_layer_index
+        if self.curr_layer_index >= self.abort_on_layer_index:
+            logging.debug(f"Aborting at layer index {self.curr_layer_index}")
+            raise RuntimeError(
+                f"Aborting LLM due to abort_on_layer_index "
+                f"{self.curr_layer_index}")
         mod_id = str(id(module))
         dts = self.data_to_save
         batch_size = module_in[0].shape[0]
@@ -70,6 +83,7 @@ class Collector:
                 self.store_outputs(mod_id, module_out, batch_idx)
         if "layer_info" in dts:
             self.store_layer_info(mod_id, module, module_in)
+        self.curr_layer_index += 1
 
     def store_inputs(self, mod_id, module_in, batch_idx):
         if self.mode == "additive":
