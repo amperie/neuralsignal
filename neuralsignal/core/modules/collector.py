@@ -67,7 +67,8 @@ class Collector:
 
     def __call__(self, module, module_in, module_out) -> None:
         # Abort if we have reached the abort_on_layer_index
-        if self.curr_layer_index >= self.abort_on_layer_index:
+        if self.abort_on_layer_index > 0 and\
+                self.curr_layer_index >= self.abort_on_layer_index:
             logging.debug(f"Aborting at layer index {self.curr_layer_index}")
             raise RuntimeError(
                 f"Aborting LLM due to abort_on_layer_index "
