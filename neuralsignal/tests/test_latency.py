@@ -24,6 +24,7 @@ cfg = {
     "row_limit": 1000,
     "detector_names": ["quora_duplicates"],
     "detectors": [],
+    "device": "cuda:0",
     "indirect_instrumentation_config": {
         "collector_config": {
             "mode": "additive",
