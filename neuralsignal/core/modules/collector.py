@@ -4,6 +4,7 @@ from neuralsignal.core.modules.tensors import process_tensor_dict_into_zones
 from neuralsignal.core.modules.tensors\
     import process_tensor_dict_into_zones_by_layer
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
+from neuralsignal.core.exceptions.NSAbortLLM import NSAbortLLM
 
 logging.basicConfig(level=sdk_config.logging_level())
 
@@ -70,7 +71,7 @@ class Collector:
         if self.abort_on_layer_index > 0 and\
                 self.curr_layer_index >= self.abort_on_layer_index:
             logging.debug(f"Aborting at layer index {self.curr_layer_index}")
-            raise RuntimeError(
+            raise NSAbortLLM(
                 f"Aborting LLM due to abort_on_layer_index "
                 f"{self.curr_layer_index}")
         mod_id = str(id(module))
