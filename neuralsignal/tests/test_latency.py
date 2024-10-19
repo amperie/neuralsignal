@@ -35,6 +35,7 @@ cfg = {
             },
             "layer_names_to_include": ['all'],
             "layer_indexes_to_include": [],
+            "abort_on_layer_index": 300,
         }
     }
     }
