@@ -4,6 +4,7 @@ from transformers import AutoTokenizer
 from transformers import AutoModel
 from transformers import BitsAndBytesConfig
 from neuralsignal.core.modules.generation_instance import GenerationInstance
+from neuralsignal.core.exceptions.NSAbortLLM import NSAbortLLM
 from neuralsignal.core.modules.collector import Collector
 from transformers.models.t5.modeling_t5 import T5LayerFF
 from transformers.models.t5.modeling_t5 import T5LayerSelfAttention
@@ -192,6 +193,13 @@ def generate_from_batch(
             input_ids, pad_token_id=tokenizer.eos_token_id,
             max_new_tokens=max_new_tokens
             )
+    except NSAbortLLM as e:
+        # LLM execution was aborted by abort_on_layer_index
+        # This is fine so just continue as if execution finished
+        logging.debug(f"LLM execution aborted {e}")
+        # Set the output to "ABORT"
+        output = [71, 8471, 5934, 1]
+        pass
     except Exception as e:
         if model_instrumented:
             deinstrument_model(hndls)

@@ -24,7 +24,21 @@ cfg = {
     "row_limit": 1000,
     "detector_names": ["quora_duplicates"],
     "detectors": [],
-}
+    "device": "cuda:0",
+    "indirect_instrumentation_config": {
+        "collector_config": {
+            "mode": "additive",
+            "data_to_save": ["inputs", "outputs", "layer_info", "topology"],
+            "zone_size": 1024,
+            "zone_size_by_layer": {
+                "default": 1024,
+            },
+            "layer_names_to_include": ['all'],
+            "layer_indexes_to_include": [],
+            "abort_on_layer_index": 300,
+        }
+    }
+    }
 
 ds = []
 for d in cfg['detector_names']:
@@ -53,6 +67,7 @@ for row in dataset:
         start = time.time()
         res = ns.evaluate_indirect_output(batch, ds)
         end = time.time()
+        # print(res[0])
         total_latency += end - start
         rows_processed += len(batch)
         print(f"Elapsed time: {end - start}")
