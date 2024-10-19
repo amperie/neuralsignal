@@ -1,6 +1,5 @@
 import logging
 import copy
-from neuralsignal.core.modules.tensors import featurize_tensor_dict
 from neuralsignal.core.modules.utils import generate_uuid
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
 from neuralsignal.backend.ns_backend import NSBackend
@@ -113,7 +112,7 @@ class Detector:
         self.behavior_name = self.config["behavior_name"]
         self.prompt = self.config["prompt"]
 
-    def predict(self, input_scan: list) -> float:
+    def predict(self, input_scan: list) -> list:
         """Runs the S1 model and returns the probability of
         class 0 being detected
 
