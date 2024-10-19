@@ -36,6 +36,11 @@ indirect_instrumentation_config:
     mode: additive
     data_to_save: ["inputs", "outputs", "layer_info", "topology"]
     zone_size: 1024
+    zone_size_by_layer: {
+      default: 1024,
+      }
+    layer_names_to_include: ['all']
+    layer_indexes_to_include: []
 
 # Backend config
 save_scans: True

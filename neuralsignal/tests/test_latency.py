@@ -23,7 +23,7 @@ cfg = {
     "batch_size": 1,
     "row_limit": 1000,
     "detector_names": ["quora_duplicates"],
-    "detectors": [],  
+    "detectors": [],
     "indirect_instrumentation_config": {
         "collector_config": {
             "mode": "additive",
