@@ -23,8 +23,20 @@ cfg = {
     "batch_size": 1,
     "row_limit": 1000,
     "detector_names": ["quora_duplicates"],
-    "detectors": [],
-}
+    "detectors": [],  
+    "indirect_instrumentation_config": {
+        "collector_config": {
+            "mode": "additive",
+            "data_to_save": ["inputs", "outputs", "layer_info", "topology"],
+            "zone_size": 1024,
+            "zone_size_by_layer": {
+                "default": 1024,
+            },
+            "layer_names_to_include": ['all'],
+            "layer_indexes_to_include": [],
+        }
+    }
+    }
 
 ds = []
 for d in cfg['detector_names']:
