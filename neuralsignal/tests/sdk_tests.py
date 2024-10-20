@@ -108,6 +108,50 @@ def test_ds_runner():
     cfg = {
         "dataset": "quora_duplicate_questions",
         "detectors": [d],
+        "application_name": "redis-mpnet",
+        "sub_application_name": "quora",
+        "max_new_tokens": 1,
+        "row_limit": 0,
+        "enable_detector_prediction": True,
+        "preprocess_dataset": False,
+        "preprocess_params": {
+            "source_ds": "DROP",
+            "rows": 40
+        },
+        "indirect_config": {
+            "indirect_model": "sentence-transformers/all-mpnet-base-v2",
+            "device": "cpu",
+            "quantization": "no_quantization",
+            "indirect_batch_size": 1,
+        },
+        "indirect_instrumentation_config": {
+            "collector_config": {
+                "zone_size": 256,
+                "zone_size_by_layer": {"default": 256},
+                "layer_names_to_include": ["all"],
+                "layer_indexes_to_include": [],
+            }
+        }
+    }
+
+    dsr = DatasetRunner(cfg)
+    dsr.run()
+
+    print("")
+
+
+def test_ds_collector_config():
+
+    d = sdk_config.get_detector_config("quora_duplicates")
+    d['enable_prediction'] = True
+    d['application_name'] = "sdk_testing"
+    d['sub_application_name'] = "quora"
+    d = Detector(d)
+    d.enable_prediction = True
+
+    cfg = {
+        "dataset": "quora_duplicate_questions",
+        "detectors": [d],
         "application_name": "sdk_testing",
         "sub_application_name": "quora",
         "max_new_tokens": 1,
