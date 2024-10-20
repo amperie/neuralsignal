@@ -24,7 +24,7 @@ class Collector:
         # Integer index of layers to include in results. none means all
         "layer_names_to_include": None,
         # String matches of layers to include in results. none means all
-        "abort_on_layer_index:": 0,
+        "abort_on_layer_index": 0,
         # 0 means don't abort
     }
 
