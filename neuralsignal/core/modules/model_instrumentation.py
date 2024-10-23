@@ -620,7 +620,8 @@ def instrument_mpnet(cfg, model, hc: Collector) -> list:
     hc.last_layer = id(model.lm_head.decoder)
 
     def generate_trampoline(**kwargs):
-        return model(kwargs['input_ids'])
+        model(kwargs['input_ids'])
+        return [0, 6135, 7163, 2]
 
     model.generate = generate_trampoline
 

@@ -51,6 +51,7 @@ backend_config:
   mongo_url: mongodb://hp.lan:27017/
   scan_cache_directory: J:\\Temp\\scan_cache
   cache_scan_on_load: True
+  cache_scan_on_write: False
   scan_cache_size: 1
   scan_hd_cache_size: 100
   db: sdk_testing
