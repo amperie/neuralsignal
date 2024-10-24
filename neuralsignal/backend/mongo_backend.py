@@ -293,7 +293,10 @@ class MongoBackend:
             yield scan
 
     def get_scan_iterator_count(self, query: dict) -> int:
-        q = self.build_query_with_detector(query)
+        if "detector_name" in query:
+            q = self.build_query_with_detector(query)
+        else:
+            q = query
         return self.get_query_count(q)
 
     def load_s1_model(self, model_id: str):

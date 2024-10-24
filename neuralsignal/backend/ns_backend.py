@@ -37,6 +37,10 @@ class NSBackend:
         if "backend_config" not in config:
             be = sdk_config.get_backend_config()
             config['backend_config'] = be
+        else:
+            default_be_config = sdk_config.get_backend_config()
+            config['backend_config'] = {
+                **default_be_config, **config['backend_config']}
 
         self.backend_type = config['backend_config']["backend_type"]
         self.backend_config = config['backend_config']
@@ -118,7 +122,7 @@ class NSBackend:
         except pymongo.errors.ServerSelectionTimeoutError as e:
             logging.error(f"Error connecting to Mongo {e}")
         except Exception as e:
-            logging.error(f"Error connecting to backend {e}")
+            logging.error(f"Backend error {e.with_traceback}")
 
     def load_s1_model(self, model_id: str):
         return self.backend.load_s1_model(model_id)

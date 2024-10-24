@@ -202,35 +202,39 @@ def test_ds_collector_config():
 
 def test_ds_create():
 
-    cfg = {
-        "application_name": "sdk_attention_test",
-        "sub_application_name": "squad_v2_right_wrong_pairs",
-        "row_limit": 20,
-        "write_to_file": True,
-        "build_in_memory": True,
-        "file_out": "J:\\Temp\\test.csv",
-        "detector_name": "hallucination",
-        "query": {},
-        # "query": {'$and': [{'metadata.row': {'$gt': 200}},
-        # "query": {'$and': [{'metadata.row': {'$gt': 200}}, 
-        # {'metadata.type': {'$ne': 'qa_rewrite_wrong'}}]},
-        "zone_size": 1024,
-        "use_full_zone_names": True,
-        "use_gt_as_target": True,
-        "passthrough_fields": ['zone_size'],
-        "featurize_delta_layers": [],
-        "featurize_delta_by_layer_name": [],
-        "featurize_zones_data": False,
-        "featurize_layer_distributions_layers": [],
-        "featurize_layer_distributions_bin_count": 10,
-        "featurize_embedding_vector_layers": ['SelfAttention.o'],
-        "featurize_embedding_vector_range": -1,
-        "featurize_embedding_vector_mode": "delta",
+    zones_cfg = {
+        "name": "zones",
+        "target_zone_size": {"default": 1024},
+        "field_to_process": "outputs",
+        "layer_names_to_include": [],
+        "layer_indexes_to_include": [],
+        "output_format": "pandas",
+    }
+    fsz = FeatureSetZones(zones_cfg)
+    feature_sets = [fsz]
+    fsp = FeatureProcessor(feature_sets=feature_sets)
+
+    exp_cfg = {
+        "run_data_collection": False,
+        "create_dataset": True,
+        "create_s1_model": False,
+        "device": "cuda:0",
+        "detector_names": ['quora_embeddings'],
+        "application_name": "redis-mpnet",
+        "sub_application_name": "quora",
+        "feature_processor": fsp,
+        "cfg_file_path": "neuralsignal/automation/dataset_automation_z440.yaml",
+        "backend_config": {
+            "scan_cache_directory": "./scan_cache",
+        },
+        "dataset_row_limit": 10000,
+        "scan_hd_cache_size": 2000,
+        "cache_scan_on_load": False,
+        "cache_scan_on_write": False,
+        "skip_rows": 0,
         }
 
-    dc = DatasetCreator(cfg)
-    retVal = dc.create_dataset(cfg['query'])
-    return retVal
+    run_experiment(exp_cfg)
 
 
 def test_s1_model():
@@ -420,8 +424,8 @@ def test_tunedlens():
 # test_ds_create_feature_processor()
 # test_run_experiment()
 # test_feature_processor()
-test_ds_runner()
-# test_ds_create()
+# test_ds_runner()
+test_ds_create()
 # test_s1_model()
 
 
