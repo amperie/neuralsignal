@@ -114,9 +114,11 @@ class DatasetCreator:
             os.remove(self.config["file_out"])
 
         # Setup the query with the detection
+        """
         if self.config["detector_name"] != "*":
             query['detector_name'] =\
                 self.config['detector_name']
+        """
         # Query for the documents to use for the dataset
         cursor = self.be.iterate_scans(
             query, row_limit=self.config["row_limit"])
