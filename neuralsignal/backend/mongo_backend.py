@@ -275,7 +275,10 @@ class MongoBackend:
         return self.col.count_documents(query)
 
     def iterate_scans(self, query: dict, row_limit: int = 0):
-        q = self.build_query_with_detector(query)
+        if "detector_name" not in query:
+            q = query
+        else:
+            q = self.build_query_with_detector(query)
         if row_limit == 0:
             mng_cursor = self.query(q)
         else:
