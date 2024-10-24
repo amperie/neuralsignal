@@ -111,6 +111,10 @@ class Detector:
         self.enable_prediction = self.config['enable_prediction']
         self.behavior_name = self.config["behavior_name"]
         self.prompt = self.config["prompt"]
+        if "type" in self.config:
+            self.type = self.config["type"]
+        else:
+            self.type = "normal"
 
     def predict(self, input_scan: list) -> list:
         """Runs the S1 model and returns the probability of
