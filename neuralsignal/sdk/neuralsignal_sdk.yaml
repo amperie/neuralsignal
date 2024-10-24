@@ -65,6 +65,7 @@ backend_config:
 # Detectors available
 detectors:
   - behavior_name: "hallucination"
+    type: "normal"
     S1_model: null
     S1_model_path: runs:/e2b9a4d5e9024d769d321490a05b8b13/S1
     mlflow_uri: "http://z600.lan:8000"
@@ -75,6 +76,7 @@ detectors:
           Answer: {output}\n Context: {context}\nRemember to output only true or false.
     enabled: True
   - behavior_name: "halu_prompt2"
+    type: "normal"
     S1_model: null
     S1_model_path: null
     mlflow_uri: "http://z600.lan:8000"
@@ -88,6 +90,7 @@ detectors:
           The background information is: {context}\n
     enabled: True
   - behavior_name: "halu_prompt3"
+    type: "normal"
     S1_model: null
     S1_model_path: null
     mlflow_uri: "http://z600.lan:8000"
@@ -99,6 +102,7 @@ detectors:
           CONTEXT: {context}\n
     enabled: True
   - behavior_name: "halu_prompt4_oneshot"
+    type: "normal"
     S1_model: null
     S1_model_path: null
     mlflow_uri: "http://z600.lan:8000"
@@ -124,6 +128,7 @@ detectors:
       CONTEXT: {context}\n
     enabled: True
   - behavior_name: "input_toxicity"
+    type: "normal"
     S1_model: null
     S1_model_path: runs:/8bfd97e2e6744256862d6c714c9d03a6/S1
     mlflow_uri: "http://z600.lan:8000"
@@ -133,6 +138,7 @@ detectors:
           Text: {input}
     enabled: True
   - behavior_name: "output_toxicity"
+    type: "normal"
     S1_model: null
     S1_model_path: runs:/8bfd97e2e6744256862d6c714c9d03a6/S1
     mlflow_uri: "http://z600.lan:8000"
@@ -142,6 +148,7 @@ detectors:
           Text: {output}
     enabled: True
   - behavior_name: "input_identity_attack"
+    type: "normal"
     S1_model: null
     S1_model_path: runs:/ebdef9d041874f1bbc79c6632ac895d2/S1
     mlflow_uri: "http://z600.lan:8000"
@@ -152,6 +159,7 @@ detectors:
           Text: {input}
     enabled: True
   - behavior_name: "quora_duplicates"
+    type: "normal"
     S1_model: null
     # S1_model_path: 'runs:/7fd2339b3ea84876a8071d988ab07da3/S1'
     S1_model_path: 'runs:/c36ca54661f144db88e72c74364b5750/S1'
@@ -163,4 +171,13 @@ detectors:
           Question 1: {q1}\n
           Question 2: {q2}\n
           Answer with only one word - "True" or "False"
+    enabled: True
+  - behavior_name: "quora_embeddings"
+    type: "scan_delta"
+    S1_model: null
+    S1_model_path: null
+    # S1_model_path: 'runs:/c36ca54661f144db88e72c74364b5750/S1'
+    mlflow_uri: "http://z600.lan:8000"
+    prompt: >
+          {q1}<<--separator-->>{q2}
     enabled: True

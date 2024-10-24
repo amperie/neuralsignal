@@ -98,12 +98,13 @@ def test_sdk():
 
 def test_ds_runner():
 
-    d = sdk_config.get_detector_config("quora_duplicates")
-    d['enable_prediction'] = True
+    d = sdk_config.get_detector_config("quora_embeddings")
+    d['enable_prediction'] = False
+    d['enabled'] = False
     d['application_name'] = "sdk_testing"
     d['sub_application_name'] = "quora"
     d = Detector(d)
-    d.enable_prediction = True
+    d.enable_prediction = False
 
     cfg = {
         "dataset": "quora_duplicate_questions",
@@ -112,7 +113,7 @@ def test_ds_runner():
         "sub_application_name": "quora",
         "max_new_tokens": 1,
         "row_limit": 0,
-        "enable_detector_prediction": True,
+        "enable_detector_prediction": False,
         "preprocess_dataset": False,
         "preprocess_params": {
             "source_ds": "DROP",

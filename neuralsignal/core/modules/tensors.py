@@ -310,3 +310,15 @@ def move_scan_to_device(scan, device="cpu"):
 def copy_scan_to_device(scan, device="cpu"):
     copied_scan = copy.deepcopy(scan)
     return move_scan_to_device(copied_scan, device)
+
+
+def subtract_scans(scan1, scan2):
+    ret_inputs = {}
+    ret_outputs = {}
+    for k, v in scan1.data['inputs'].items():
+        ret_inputs[k] = torch.sub(v, scan2.data['inputs'][k])
+    for k, v in scan1.data['outputs'].items():
+        ret_outputs[k] = torch.sub(v, scan2.data['outputs'][k])
+    scan1.data['inputs'] = ret_inputs
+    scan1.data['outputs'] = ret_outputs
+    return scan1
