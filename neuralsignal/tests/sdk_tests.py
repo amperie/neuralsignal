@@ -204,9 +204,9 @@ def test_ds_create():
 
     zones_cfg = {
         "name": "zones",
-        "target_zone_size": {"default": 1024},
+        "target_zone_size": {"default": 256},
         "field_to_process": "outputs",
-        "layer_names_to_include": [],
+        "layer_names_to_include": ["all"],
         "layer_indexes_to_include": [],
         "output_format": "pandas",
     }
