@@ -7,6 +7,7 @@ from pygments.lexers import JsonLexer
 from pygments.formatters import TerminalFormatter
 from neuralsignal.core.modules.model_instrumentation\
     import load_model, generate_from_batch
+from neuralsignal.core.modules.tensors import subtract_scans
 from neuralsignal.core.modules.detector import Detector
 from neuralsignal.core.modules.generation_instance import GenerationInstance
 from neuralsignal.core.modules.prompting import wrap_with_prompt
@@ -185,7 +186,16 @@ class SDK:
         for output in outputs:
             for d in detectors:
                 prompt = wrap_with_prompt(d.prompt, output)
-                prompted_outputs.append(prompt)
+                # Check to see if it's a scan delta type
+                # If so, split the prompt and put it into a batch of 2
+                if d.type == "scan_delta":
+                    prompts = prompt.split("<<--separator-->>")
+                    prompt1 = prompts[0]
+                    prompt2 = prompts[1]
+                    prompted_outputs.append(prompt1)
+                    prompted_outputs.append(prompt2)
+                else:
+                    prompted_outputs.append(prompt)
 
         # torch.cuda.OutOfMemoryError is possible here
         # Generate activity in indirect
@@ -288,8 +298,11 @@ class SDK:
 
         # Save to the backend if required
         if self.save_scans:
-            for gi in gis:
-                self.backend.save_scan(gi)
+            # for gi in gis:
+            #    self.backend.save_scan(gi)
+            self.backend.save_scan(
+                subtract_scans(gis[0], gis[1])
+            )
 
         return retVal
 
