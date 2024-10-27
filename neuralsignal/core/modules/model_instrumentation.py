@@ -43,6 +43,15 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
             model_config["model_name"])
         return tokenizer, model
 
+    if model_type == "deberta":
+        model = AutoModel.from_pretrained(
+            model_config["model_name"],
+            device_map=model_config["device"],
+            trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_config["model_name"])
+        return tokenizer, model
+
     if model_config["quantization"] == "int4":
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
