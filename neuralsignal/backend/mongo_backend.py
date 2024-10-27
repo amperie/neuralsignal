@@ -231,8 +231,14 @@ class MongoBackend:
     def save_scan(self, scan) -> ObjectId:
         data = scan.get_flattened_data()
         if self.cache_on_save:
-            cached_data = copy_scan_to_device(data, "cpu")
-            cached_data['already_copied'] = True
+            try:
+                cached_data = copy_scan_to_device(data, "cpu")
+                cached_data['already_copied'] = True
+            except Exception as e:
+                cached_data = None
+                logging.debug(
+                    f"Error copying scan to device: {e}"
+                )
         if "outputs" in data:
             data["outputs"] =\
                 self.write_serialized_to_GridFS(serialize(data["outputs"]))
@@ -241,8 +247,9 @@ class MongoBackend:
                 self.write_serialized_to_GridFS(serialize(data["inputs"]))
         _id = self.write_dict_to_mongo(data)
         if self.cache_on_save:
-            cached_data['_id'] = _id
-            self.add_to_cache(cached_data)
+            if cached_data is not None:
+                cached_data['_id'] = _id
+                self.add_to_cache(cached_data)
         return _id
 
     def deserialize_scan(self, scan):
