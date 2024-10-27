@@ -614,7 +614,7 @@ def instrument_deberta(cfg, model, hc: Collector) -> list:
             lyr.output.dense.ns_name = "encoder." + \
                 f".output.dense_{i}"
 
-    add_hook(model.encoder.LayerNorm, hc, registered_hooks)
+    # add_hook(model.encoder.LayerNorm, hc, registered_hooks)
     model.encoder.LayerNorm.ns_name = "encoder.LayerNorm"
     hc.last_layer = id(model.encoder.LayerNorm)
 

@@ -109,7 +109,7 @@ def test_ds_runner():
     cfg = {
         "dataset": "quora_duplicate_questions",
         "detectors": [d],
-        "application_name": "redis-mpnet",
+        "application_name": "redis-deberta",
         "sub_application_name": "quora",
         "max_new_tokens": 1,
         "row_limit": 0,
@@ -120,7 +120,7 @@ def test_ds_runner():
             "rows": 40
         },
         "indirect_config": {
-            "indirect_model": "sentence-transformers/all-mpnet-base-v2",
+            "indirect_model": "microsoft/deberta-v3-large",
             "device": "cpu",
             "quantization": "no_quantization",
             "indirect_batch_size": 1,
