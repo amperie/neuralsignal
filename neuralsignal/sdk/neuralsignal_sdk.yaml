@@ -50,7 +50,7 @@ backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
   scan_cache_directory: J:\\Temp\\scan_cache
-  cache_scan_on_load: True
+  cache_scan_on_load: False
   cache_scan_on_write: False
   scan_cache_size: 1
   scan_hd_cache_size: 100
@@ -157,6 +157,17 @@ detectors:
           true if it is an attack on someone's identity
           and false if it's not an attack on someone's identity.\n
           Text: {input}
+    enabled: True
+  - behavior_name: "quora_duplicates_simple"
+    type: "normal"
+    S1_model: null
+    # S1_model_path: 'runs:/7fd2339b3ea84876a8071d988ab07da3/S1'
+    S1_model_path: null
+    mlflow_uri: "http://z600.lan:8000"
+    prompt: >
+          Are these two questions asking the same thing? 
+          Question 1: {q1} 
+          Question 2: {q2}\n
     enabled: True
   - behavior_name: "quora_duplicates"
     type: "normal"
