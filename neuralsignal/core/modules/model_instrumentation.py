@@ -608,6 +608,13 @@ def instrument_deberta(cfg, model, hc: Collector) -> list:
     add_hook(model.encoder.LayerNorm, hc, registered_hooks)
     model.encoder.LayerNorm.ns_name = "encoder.LayerNorm"
     hc.last_layer = id(model.encoder.LayerNorm)
+
+    def encoder_generate_trampoline(**kwargs):
+        model(kwargs['input_ids'])
+        return [0]
+
+    model.generate = encoder_generate_trampoline
+
     return registered_hooks
 
 
@@ -663,11 +670,11 @@ def instrument_mpnet(cfg, model, hc: Collector) -> list:
     model.lm_head.decoder.ns_name = "decoder.output"
     hc.last_layer = id(model.lm_head.decoder)
 
-    def generate_trampoline(**kwargs):
+    def encoder_generate_trampoline(**kwargs):
         model(kwargs['input_ids'])
-        return [0, 6135, 7163, 2]
+        return [0]
 
-    model.generate = generate_trampoline
+    model.generate = encoder_generate_trampoline
 
     return registered_hooks
 
