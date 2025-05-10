@@ -339,4 +339,29 @@ def datasets_dictionary(
 
     add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
 
+    # TruLens Benchmark dataset lytang/LLM-AggreFact
+    def input_processor(row):
+        gt = row["label"]
+
+        return {
+                "input": row["claim"],
+                "context": row["doc"],
+                "output": "",
+                "ground_truth": gt,
+                "metadata": {}
+                }
+
+    cfg = {
+        "dataset_type": "hf",
+        "dataset_name": "llm-aggrefact",
+        "hf_name": "lytang/LLM-AggreFact",
+        "split": "dev",
+        "input_processor": input_processor,
+        "hf_token": "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",
+        "row_limit": row_limit,
+        "shuffle_dataset": shuffle,
+    }
+
+    add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
+
     return retVal

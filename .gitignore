@@ -3,6 +3,7 @@
 # NeuralSignal specific
 sdk_home/
 sdk_home/*
+.venv/
 
 *.csv
 mlruns/
