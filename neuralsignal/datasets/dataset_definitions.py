@@ -355,7 +355,7 @@ def datasets_dictionary(
         "dataset_type": "hf",
         "dataset_name": "llm-aggrefact",
         "hf_name": "lytang/LLM-AggreFact",
-        "split": "dev",
+        "split": "test",
         "input_processor": input_processor,
         "hf_token": "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",
         "row_limit": row_limit,
