@@ -114,7 +114,8 @@ class NSDataset:
             self.config["hf_name"],
             self.config["dataset_variant"],
             split=split,
-            use_auth_token=self.config["hf_token"])
+            # use_auth_token=self.config["hf_token"]
+            )
 
         if self.config["preprocess"]:
             pp_params = self.config["pp_params"]
