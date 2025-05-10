@@ -298,11 +298,13 @@ class SDK:
 
         # Save to the backend if required
         if self.save_scans:
-            # for gi in gis:
-            #    self.backend.save_scan(gi)
-            self.backend.save_scan(
-                subtract_scans(gis[0], gis[1])
-            )
+            if d.type == "scan_delta":
+                self.backend.save_scan(
+                    subtract_scans(gis[0], gis[1])
+                )
+            else:
+                for gi in gis:
+                    self.backend.save_scan(gi)
 
         return retVal
 
