@@ -1,6 +1,42 @@
+﻿"""
+neuralsignal.sdk.neuralsignal
+==============================
+Primary public API for the NeuralSignal SDK.
+
+Typical usage::
+
+    from neuralsignal.sdk.neuralsignal import SDK
+
+    sdk = SDK(
+        application_name="my_app",
+        sub_application_name="chatbot",
+    )
+
+    results = sdk.evaluate_indirect(
+        outputs=[
+            {
+                "input": "What is the capital of France?",
+                "output": "Paris",
+                "context": "France is a country in Western Europe.",
+            }
+        ],
+        detectors=["hallucination"],
+    )
+
+    for r in results:
+        for behavior, det in r.detections.items():
+            print(behavior, det.score)
+
+Classes
+-------
+- :class:`DetectionResults` Ã¢â‚¬â€ data-only container returned to callers.
+- :class:`SDK` Ã¢â‚¬â€ main entry point; initialises the judge model and exposes
+  evaluation methods.
+"""
+
 import logging
 import json
-import os
+from dataclasses import dataclass, field
 from torch.cuda import OutOfMemoryError
 from pygments import highlight
 from pygments.lexers import JsonLexer
@@ -13,23 +49,49 @@ from neuralsignal.core.modules.generation_instance import GenerationInstance
 from neuralsignal.core.modules.prompting import wrap_with_prompt
 from neuralsignal.core.modules.utils import generate_uuid
 from neuralsignal.backend.ns_backend import NSBackend
-import yaml
-from neuralsignal.core.modules.neuralsignal_config import sdk_config
+from neuralsignal.config.loader import load_sdk_config
 
 logging.basicConfig(level=logging.INFO)
 
 
+class EvaluationError(RuntimeError):
+    """Raised when evaluation fails for reasons other than OOM."""
+
+
+@dataclass
 class DetectionResults:
-    """Main container to provide detection results back
-    to the user of the SDK. Only contains data, no methods
+    """Public, data-only container that carries evaluation results back to the
+    caller.
+
+    Each instance corresponds to one input/output pair that was evaluated.
+    Detection scores for individual behaviors are stored in :attr:`detections`,
+    keyed by behavior name (e.g. ``"hallucination"``).
+
+    Attributes
+    ----------
+    input : str or None
+        The original user query / prompt that was evaluated.
+    output : str or None
+        The LLM-generated text that was evaluated.
+    ground_truth : str or None
+        Optional ground-truth answer, when available from the caller.
+    metadata : dict or None
+        Arbitrary caller-supplied metadata that passes through unchanged.
+    correlation_id : str or None
+        UUID that ties this result to the corresponding scan stored in the
+        backend.
+    detections : dict
+        Mapping of ``behavior_name Ã¢â€ â€™ DetectionResults`` (the internal detector
+        variant from :mod:`neuralsignal.core.modules.detector`).  Each value
+        exposes ``.score``, ``.threshold``, and ``.correlation_id``.
     """
-    def __init__(self):
-        self.input = None
-        self.output = None
-        self.ground_truth = None
-        self.metadata = None
-        self.correlation_id = None
-        self.detections = []
+
+    input: str | None = None
+    output: str | None = None
+    ground_truth: str | None = None
+    metadata: dict | None = None
+    correlation_id: str | None = None
+    detections: dict = field(default_factory=dict)
 
     def __str__(self):
         retVal = f"DetectionResults: {self.input} - {self.output}"\
@@ -38,24 +100,72 @@ class DetectionResults:
 
 
 class SDK:
-    """Main entrypoint into NeuralSignal SDK
-    Configuration:
-        - evaluation_mode: indirect or direct
-        - evaluators available: hallucination, bias, etc
-        - S1 models for each
-        - Prompts for each
-        - Thresholds for each
-        - Backend configuration
-        - max_new_tokens for generation
-    Interfaces:
-        - evaluate_output - indirect evaluation of input/output
-            - parameters: input/output/context/metadata
-            - parameters: what detection to run (hallu/bias/etc)
-        - evaluate_direct: instrumentation and real-time evaluation
-            - wrap the generate function
+    """Main entry point for the NeuralSignal SDK.
+
+    Initialises a judge model (indirect mode) and exposes methods for
+    evaluating LLM input/output pairs against one or more behavior detectors.
+
+    Evaluation modes
+    ----------------
+    indirect
+        A separate "judge" LLM (default: ``google/flan-t5-large``) receives a
+        templated prompt that embeds the original input/output and context.
+        Internal activations are captured by PyTorch forward hooks, featurized
+        into "scans", and scored by a pre-trained S1 classifier.
+    direct
+        Real-time instrumentation of the application's own LLM.
+        **Not yet implemented.**
+
+    OOM handling
+    ------------
+    When :attr:`use_dynamic_batch_size` is ``True`` (default) the SDK
+    automatically halves the batch size after each ``OutOfMemoryError`` and
+    reloads the model.  If the OOM count exceeds :attr:`max_oom_count` the SDK
+    disables itself permanently for the lifetime of the object and raises a
+    fatal ``OutOfMemoryError``.
+
+    Parameters
+    ----------
+    application_name : str
+        Logical name of the calling application.  Stored with every scan in
+        the backend.
+    sub_application_name : str
+        Sub-section or feature within the application.  Stored with every scan.
+    config : dict, optional
+        Override dictionary merged on top of the YAML defaults.  Keys mirror
+        the structure of ``neuralsignal_sdk.yaml``.
+    default_config_path : str, optional
+        Path to an alternative YAML config file.  When omitted the bundled
+        ``neuralsignal_sdk.yaml`` next to this module is used.
+
+    Attributes
+    ----------
+    enabled : bool
+        ``False`` after :meth:`disable_sdk` is called (e.g. on fatal OOM).
+    disabled_reason : str
+        Human-readable explanation set when the SDK is disabled.
+    mode : str
+        Active evaluation mode (``"indirect"`` or ``"direct"``).
+    save_scans : bool
+        Whether scans are persisted to the configured backend.
+    dynamic_batch_size : int or None
+        Stable batch size discovered by the OOM-halving loop; ``None`` until
+        the first successful batch.
+    oom_count : int
+        Cumulative count of ``OutOfMemoryError`` occurrences since init.
     """
 
+    # ------------------------------------------------------------------
+    # Initialisation helpers
+    # ------------------------------------------------------------------
+
     def __init_indirect(self):
+        """Load the judge model and tokenizer for indirect evaluation.
+
+        Reads ``indirect_config`` from the merged config dict and calls
+        :func:`~neuralsignal.core.modules.model_instrumentation.load_model`.
+        Sets ``self.tokenizer`` and ``self.model``.
+        """
         logging.info("Initializing NeuralSignal in indirect mode")
         # TODO: pass through the config directly instead of picking them out
         model_cfg = {
@@ -68,43 +178,48 @@ class SDK:
         self.tokenizer, self.model = load_model(model_cfg)
 
     def __init_direct(self):
+        """Placeholder for direct-mode initialisation.
+
+        Raises
+        ------
+        NotImplementedError
+            Always; direct mode is not yet implemented.
+        """
         raise NotImplementedError("Direct mode not implemented")
 
     def __init__(
             self, application_name, sub_application_name,
             config: dict = None,
             default_config_path: str = None) -> None:
-        """Initizalizes the NeuralSignal SDK
+        """Initialise the NeuralSignal SDK.
 
-        Args:
-            config (dict): Dictionary of configuration options.
-            This dictionary should be structured the same way the main
-            yaml config file is structured. Any values in this dict
-            will override the default
-            values from the yaml file.
-            Possible options:
-            [TODO: Add options here]
-            default_config_path: alternative path to config file
+        Loads configuration, optionally merging caller-supplied overrides on
+        top of the YAML defaults.  Initialises the judge model (indirect mode)
+        and, when ``save_scans`` is ``True``, connects to the configured
+        storage backend.
+
+        Parameters
+        ----------
+        application_name : str
+            Logical name of the calling application.
+        sub_application_name : str
+            Sub-section or feature within the application.
+        config : dict, optional
+            Key/value overrides merged onto the YAML defaults.  See
+            ``neuralsignal_sdk.yaml`` for the full list of supported keys.
+        default_config_path : str, optional
+            Absolute or relative path to an alternative YAML config file.
         """
         self.application_name = application_name
         self.sub_application_name = sub_application_name
         self.enabled = True
         self.disabled_reason = ""
 
-        if default_config_path is None:
-            dirname = os.path.dirname(__file__)
-            default_config_path = os.path.join(
-                dirname, './neuralsignal_sdk.yaml')
-            default_config = yaml.safe_load(
-                open(default_config_path))
-        else:
-            default_config = yaml.safe_load(
-                open(default_config_path))
-
-        if config is None:
-            config = default_config
-        else:
-            config = {**default_config, **config}
+        resolved_config = load_sdk_config(
+            config_path=default_config_path,
+            overrides=config,
+        )
+        config = resolved_config.data
 
         try:
             json_str = json.dumps(config, indent=4, sort_keys=False)
@@ -115,6 +230,7 @@ class SDK:
         logging.info(
             f"Initializing NeuralSignal SDK with config: {log_string}")
 
+        self.resolved_config = resolved_config
         self.cfg = config
         self.dynamic_batch_size = None
         self.use_dynamic_batch_size = config["use_dynamic_batch_size"]
@@ -124,11 +240,11 @@ class SDK:
         # If we're saving scans, initialize backend
         self.save_scans = config["save_scans"]
         if self.save_scans:
-            config["backend_config"]["application_name"] =\
-                self.application_name
-            config["backend_config"]["sub_application_name"] =\
-                self.sub_application_name
-            self.backend = NSBackend(config)
+            self.backend = NSBackend({
+                "application_name": self.application_name,
+                "sub_application_name": self.sub_application_name,
+                "backend_config": self.resolved_config.get_backend_config(),
+            })
 
         self.mode = config["evaluation_mode"]
         if self.mode == "indirect":
@@ -137,35 +253,97 @@ class SDK:
             config["indirect_instrumentation_config"]
         self.config = config
 
-    def set_config(self, key: str, value: str):
-        """Sets a configuration value
+    def _get_detector_config(self, detector_name: str) -> dict:
+        return self.resolved_config.get_detector_config(detector_name)
 
-        Args:
-            key (str): key to set
-            value (str): value to set
+    @staticmethod
+    def _build_public_results(
+            gis: list[GenerationInstance]) -> list[DetectionResults]:
+        results = []
+        for gi in gis:
+            results.append(DetectionResults(
+                input=gi.data.get("input"),
+                output=gi.data.get("output"),
+                ground_truth=gi.data.get("ground_truth"),
+                metadata=gi.data.get("metadata"),
+                correlation_id=gi.data.get("generation_correlation_id"),
+                detections=dict(gi.detections),
+            ))
+        return results
+
+    # ------------------------------------------------------------------
+    # Configuration
+    # ------------------------------------------------------------------
+
+    def set_config(self, key: str, value: str):
+        """Set a single top-level configuration value at runtime.
+
+        Parameters
+        ----------
+        key : str
+            Top-level key in the active config dict.
+        value : str
+            New value to assign.
+
+        Notes
+        -----
+        Changes are applied to the in-memory config only and are not persisted
+        to the YAML file.
         """
         self.cfg[key] = value
+
+    # ------------------------------------------------------------------
+    # Internal evaluation helpers
+    # ------------------------------------------------------------------
 
     def _evaluate_batch_output(
             self, outputs: list[dict], detectors: list[Detector]
             ) -> list[GenerationInstance]:
-        """Evaluates a batch of outputs
+        """Run the judge model over a batch and apply detectors to each scan.
 
-        Args:
-            output (dict): dictionary that contains the output to be evaluated.
-                keys should be:
-                    input: input to the model (user's query)
-                    context: any context sent in with the input
-                    output: output of the model that is being evaluated
-                    metadata: dict of any fields that will pass through
+        For each (output, detector) pair a prompt is built with
+        :func:`~neuralsignal.core.modules.prompting.wrap_with_prompt` and fed
+        through the judge model.  Activation tensors are captured by the
+        instrumentation hooks and stored in :class:`GenerationInstance` objects.
+        Each enabled detector then scores its corresponding scan.
 
-        Returns:
-            dict: Returns the same dictionary as the input with
-            additional fields:
-                - behavior: name of the behavior detected
-                - score: score of the behavior detected
-                - judgement: 0 or 1 depending on the threshold and score
-                - correlation_id: unique id for the evaluation
+        Parameters
+        ----------
+        outputs : list[dict]
+            Each dict must contain:
+
+            * ``"input"`` (str) Ã¢â‚¬â€ user query.
+            * ``"output"`` (str) Ã¢â‚¬â€ LLM response to evaluate.
+
+            Optional keys:
+
+            * ``"context"`` (str) Ã¢â‚¬â€ background text for grounded tasks.
+            * ``"ground_truth"`` (str) Ã¢â‚¬â€ expected answer.
+            * ``"metadata"`` (dict) Ã¢â‚¬â€ arbitrary pass-through data.
+            * ``"decoded_output"`` (str) Ã¢â‚¬â€ token-decoded form of the output.
+
+        detectors : list[Detector]
+            Detector objects (each wraps an S1 model + prompt template).
+            ``scan_delta`` detectors consume two consecutive batch slots.
+
+        Returns
+        -------
+        list[GenerationInstance]
+            One instance per (output Ãƒâ€” detector) pair, each populated with
+            scan data and detection scores.  Returns an empty list when the
+            SDK is disabled.
+
+        Raises
+        ------
+        OutOfMemoryError
+            Re-raised after logging when the judge model runs out of GPU
+            memory.
+
+        Notes
+        -----
+        **Known bug**: the tokenizer pads the batch to the longest prompt,
+        which causes the S1 model to return different scores depending on
+        batch size.  Consider passing inputs in series until this is resolved.
         """
 
         # Check if SDK is disabled and return empty list if so
@@ -211,21 +389,13 @@ class SDK:
             raise OutOfMemoryError(
                 "NeuralSignal out of memory error. "
             )
-        except TypeError as e:
-            logging.error("Suppressing TypeError in generate_from_batch")
+        except (TypeError, RuntimeError) as e:
             logging.error(
-                f"Parameters:\n prompted_outputs: {prompted_outputs}\n\n"
-                f"inst_cfg: {self.default_indirect_instrumentation_cfg}\n\n"
-                )
-            logging.error(f"{e}")
-        except RuntimeError as e:
-            logging.error("Suppressing RuntimeError in generate_from_batch")
-            logging.error(
-                f"Parameters:\n prompted_outputs: {prompted_outputs}\n\n"
-                )
-            logging.error(f"{e}")
-            # TODO: Add more specific error handling
-            return []
+                "Evaluation failed in generate_from_batch with prompts: %s",
+                prompted_outputs)
+            raise EvaluationError(
+                "NeuralSignal evaluation failed during generation"
+            ) from e
 
         # Unpack the outputs in the same order and run the detectors on each
         # We need to make two data structures:
@@ -311,23 +481,30 @@ class SDK:
     def evaluate_indirect_output_old(
             self, outputs: list[dict], detectors: list[Detector]
             ) -> list[DetectionResults]:
+        """Deprecated wrapper around :meth:`_evaluate_batch_output`.
+
+        .. deprecated::
+            Use :meth:`evaluate_indirect_output` instead.
+
+        Parameters
+        ----------
+        outputs : list[dict]
+            See :meth:`_evaluate_batch_output`.
+        detectors : list[Detector]
+            Pre-constructed detector objects.
+
+        Returns
+        -------
+        list[DetectionResults]
+            One result per output item.
+        """
 
         # Check if SDK is disabled and return empty list if so
         if not self.check_enabled():
             return []
 
         gis = self._evaluate_batch_output(outputs, detectors)
-        retVal = []
-        for gi in gis:
-            dr = DetectionResults()
-            dr.input = gi.data['input']
-            dr.output = gi.data['output']
-            dr.ground_truth = gi.data['ground_truth']
-            dr.metadata = gi.data['metadata']
-            dr.correlation_id = gi.data['generation_correlation_id']
-            dr.detections = gi.detections
-            retVal.append(dr)
-        return retVal
+        return self._build_public_results(gis)
 
     # TODO: Need to make this method without requiring
     # detector list. Get the detector list from
@@ -337,11 +514,38 @@ class SDK:
     def evaluate_indirect(
             self, outputs: list[dict], detectors: list[str]
             ) -> list[DetectionResults]:
+        """Evaluate a list of outputs by detector name (preferred API).
+
+        Looks up each named detector in the active config via
+        :meth:`~neuralsignal.core.modules.neuralsignal_config.NeuralSignalConfig.get_detector_config`,
+        constructs :class:`~neuralsignal.core.modules.detector.Detector`
+        objects, and delegates to :meth:`evaluate_indirect_output`.
+
+        Parameters
+        ----------
+        outputs : list[dict]
+            Each dict must contain ``"input"`` and ``"output"`` keys.
+            Optional: ``"context"``, ``"ground_truth"``, ``"metadata"``.
+        detectors : list[str]
+            Behavior names to run, e.g. ``["hallucination", "input_toxicity"]``.
+            Each name must match a ``behavior_name`` entry in the config's
+            ``detectors`` list.
+
+        Returns
+        -------
+        list[DetectionResults]
+            One :class:`DetectionResults` per output item.
+
+        Notes
+        -----
+        TODO: detector objects are re-instantiated on every call.  Cache them
+        to avoid repeated model loading overhead.
+        """
         # TODO: cache the detector object so they don't load each time
         # this method runs
         dl = []
         for d in detectors:
-            cfg = sdk_config.get_detector_config(d)
+            cfg = self._get_detector_config(d)
             cfg['application_name'] = self.application_name
             cfg['sub_application_name'] = self.sub_application_name
             dl.append(Detector(cfg))
@@ -351,6 +555,41 @@ class SDK:
     def evaluate_indirect_output(
             self, outputs: list[dict], detectors: list[Detector]
             ) -> list[DetectionResults]:
+        """Evaluate a list of outputs using pre-constructed detector objects.
+
+        Implements automatic OOM recovery via dynamic batch-size halving.
+        The entire batch is processed first; on ``OutOfMemoryError`` the
+        batch size is halved and the model is reloaded.  The discovered stable
+        batch size is persisted in :attr:`dynamic_batch_size` for subsequent
+        calls.
+
+        Parameters
+        ----------
+        outputs : list[dict]
+            Each dict must contain ``"input"`` and ``"output"`` keys.
+            Optional: ``"context"``, ``"ground_truth"``, ``"metadata"``.
+        detectors : list[Detector]
+            Pre-constructed :class:`~neuralsignal.core.modules.detector.Detector`
+            objects.  Use :meth:`evaluate_indirect` to build these from names.
+
+        Returns
+        -------
+        list[DetectionResults]
+            One :class:`DetectionResults` per output item.  Returns ``[]``
+            when the SDK is disabled.
+
+        Raises
+        ------
+        OutOfMemoryError
+            When OOM persists at batch size 1 and :attr:`max_oom_count` is
+            exceeded; the SDK is permanently disabled before raising.
+
+        Notes
+        -----
+        **Known bug**: if an OOM occurs after some sub-batches have already
+        been saved to the backend, the retry loop will re-process and re-save
+        those items when it restarts from ``start_idx = 0``.
+        """
 
         # Check if SDK is disabled and return empty list if so
         if not self.check_enabled():
@@ -417,7 +656,7 @@ class SDK:
                 self.oom_count += 1
                 if self.oom_count > self.max_oom_count:
                     logging.fatal("Exceeded MAX_OOM_COUNT, SDK disabled")
-                    self.disable_sdk("Exceeded MAX_OOM_COUNT") 
+                    self.disable_sdk("Exceeded MAX_OOM_COUNT")
                     raise OutOfMemoryError(
                         f"Exceeded MAX_OOM_COUNT, SDK disabled. FATAL {e}")
                 else:
@@ -426,26 +665,54 @@ class SDK:
                         f"{batch_size}")
                     self.tokenizer, self.model = load_model(self.model_config)
 
-        retVal = []
-        for gi in gis:
-            dr = DetectionResults()
-            dr.input = gi.data['input']
-            dr.output = gi.data['output']
-            dr.ground_truth = gi.data['ground_truth']
-            dr.metadata = gi.data['metadata']
-            dr.correlation_id = gi.data['generation_correlation_id']
-            dr.detections = gi.detections
-            retVal.append(dr)
-        return retVal
+        return self._build_public_results(gis)
+
+    # ------------------------------------------------------------------
+    # Stubs / future API
+    # ------------------------------------------------------------------
 
     def generate():
+        """Stub for future direct-mode generation wrapping.
+
+        Raises
+        ------
+        NotImplementedError
+            Always; not yet implemented.
+        """
         raise NotImplementedError
 
+    # ------------------------------------------------------------------
+    # SDK lifecycle
+    # ------------------------------------------------------------------
+
     def disable_sdk(self, reason: str):
+        """Permanently disable the SDK for this instance.
+
+        Called automatically when :attr:`max_oom_count` is exceeded.  May
+        also be called manually to suppress all evaluations without raising
+        an error.
+
+        Parameters
+        ----------
+        reason : str
+            Human-readable explanation stored in :attr:`disabled_reason`.
+        """
         self.enabled = False
         self.disabled_reason = reason
 
     def check_enabled(self):
+        """Return whether the SDK is currently enabled.
+
+        Logs an error when disabled.
+
+        Returns
+        -------
+        bool
+            ``True`` if evaluation should proceed; ``False`` if the SDK has
+            been disabled (e.g. after repeated OOM errors).
+        """
         if not self.enabled:
             logging.error("SDK is not enabled")
         return self.enabled
+
+

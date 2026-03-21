@@ -10,8 +10,25 @@ from neuralsignal.core.modules.feature_sets.feature_processor\
     import FeatureProcessor
 from neuralsignal.core.modules.utils import get_name_from_template
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
+from neuralsignal.config.loader import load_sdk_config
 
 logging.basicConfig(level=sdk_config.logging_level())
+
+
+def _get_resolved_sdk_config(cfg: dict):
+    return load_sdk_config(
+        config_path=cfg.get("sdk_config_path"),
+        overrides=cfg.get("sdk_config_overrides"),
+    )
+
+
+def _get_detector_config(cfg: dict, detector_name: str) -> dict:
+    resolved = _get_resolved_sdk_config(cfg)
+    detector_overrides = cfg.get("detector_overrides", {})
+    return resolved.get_detector_config(
+        detector_name,
+        overrides=detector_overrides.get(detector_name),
+    )
 
 
 def get_config(
@@ -56,7 +73,7 @@ def run_data_collection(cfg: dict):
     logging.info(f"Running data collection for cfg: {cfg}")
     ds = []
     for d in cfg['detector_names']:
-        detector = sdk_config.get_detector_config(d)
+        detector = _get_detector_config(cfg, d)
         if detector['enabled']:
             detector['application_name'] = cfg['application_name']
             detector['sub_application_name'] = cfg['sub_application_name']
@@ -93,7 +110,7 @@ def create_dataset(cfg: dict, create_dataset: bool):
     file_out_template = cfg['file_out']
 
     for d in cfg['detector_names']:
-        detector = sdk_config.get_detector_config(d)
+        detector = _get_detector_config(cfg, d)
         if detector['enabled']:
             cfg['detector_name'] = d
             # file_out = file_out_template.replace("{detector}", d)
@@ -158,7 +175,7 @@ def create_s1_model(cfg: dict):
     models = []
     file_out_template = cfg['file_out']
     for d in cfg['detector_names']:
-        detector = sdk_config.get_detector_config(d)
+        detector = _get_detector_config(cfg, d)
         if detector['enabled']:
             for rl in cfg['modeling_row_limits']:
                 # Set up modeling parameters
@@ -181,7 +198,7 @@ def create_s1_model(cfg: dict):
                 cfg['description'] = "Feature Sets: "\
                     f"{fscs}"
 
-                d_cfg = sdk_config.get_detector_config(d)
+                d_cfg = _get_detector_config(cfg, d)
                 cfg['params'] = {
                     "zone_size": cfg['zone_size'],
                     "row_limit": cfg['row_limit'],

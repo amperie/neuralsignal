@@ -49,7 +49,7 @@ save_vectors: False
 backend_config:
   backend_type: neuralsignal_v1
   mongo_url: mongodb://hp.lan:27017/
-  scan_cache_directory: J:\\Temp\\scan_cache
+  scan_cache_directory: E:\\tmp\\scan_cache
   cache_scan_on_load: False
   cache_scan_on_write: False
   scan_cache_size: 1

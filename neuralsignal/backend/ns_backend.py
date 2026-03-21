@@ -4,6 +4,7 @@ from neuralsignal.backend.mongo_backend import MongoBackend
 from neuralsignal.backend.ns_be_impl_v1 import NSBackendImplV1
 from neuralsignal.backend.file_backend import FileBackend
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
+from neuralsignal.config.loader import load_sdk_config
 from neuralsignal.core.modules.s1_model import S1Model
 
 logging.basicConfig(level=logging.INFO)
@@ -35,8 +36,7 @@ class NSBackend:
         if "sub_application_name" not in config:
             raise ValueError("Missing sub_application_name in config")
         if "backend_config" not in config:
-            be = sdk_config.get_backend_config()
-            config['backend_config'] = be
+            config['backend_config'] = load_sdk_config().get_backend_config()
 
         self.backend_type = config['backend_config']["backend_type"]
         self.backend_config = config['backend_config']

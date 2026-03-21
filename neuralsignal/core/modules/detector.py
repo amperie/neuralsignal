@@ -2,6 +2,7 @@ import logging
 import copy
 from neuralsignal.core.modules.utils import generate_uuid
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
+from neuralsignal.config.loader import load_sdk_config
 from neuralsignal.backend.ns_backend import NSBackend
 
 logging.basicConfig(level=logging.INFO)
@@ -75,26 +76,26 @@ class Detector:
             ValueError: If application_name of sub_application name is missing
             ValueError: If S1 model or model path is not provided
         """
+        if config is None:
+            config = load_sdk_config().data
         if "application_name" not in config:
             raise ValueError("Missing application_name in config")
         if "sub_application_name" not in config:
             raise ValueError("Missing sub_application_name in config")
-        if config is None:
-            config = sdk_config.get_config()
         self.config = {**self.default_config, **config}
         logging.debug(f"Initializing detector with config: {self.config}")
-        self.backend = copy.deepcopy(
-            sdk_config.get_backend_config())
-
-        self.backend["application_name"] =\
-            self.config["application_name"]
-        self.backend["sub_application_name"] =\
-            self.config["sub_application_name"]
-        self.backend = NSBackend(self.backend)
+        backend_config = copy.deepcopy(self.config.get("backend_config"))
+        if backend_config is None:
+            backend_config = load_sdk_config().get_backend_config()
+        self.backend = NSBackend({
+            "application_name": self.config["application_name"],
+            "sub_application_name": self.config["sub_application_name"],
+            "backend_config": backend_config,
+        })
 
         if "S1_model_instance" in self.config and\
                 self.config["S1_model_instance"] is not None:
-            self.model == self.config["S1_model_instance"]
+            self.model = self.config["S1_model_instance"]
             logging.info(f"Loaded S1 model directly: {self.model}")
         elif (self.config["S1_model"] is None and
                 self.config["S1_model_path"] is None) or (
@@ -174,3 +175,4 @@ class Detector:
         retVal = DetectionResults(
             self.config["behavior_name"], prob_classes[0])
         return retVal
+
