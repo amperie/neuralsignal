@@ -20,8 +20,17 @@ fs = {
 
 
 def make_feature_set(
-        feature_set_name: str, cfg: dict
+        feature_set_name: str, cfg: dict,
+        class_name: str = None
         ) -> FeatureSetBase:
+
+    if class_name is not None:
+        for cls in fs.values():
+            if cls.__name__ == class_name:
+                return cls(cfg)
+        raise ValueError(
+            f"No feature set class named '{class_name}' is registered."
+            )
 
     if feature_set_name in fs:
         return fs[feature_set_name](cfg)

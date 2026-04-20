@@ -1,7 +1,6 @@
 import logging
 import yaml
-import platform
-import sys
+from importlib import resources
 from neuralsignal.core.modules.detector import Detector
 from neuralsignal.datasets.dataset_runner import DatasetRunner
 from neuralsignal.datasets.dataset_creator import DatasetCreator
@@ -17,25 +16,15 @@ logging.basicConfig(level=sdk_config.logging_level())
 def get_config(
         cfg_file_path: str = None
         ) -> dict:
-    try:
-        if cfg_file_path is None:
-            if platform.system() == "Windows":
-                yaml_config =\
-                    "neuralsignal/neuralsignal/automation/"\
-                    "dataset_automation.yaml"
-            elif platform.system() == "Darwin":
-                yaml_config =\
-                    "neuralsignal/automation/dataset_automation.yaml"
-            else:
-                yaml_config = sys.argv[1]
-        else:
-            yaml_config = cfg_file_path
-    except IndexError:
-        raise ValueError(
-            "Usage: python dataset_automation.py <yaml config file>")
+    if cfg_file_path is None:
+        config_resource = resources.files("neuralsignal.automation").joinpath(
+            "dataset_automation.yaml"
+        )
+        with config_resource.open("r", encoding="utf-8") as config_file:
+            return yaml.safe_load(config_file)
 
-    # Get config from YAML
-    return yaml.safe_load(open(yaml_config))
+    with open(cfg_file_path, "r", encoding="utf-8") as config_file:
+        return yaml.safe_load(config_file)
 
 
 def run_data_collection(cfg: dict):

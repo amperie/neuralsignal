@@ -194,7 +194,9 @@ def datasets_dictionary(
                 "context": "",
                 "output": "",
                 "ground_truth": row["ground_truth"],
-                "metadata": {}
+                "metadata": {
+
+                    }
                 }
 
     cfg = {

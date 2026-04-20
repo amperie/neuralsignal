@@ -42,7 +42,7 @@ class FeatureProcessor:
         else:
             self.feature_sets = []
             for config in feature_set_configs:
-                fs = make_feature_set(config["name"], config)
+                fs = make_feature_set(config["name"], config, class_name=config.get("class_name"))
                 self.add_feature_set(fs)
 
     def add_feature_set(self, feature_set):
