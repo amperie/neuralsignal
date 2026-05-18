@@ -10,7 +10,11 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.metrics import recall_score, precision_score
 from sklearn.metrics import log_loss
 from sklearn.metrics import roc_auc_score
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import (
+    confusion_matrix,
+    ConfusionMatrixDisplay,
+    RocCurveDisplay,
+)
 from sklearn import metrics
 import time
 from neuralsignal.core.modules.neuralsignal_config import sdk_config
@@ -422,6 +426,13 @@ class S1Trainer:
         cm_fig = conf_matrix.figure_
         model_cfg['figures'] = {'confusion_matrix': cm_fig}
         model_cfg['params']['confusion_matrix'] = str(cm)
+
+        auc_curve = RocCurveDisplay.from_predictions(
+            self.y_test,
+            pred_proba,
+            name=f"{self.config['model_name']} (AUC = {self.metrics['test_auc']:.3f})",
+        )
+        model_cfg['figures']['auc_plot'] = auc_curve.figure_
 
         model_to_save = S1Model(model_cfg)
         if self.config['save_to_backend']:

@@ -20,6 +20,7 @@ dependencies = [
     "pyyaml",
     "tqdm",
     "pytest",
+    "pip>=26.1.1",
 ]
 
 [build-system]
