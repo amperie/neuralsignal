@@ -408,3 +408,74 @@ The SDK is configured via `neuralsignal_sdk.yaml`. Key settings:
 ## License
 
 See [LICENSE](LICENSE) for details.
+
+## v2 Remote Secrets
+
+NeuralSignal v2 uses secrets for Hugging Face dataset access, RunPod pod orchestration, S3 handoff storage, local MinIO, and optional authenticated MLflow. Keep these values out of committed YAML, manifests, logs, and MLflow params.
+
+Local-only secret:
+
+```text
+RUNPOD_API_KEY
+```
+
+`RUNPOD_API_KEY` is used by the local CLI to create, inspect, and terminate RunPod pods. It must not be forwarded into the pod.
+
+Secrets forwarded to RunPod through ignored `runpod.secrets` or `.env.runpod`:
+
+```text
+HF_TOKEN
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
+AWS_SESSION_TOKEN
+AWS_DEFAULT_REGION
+NEURALSIGNAL_S3_BUCKET
+NEURALSIGNAL_S3_ENDPOINT_URL
+```
+
+`HF_TOKEN` is required for gated Hugging Face datasets such as `metr-evals/malt-transcripts-public`. The AWS values are the scoped credentials created by `infra/terraform/s3-handoff` for uploading feature shards and metadata under `feature-runs/`.
+
+Local MinIO and MLflow secrets:
+
+```text
+MINIO_ACCESS_KEY
+MINIO_SECRET_KEY
+MLFLOW_TRACKING_URI
+MLFLOW_TRACKING_USERNAME
+MLFLOW_TRACKING_PASSWORD
+```
+
+Local S1 training reads curated feature datasets from local disk or local MinIO and logs trained S1 models, metrics, configs, and dataset provenance to local MLflow. See `specs/required-secrets.md` for the full contract.
+## v2 RunPod Lifecycle
+
+Build and push the RunPod image:
+
+```powershell
+.\scripts\build_runpod_image.ps1 -Image ghcr.io/amperie/neuralsignal-runpod-base:latest -Push
+```
+
+Create the S3 handoff bucket and scoped RunPod credentials:
+
+```powershell
+cd infra\terraform\s3-handoff
+terraform init
+terraform apply
+terraform output runpod_secret_values
+terraform output -raw runpod_secret_access_key
+```
+
+Put local secrets in `.env` or `runpod.secrets`. The CLI loads `.env` locally and forwards only the secrets file into the pod. `RUNPOD_API_KEY` must stay local.
+
+Run the full remote lifecycle:
+
+```powershell
+uv run ns remote collect configs\feature_collection\example_runpod_jsonl.yaml `
+  --manifest configs\runpod_manifest.yaml `
+  --run-id malt-smoke-001 `
+  --secrets-file runpod.secrets `
+  --target-dir runs\remote `
+  --train-config configs\training\sabotage_s1.yaml `
+  --minio-uri s3://neuralsignal-local/feature-datasets/malt-smoke-001
+```
+
+The local CLI launches RunPod, uploads the run config through the pod environment, waits until the S3 bundle and checksum exist, terminates the pod, downloads the bundle, deletes it from S3, unpacks it under the target directory, uploads the unpacked dataset/artifacts to MinIO when `--minio-uri` is set, and runs local S1 training when `--train-config` is provided. The MinIO dataset URI is logged to MLflow as `feature_dataset_uri`.
