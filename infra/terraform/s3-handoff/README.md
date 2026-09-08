@@ -19,9 +19,9 @@ aws configure sso --profile qc
 
 Then authenticate:
 
-```powershell
+`powershell
 aws sso login --profile qc
-```
+`$block
 
 ## Apply
 
@@ -79,5 +79,6 @@ Do not commit `runpod.secrets`.
 - Feature-run objects expire after 30 days by default.
 - The RunPod IAM user can read/write only under `feature-runs/`.
 - `RUNPOD_API_KEY` should stay local and must not be forwarded into the pod.
+
 
 
