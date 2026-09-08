@@ -1,0 +1,11 @@
+.git
+.idea
+.venv
+logs
+runs
+notebooks
+*.secrets
+.env
+.env.*
+pytest-cache-files-*
+

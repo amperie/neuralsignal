@@ -1,0 +1,27 @@
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_LINK_MODE=copy
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+        python3 \
+        python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+WORKDIR /workspace/neuralsignal
+COPY pyproject.toml uv.lock README.md ./
+COPY neuralsignal ./neuralsignal
+
+RUN uv sync --frozen --no-build-isolation
+
+ENTRYPOINT ["uv", "run", "python", "-m", "neuralsignal.remote.job"]
+
