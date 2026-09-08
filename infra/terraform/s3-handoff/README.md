@@ -48,6 +48,12 @@ Terraform cannot use a backend bucket before the bucket exists. Bootstrap in two
 2. Copy the generated backend config and run `terraform init -migrate-state`.
 
 ```powershell
+scripts/terraform_write_backend_hcl.ps1 -Migrate
+```
+
+Equivalent manual commands from this directory:
+
+```powershell
 terraform output -raw terraform_backend_hcl > backend.hcl
 terraform init -backend-config=backend.hcl -migrate-state
 ```
@@ -79,6 +85,7 @@ Do not commit `runpod.secrets`.
 - Feature-run objects expire after 30 days by default.
 - The RunPod IAM user can read/write only under `feature-runs/`.
 - `RUNPOD_API_KEY` should stay local and must not be forwarded into the pod.
+
 
 
 
