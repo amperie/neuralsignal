@@ -16,6 +16,7 @@ def test_build_pod_payload_encodes_config_and_excludes_local_api_key():
     assert payload["name"] == "neuralsignal-run-1"
     assert payload["imageName"] == "image:latest"
     assert payload["env"]["NEURALSIGNAL_RUN_ID"] == "run-1"
+    assert payload["dockerArgs"] == "--run-id run-1"
     assert "NEURALSIGNAL_FEATURE_CONFIG_B64" in payload["env"]
     assert "RUNPOD_API_KEY" not in payload["env"]
 
@@ -28,4 +29,3 @@ def test_redacted_hides_secret_values():
     assert result["env"]["HF_TOKEN"] == "<redacted>"
     assert result["env"]["AWS_SECRET_ACCESS_KEY"] == "<redacted>"
     assert result["env"]["SAFE"] == "ok"
-

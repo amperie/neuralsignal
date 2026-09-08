@@ -6,16 +6,20 @@ from neuralsignal.datasets.v2 import DatasetExample
 
 
 class HuggingFaceSource:
-    def __init__(self, name: str, split: str, normalizer=None, **load_kwargs) -> None:
+    def __init__(self, name: str, split: str, normalizer=None, config_name: str | None = None, **load_kwargs) -> None:
         self.name = name
         self.split = split
+        self.config_name = config_name
         self.normalizer = normalizer or _default_normalizer
         self.load_kwargs = load_kwargs
 
     def iter_examples(self) -> Iterable[DatasetExample]:
         from datasets import load_dataset
 
-        dataset = load_dataset(self.name, split=self.split, **self.load_kwargs)
+        load_kwargs = dict(self.load_kwargs)
+        if self.config_name:
+            load_kwargs["name"] = self.config_name
+        dataset = load_dataset(self.name, split=self.split, **load_kwargs)
         for row in dataset:
             yield from self.normalizer(dict(row))
 
@@ -28,4 +32,3 @@ def _default_normalizer(row: dict) -> Iterable[DatasetExample]:
         labels=list(row.get("labels") or []),
         metadata={k: v for k, v in row.items() if k not in {"id", "example_id", "input", "output", "labels"}},
     )
-

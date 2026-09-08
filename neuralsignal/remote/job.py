@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 from neuralsignal.config import load_config
-from neuralsignal.datasets.sources.jsonl import JsonlSource
+from neuralsignal.datasets.sources.factory import source_from_config
 from neuralsignal.features.model_extractor import ModelFeatureExtractor
 from neuralsignal.features.runner import collect_features, collect_features_batched
 from neuralsignal.storage.bundle import create_bundle, upload_bundle
@@ -54,10 +54,7 @@ def _load_config_from_env() -> dict:
 
 
 def _dataset_source(config: dict):
-    dataset = config.get("dataset") or {}
-    if dataset.get("source") == "jsonl" and dataset.get("path"):
-        return JsonlSource(dataset["path"])
-    raise RuntimeError("remote job currently requires dataset.source=jsonl and dataset.path")
+    return source_from_config(config)
 
 
 def _bundle_uri(config: dict, run_id: str) -> str:
@@ -78,3 +75,4 @@ def _placeholder_extractor(example, spec) -> dict[str, float]:
 
 if __name__ == "__main__":
     main()
+
