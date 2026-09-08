@@ -295,7 +295,7 @@ def test_feature_processor():
     # fsz = FeatureSetZones(cfg)
     cfg = {
         "model_name": "google/flan-t5-large",
-        "hf_token": "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",
+        "hf_token": "${HF_TOKEN}",
         "layers_to_process": [".wo"],
     }
 
@@ -390,7 +390,7 @@ def test_tunedlens():
 
     tl_cfg = {
         "model_name": "google/flan-t5-large",
-        "hf_token": "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",
+        "hf_token": "${HF_TOKEN}",
         "layers_to_process": [".wo"],
     }
     fstl = FeatureSetTunedLens(tl_cfg)

@@ -1,0 +1,138 @@
+import json
+from pathlib import Path
+
+from neuralsignal.remote.lifecycle import remote_collect_lifecycle
+from neuralsignal.storage.bundle import create_bundle, upload_bundle
+
+
+class FakeStore:
+    def __init__(self):
+        self.objects = {}
+        self.deleted = []
+
+    def download_file(self, bucket: str, key: str, path: str) -> None:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_bytes(self.objects[(bucket, key)])
+
+    def upload_file(self, path: str, bucket: str, key: str) -> None:
+        self.objects[(bucket, key)] = Path(path).read_bytes()
+
+    def delete_file(self, bucket: str, key: str) -> None:
+        self.deleted.append((bucket, key))
+        self.objects.pop((bucket, key), None)
+
+    def exists(self, bucket: str, key: str) -> bool:
+        return (bucket, key) in self.objects
+
+
+class FakeRunPod:
+    def __init__(self):
+        self.payload = None
+        self.terminated = []
+
+    def launch(self, payload: dict) -> dict:
+        self.payload = payload
+        return {"id": "pod-1"}
+
+    def terminate(self, pod_id: str) -> dict:
+        self.terminated.append(pod_id)
+        return {"id": pod_id}
+
+
+def test_remote_collect_lifecycle_downloads_deletes_unpacks_and_uploads_minio(tmp_path):
+    feature_config = tmp_path / "feature.yaml"
+    feature_config.write_text("""
+run:
+  s3_output_uri: s3://handoff/feature-runs
+dataset:
+  source: jsonl
+features:
+  materialize: []
+""", encoding="utf-8")
+    runpod_manifest = tmp_path / "runpod.yaml"
+    runpod_manifest.write_text("runpod:\n  image: image:latest\n", encoding="utf-8")
+
+    source = tmp_path / "remote-result"
+    (source / "features").mkdir(parents=True)
+    (source / "manifest.json").write_text(json.dumps({"run_id": "run-1"}), encoding="utf-8")
+    (source / "features" / "part-00000.parquet").write_bytes(b"feature-data")
+    bundle = create_bundle(source, tmp_path / "bundle.zip")
+
+    handoff = FakeStore()
+    upload_bundle(handoff, bundle, "s3://handoff/feature-runs/run-1/bundle.zip")
+    minio = FakeStore()
+    runpod = FakeRunPod()
+
+    result = remote_collect_lifecycle(
+        feature_config,
+        runpod_manifest,
+        "run-1",
+        tmp_path / "downloads",
+        env_file=None,
+        terraform_dir=None,
+        minio_uri="s3://local-minio/feature-datasets/run-1",
+        poll_seconds=0,
+        runpod_api=runpod,
+        store=handoff,
+        minio_store=minio,
+    )
+
+    assert result.pod_id == "pod-1"
+    assert runpod.terminated == ["pod-1"]
+    assert (tmp_path / "downloads" / "run-1" / "manifest.json").exists()
+    assert ("handoff", "feature-runs/run-1/bundle.zip") in handoff.deleted
+    assert ("local-minio", "feature-datasets/run-1/manifest.json") in minio.objects
+    assert ("local-minio", "feature-datasets/run-1/minio-dataset-uri.txt") in minio.objects
+
+
+def test_remote_collect_dry_run_redacts_payload(tmp_path):
+    feature_config = tmp_path / "feature.yaml"
+    feature_config.write_text("run:\n  s3_output_uri: s3://handoff/feature-runs\n", encoding="utf-8")
+    runpod_manifest = tmp_path / "runpod.yaml"
+    runpod_manifest.write_text("runpod:\n  image: image:latest\n", encoding="utf-8")
+    secrets = tmp_path / "runpod.secrets"
+    secrets.write_text("HF_TOKEN=hf_secret\n", encoding="utf-8")
+
+    result = remote_collect_lifecycle(
+        feature_config,
+        runpod_manifest,
+        "run-1",
+        tmp_path,
+        env_file=None,
+        secrets_file=secrets,
+        terraform_dir=None,
+        dry_run=True,
+    )
+
+    assert result["bundle_uri"] == "s3://handoff/feature-runs/run-1/bundle.zip"
+    assert result["payload"]["env"]["HF_TOKEN"] == "<redacted>"
+
+
+
+def test_remote_collect_interrupt_terminates_and_requires_bundle(tmp_path):
+    class InterruptingStore(FakeStore):
+        def exists(self, bucket: str, key: str) -> bool:
+            raise KeyboardInterrupt
+
+    feature_config = tmp_path / "feature.yaml"
+    feature_config.write_text("run:\n  s3_output_uri: s3://handoff/feature-runs\n", encoding="utf-8")
+    runpod_manifest = tmp_path / "runpod.yaml"
+    runpod_manifest.write_text("runpod:\n  image: image:latest\n", encoding="utf-8")
+    runpod = FakeRunPod()
+
+    import pytest
+
+    with pytest.raises(RuntimeError, match="bundle is not available"):
+        remote_collect_lifecycle(
+            feature_config,
+            runpod_manifest,
+            "run-1",
+            tmp_path / "downloads",
+            env_file=None,
+            terraform_dir=None,
+            poll_seconds=0,
+            runpod_api=runpod,
+            store=InterruptingStore(),
+        )
+
+    assert runpod.terminated == ["pod-1"]
