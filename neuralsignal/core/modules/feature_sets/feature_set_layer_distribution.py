@@ -2,7 +2,7 @@ import torch
 from neuralsignal.core.modules.feature_sets.feature_set_base\
     import FeatureSetBase
 from neuralsignal.core.modules.feature_sets.feature_utils\
-    import is_layer_string_match_in_list
+    import is_layer_string_match_in_list, apply_attention_mask
 import pandas as pd
 
 
@@ -56,7 +56,7 @@ class FeatureSetLayerDistribution(FeatureSetBase):
                     t = scan['outputs'][lyr] - scan['inputs'][lyr]
                 else:
                     t = scan[field_to_process][lyr]
-                # t = t.to(self.dev_map)
+                t = apply_attention_mask(t, scan.get("attention_mask"))
                 # Build feature names for all bins
                 for b in range(bin_count):
                     col_name = f"bin_{b}_{field_to_process}_{lyr_name}_{idx}"

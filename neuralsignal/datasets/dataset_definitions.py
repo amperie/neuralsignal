@@ -87,7 +87,7 @@ def datasets_dictionary(
         "local_path":
             f"{path_prefix}/diagram/diagram_dataset_2nd_edit.json",
         "input_processor": input_processor,
-        "hf_token": "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",
+        "hf_token": "${HF_TOKEN}",
         "row_limit": row_limit,
         "shuffle_dataset": shuffle,
     }
@@ -125,7 +125,7 @@ def datasets_dictionary(
         "local_path":
             f"{path_prefix}/diagram/diagram_augmented_consolidated.json",
         "input_processor": input_processor,
-        "hf_token": "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",
+        "hf_token": "${HF_TOKEN}",
         "row_limit": row_limit,
         "shuffle_dataset": shuffle,
     }
@@ -152,7 +152,7 @@ def datasets_dictionary(
         "dataset_name": "squad_v2_right_wrong_pairs",
         "local_path": f"{path_prefix}/squad_v2_right_wrong.json",
         "input_processor": input_processor,
-        "hf_token": "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",
+        "hf_token": "${HF_TOKEN}",
         "row_limit": row_limit,
         "shuffle_dataset": shuffle,
     }
@@ -180,7 +180,7 @@ def datasets_dictionary(
         "dataset_name": "halu_qa",
         "local_path": f"{path_prefix}/halu_qa_exploded.json",
         "input_processor": input_processor,
-        "hf_token": "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",
+        "hf_token": "${HF_TOKEN}",
         "row_limit": row_limit,
         "shuffle_dataset": shuffle,
     }
@@ -202,7 +202,7 @@ def datasets_dictionary(
         "dataset_name": "allenai_toxicity",
         "local_path": f"{path_prefix}/allenai_toxicity.json",
         "input_processor": input_processor,
-        "hf_token": "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",
+        "hf_token": "${HF_TOKEN}",
         "row_limit": row_limit,
         "shuffle_dataset": shuffle,
     }
@@ -253,7 +253,7 @@ def datasets_dictionary(
         "dataset_name": "allenai_identity_attack",
         "local_path": f"{path_prefix}/allenai_identity_attack.json",
         "input_processor": input_processor,
-        "hf_token": "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",
+        "hf_token": "${HF_TOKEN}",
         "row_limit": row_limit,
         "shuffle_dataset": shuffle,
     }
@@ -289,7 +289,7 @@ def datasets_dictionary(
         "dataset_variant": "abstract",
         "split": "train",
         "input_processor": input_processor,
-        "hf_token": "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",
+        "hf_token": "${HF_TOKEN}",
         "row_limit": row_limit,
         "shuffle_dataset": shuffle,
     }
@@ -374,7 +374,7 @@ def datasets_dictionary(
         "split": "test",
         "input_processor": input_processor,
         "pre_processor": HaluBench_pre_processor,
-        "hf_token": "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",
+        "hf_token": "${HF_TOKEN}",
         "row_limit": row_limit,
         "shuffle_dataset": shuffle,
     }
@@ -399,7 +399,7 @@ def datasets_dictionary(
         "hf_name": "lytang/LLM-AggreFact",
         "split": "test",
         "input_processor": input_processor,
-        "hf_token": "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",
+        "hf_token": "${HF_TOKEN}",
         "row_limit": row_limit,
         "shuffle_dataset": shuffle,
     }

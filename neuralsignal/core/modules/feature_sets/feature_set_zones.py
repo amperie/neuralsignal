@@ -4,7 +4,7 @@ from neuralsignal.core.modules.feature_sets.feature_set_base\
 from neuralsignal.core.modules.tensors\
     import process_tensor_dict_into_zones_by_layer
 from neuralsignal.core.modules.feature_sets.feature_utils\
-    import transform_tensor_dict_into_columns
+    import transform_tensor_dict_into_columns, apply_attention_mask
 import pandas as pd
 
 
@@ -83,7 +83,7 @@ class FeatureSetZones(FeatureSetBase):
         col_vals = []
 
         for included_idx, key in enumerate(td.keys()):
-            t = td[key]
+            t = apply_attention_mask(td[key], self.scan.get("attention_mask"))
             if len(t.shape) > 1:
                 t = torch.mean(t, dim=0)
             t = t.tolist()
