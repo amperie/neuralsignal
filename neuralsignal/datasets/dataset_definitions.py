@@ -296,6 +296,48 @@ def datasets_dictionary(
 
     add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
 
+    # METR MALT ordered agent transcripts
+    def input_processor(row):
+        samples = row.get("samples", [])
+        labels = row.get("labels", [])
+        if isinstance(labels, str):
+            labels = [label.strip() for label in labels.split(",")]
+
+        transcript = []
+        for sample in samples:
+            transcript.append({
+                "input": sample.get("input", []),
+                "output": sample.get("output", []),
+            })
+
+        return {
+                "input": "",
+                "context": "",
+                "output": str(transcript),
+                "ground_truth": int(any(label != "normal" for label in labels)),
+                "metadata": {
+                    "labels": labels,
+                    "model": row.get("model"),
+                    "run_source": row.get("run_source"),
+                    "has_chain_of_thought": row.get("has_chain_of_thought"),
+                    "manually_reviewed": row.get("manually_reviewed"),
+                    "source_dataset": "metr-evals/malt-public",
+                }
+                }
+
+    cfg = {
+        "dataset_type": "hf",
+        "dataset_name": "metr_malt_public",
+        "hf_name": "metr-evals/malt-public",
+        "dataset_variant": dataset_variant,
+        "split": "train",
+        "input_processor": input_processor,
+        "row_limit": row_limit,
+        "shuffle_dataset": shuffle,
+    }
+
+    add_to_dataset_dictionary(retVal, cfg, dataset_list, include)
+
     # HaluBench
     def input_processor(row):
         gt = row["label"]
