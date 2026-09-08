@@ -49,3 +49,36 @@ def test_malt_normalizer_extracts_user_input_and_last_assistant_output():
 def test_malt_normalizer_skips_rows_without_input_output_pair():
     assert list(normalize_malt_record({"messages": [{"role": "user", "content": "only input"}]})) == []
 
+
+
+def test_malt_normalizer_extracts_samples_rows():
+    row = {
+        "id": "sample-row",
+        "labels": "normal, sabotage",
+        "samples": [
+            {
+                "input": [{"role": "user", "content": "task"}],
+                "output": [{"role": "assistant", "content": "answer 1"}, {"role": "assistant", "content": "answer 2"}],
+            }
+        ],
+    }
+
+    examples = list(normalize_malt_record(row))
+
+    assert len(examples) == 1
+    assert examples[0].id == "sample-row:0"
+    assert examples[0].input == "task"
+    assert examples[0].output == "answer 2"
+    assert examples[0].labels == ["normal", "sabotage"]
+
+
+def test_source_factory_builds_malt_source():
+    from neuralsignal.datasets.sources.factory import source_from_config
+    from neuralsignal.datasets.sources.malt import MaltTranscriptSource
+
+    source = source_from_config({"dataset": {"source": "malt", "split": "public", "config_name": "default"}})
+
+    assert isinstance(source, MaltTranscriptSource)
+    assert source.name == "metr-evals/malt-transcripts-public"
+    assert source.split == "public"
+    assert source.config_name == "default"

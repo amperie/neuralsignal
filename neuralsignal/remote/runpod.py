@@ -31,7 +31,7 @@ def build_pod_payload(job: RunPodJob, secrets: dict[str, str] | None = None) -> 
     env["NEURALSIGNAL_RUN_ID"] = job.run_id
     env["NEURALSIGNAL_FEATURE_CONFIG_B64"] = _encode_config(job.config)
 
-    command = "--run-id ${NEURALSIGNAL_RUN_ID}"
+    command = f"--run-id {job.run_id}"
     return {
         "name": f"neuralsignal-{job.run_id}",
         "imageName": runpod["image"],
@@ -98,4 +98,5 @@ def _redact(value):
 def _is_secret_key(key: str) -> bool:
     lowered = key.lower()
     return any(part in lowered for part in ("token", "secret", "password", "access_key"))
+
 
