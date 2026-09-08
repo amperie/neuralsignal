@@ -172,3 +172,4 @@ pytest-cache-files-*/
 backend.hcl
 *.tfstate
 *.tfstate.*
+.terraform/
