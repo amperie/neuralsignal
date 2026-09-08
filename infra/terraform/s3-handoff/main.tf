@@ -6,8 +6,9 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 locals {
-  bucket_name    = var.bucket_name != null ? var.bucket_name : "neuralsignal-runpod-handoff-${data.aws_caller_identity.current.account_id}"
-  allowed_prefix = trimsuffix(var.allowed_prefix, "/")
+  bucket_name       = var.bucket_name != null ? var.bucket_name : "neuralsignal-runpod-handoff-${data.aws_caller_identity.current.account_id}"
+  state_bucket_name = var.state_bucket_name != null ? var.state_bucket_name : "neuralsignal-terraform-state-${data.aws_caller_identity.current.account_id}"
+  allowed_prefix    = trimsuffix(var.allowed_prefix, "/")
 }
 
 resource "aws_s3_bucket" "handoff" {
@@ -132,3 +133,48 @@ resource "aws_iam_access_key" "runpod_handoff" {
   user  = aws_iam_user.runpod_handoff[0].name
 }
 
+
+resource "aws_s3_bucket" "terraform_state" {
+  count         = var.create_state_bucket ? 1 : 0
+  bucket        = local.state_bucket_name
+  force_destroy = var.state_bucket_force_destroy
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = {
+    Project = "neuralsignal"
+    Purpose = "terraform-state"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "terraform_state" {
+  count  = var.create_state_bucket ? 1 : 0
+  bucket = aws_s3_bucket.terraform_state[0].id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "terraform_state" {
+  count  = var.create_state_bucket ? 1 : 0
+  bucket = aws_s3_bucket.terraform_state[0].id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" {
+  count  = var.create_state_bucket ? 1 : 0
+  bucket = aws_s3_bucket.terraform_state[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
