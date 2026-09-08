@@ -40,3 +40,21 @@ variable "force_destroy" {
   default     = false
 }
 
+
+variable "create_state_bucket" {
+  description = "Create a separate S3 bucket that can be used as the Terraform remote state backend."
+  type        = bool
+  default     = true
+}
+
+variable "state_bucket_name" {
+  description = "Globally unique S3 bucket name for Terraform state. If null, uses neuralsignal-terraform-state-{account_id}."
+  type        = string
+  default     = null
+}
+
+variable "state_bucket_force_destroy" {
+  description = "Allow Terraform to delete a non-empty Terraform state bucket. Keep false unless intentionally tearing down state storage."
+  type        = bool
+  default     = false
+}

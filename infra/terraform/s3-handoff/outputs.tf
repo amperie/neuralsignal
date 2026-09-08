@@ -31,3 +31,22 @@ output "runpod_secret_values" {
     AWS_SECRET_ACCESS_KEY  = "run terraform output -raw runpod_secret_access_key"
   } : null
 }
+output "terraform_state_bucket_name" {
+  value = var.create_state_bucket ? aws_s3_bucket.terraform_state[0].bucket : null
+}
+
+output "terraform_state_bucket_arn" {
+  value = var.create_state_bucket ? aws_s3_bucket.terraform_state[0].arn : null
+}
+
+output "terraform_backend_hcl" {
+  value = var.create_state_bucket ? join("\n", [
+    "bucket       = \"${aws_s3_bucket.terraform_state[0].bucket}\"",
+    "key          = \"neuralsignal/s3-handoff/terraform.tfstate\"",
+    "region       = \"${var.aws_region}\"",
+    "profile      = \"${var.aws_profile}\"",
+    "encrypt      = true",
+  ]) : null
+}
+
+
