@@ -1,0 +1,18 @@
+dataset:
+  path: runs/remote/example-run/features
+  label_column: label
+
+features:
+  include_sets:
+    - zones
+    - layer_distribution
+    - T-F-diff
+  include_columns: []
+  exclude_columns: []
+
+mlflow:
+  tracking_uri: file:./mlruns
+  experiment_name: neuralsignal-s1
+  run_name: sabotage-s1-local
+  registered_model_name: neuralsignal-sabotage-s1
+

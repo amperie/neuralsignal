@@ -1,0 +1,21 @@
+run:
+  name: example-runpod-jsonl
+  s3_output_uri: s3://${NEURALSIGNAL_S3_BUCKET}/feature-runs
+
+dataset:
+  source: jsonl
+  path: /workspace/input/examples.jsonl
+
+features:
+  materialize:
+    - name: zones
+      enabled: true
+      config:
+        output_format: name_and_value_columns
+
+storage:
+  shard_size_rows: 10000
+  format: parquet
+  compression: zstd
+  save_scans: false
+
