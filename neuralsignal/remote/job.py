@@ -8,7 +8,8 @@ from pathlib import Path
 
 from neuralsignal.config import load_config
 from neuralsignal.datasets.sources.jsonl import JsonlSource
-from neuralsignal.features.runner import collect_features
+from neuralsignal.features.model_extractor import ModelFeatureExtractor
+from neuralsignal.features.runner import collect_features, collect_features_batched
 from neuralsignal.storage.bundle import create_bundle, upload_bundle
 from neuralsignal.storage.local import LocalFeatureShardWriter
 from neuralsignal.storage.manifests import RunManifest
@@ -31,8 +32,12 @@ def main() -> None:
         state="running",
     )
     writer = LocalFeatureShardWriter(run_dir, manifest)
-    source = _dataset_source(config)
-    collect_features(source.iter_examples(), config, writer, _placeholder_extractor)
+    source = _dataset_source(config).iter_examples()
+    if ((config.get("extraction") or {}).get("mode") or "placeholder") == "model":
+        extractor = ModelFeatureExtractor(config)
+        collect_features_batched(source, config, writer, extractor.extract_batch)
+    else:
+        collect_features(source, config, writer, _placeholder_extractor)
     manifest.state = "completed"
     manifest.write_json(run_dir / "manifest.json")
 

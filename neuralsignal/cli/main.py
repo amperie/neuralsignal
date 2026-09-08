@@ -6,7 +6,8 @@ from pathlib import Path
 
 from neuralsignal.config import load_config
 from neuralsignal.datasets.sources.jsonl import JsonlSource
-from neuralsignal.features.runner import collect_features
+from neuralsignal.features.model_extractor import ModelFeatureExtractor
+from neuralsignal.features.runner import collect_features, collect_features_batched
 from neuralsignal.remote.lifecycle import remote_collect_lifecycle
 from neuralsignal.remote.sync import sync_feature_run
 from neuralsignal.storage.local import LocalFeatureShardWriter
@@ -131,7 +132,12 @@ def _collect_local(args) -> int:
         features={"schema_version": "features.v1"},
     )
     writer = LocalFeatureShardWriter(out, manifest)
-    collect_features(JsonlSource(args.input_jsonl).iter_examples(), config, writer, _placeholder_extractor)
+    source = JsonlSource(args.input_jsonl).iter_examples()
+    if ((config.get("extraction") or {}).get("mode") or "placeholder") == "model":
+        extractor = ModelFeatureExtractor(config)
+        collect_features_batched(source, config, writer, extractor.extract_batch)
+    else:
+        collect_features(source, config, writer, _placeholder_extractor)
     print(json.dumps({"run_id": manifest.run_id, "rows": manifest.rows["written"], "out": str(out)}))
     return 0
 

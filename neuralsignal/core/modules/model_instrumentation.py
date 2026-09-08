@@ -180,26 +180,31 @@ def generate_from_batch(
 
     if batch_size > 1:
         # If batch size>1 we need padding
-        input_ids = tokenizer(
+        encoded = tokenizer(
             input_list, return_tensors="pt",
-            padding=True, truncation=True).input_ids
+            padding=True, truncation=True)
     elif truncation_length == 0:
         # IF batch = 1 then see if we're truncating
-        input_ids = tokenizer(
+        encoded = tokenizer(
             input_list, return_tensors="pt",
-            padding=False, truncation=False).input_ids
+            padding=False, truncation=False)
     else:
-        input_ids = tokenizer(
+        encoded = tokenizer(
             input_list, return_tensors="pt",
             padding=False, truncation=True,
-            max_length=truncation_length).input_ids
+            max_length=truncation_length)
 
+    input_ids = encoded.input_ids
+    attention_mask = getattr(encoded, "attention_mask", torch.ones_like(input_ids))
     if torch.cuda.is_available():
         input_ids = input_ids.to("cuda")
+        attention_mask = attention_mask.to("cuda")
     try:
         input_ids = input_ids.to(model.device)
+        attention_mask = attention_mask.to(model.device)
         output = model.generate(
-            input_ids=input_ids, pad_token_id=tokenizer.eos_token_id,
+            input_ids=input_ids, attention_mask=attention_mask,
+            pad_token_id=tokenizer.eos_token_id,
             max_new_tokens=max_new_tokens
             )
     except NSAbortLLM as e:
@@ -227,7 +232,10 @@ def generate_from_batch(
             "output": decoded_output,
             "model_name": model.name_or_path
         })
-        gi.add_data({"decoded_output": decoded_output})
+        gi.add_data({
+            "decoded_output": decoded_output,
+            "attention_mask": attention_mask[batch_idx].detach().cpu()
+        })
         if model_instrumented:
             data = hc.get_data_by_batch_index(batch_idx)
             # Add data to return value
@@ -977,3 +985,5 @@ def instrument_phi3(cfg, model, hc: Collector) -> list:
     model.lm_head.ns_name = "phi3.lm_head"
     hc.last_layer = id(model.lm_head)
     return registered_hooks
+
+
