@@ -116,3 +116,12 @@ def _assert_close(config: dict[str, Any], name: str, index: int, diff: float) ->
     if diff > atol:
         raise AssertionError(f"{name} row {index} exceeded batch-invariance tolerance: {diff} > {atol}")
 
+
+
+def test_configured_batch_invariance() -> None:
+    from pathlib import Path
+
+    from neuralsignal.config import load_config
+
+    config = load_config(Path(__file__).parents[2] / "configs" / "tests" / "batch_invariance.yaml")
+    assert_batch_invariant(config)
