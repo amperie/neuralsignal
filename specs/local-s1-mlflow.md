@@ -97,7 +97,7 @@ dataset:
 
 model:
   detector: sabotage
-  type: xgboost
+  type: logistic_regression
   registered_name: neuralsignal-sabotage-s1
 
 splits:
