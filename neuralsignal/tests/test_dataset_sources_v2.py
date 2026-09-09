@@ -82,3 +82,27 @@ def test_source_factory_builds_malt_source():
     assert source.name == "metr-evals/malt-transcripts-public"
     assert source.split == "public"
     assert source.config_name == "default"
+
+
+def test_huggingface_source_passes_hf_token(monkeypatch):
+    from neuralsignal.datasets.sources import hf
+    from neuralsignal.datasets.sources.hf import HuggingFaceSource
+
+    calls = {}
+
+    def fake_load_dataset(path, split, **kwargs):
+        calls["name"] = path
+        calls["split"] = split
+        calls["kwargs"] = kwargs
+        return [{"id": "a", "input": "i", "output": "o"}]
+
+    monkeypatch.setenv("HF_TOKEN", "hf_secret")
+    monkeypatch.setattr(hf, "_load_dataset", fake_load_dataset)
+
+    examples = list(HuggingFaceSource("repo/name", "train", config_name="default").iter_examples())
+
+    assert examples[0].id == "a"
+    assert calls["kwargs"]["token"] == "hf_secret"
+    assert calls["kwargs"]["name"] == "default"
+
+

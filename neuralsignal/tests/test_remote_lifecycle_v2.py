@@ -136,3 +136,25 @@ def test_remote_collect_interrupt_terminates_and_requires_bundle(tmp_path):
         )
 
     assert runpod.terminated == ["pod-1"]
+
+
+def test_remote_collect_dry_run_forwards_hf_token_from_env_file(tmp_path):
+    feature_config = tmp_path / "feature.yaml"
+    feature_config.write_text("run:\n  s3_output_uri: s3://handoff/feature-runs\n", encoding="utf-8")
+    runpod_manifest = tmp_path / "runpod.yaml"
+    runpod_manifest.write_text("runpod:\n  image: image:latest\n", encoding="utf-8")
+    env_file = tmp_path / ".env"
+    env_file.write_text("HF_TOKEN=hf_from_env\nRUNPOD_API_KEY=rp_local_only\n", encoding="utf-8")
+
+    result = remote_collect_lifecycle(
+        feature_config,
+        runpod_manifest,
+        "run-1",
+        tmp_path,
+        env_file=env_file,
+        terraform_dir=None,
+        dry_run=True,
+    )
+
+    assert result["payload"]["env"]["HF_TOKEN"] == "<redacted>"
+    assert "RUNPOD_API_KEY" not in result["payload"]["env"]
