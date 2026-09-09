@@ -80,3 +80,12 @@ def test_load_config_expands_environment_variables(tmp_path, monkeypatch):
     config = load_config(path)
 
     assert config["run"]["s3_output_uri"] == "s3://bucket-1/feature-runs"
+
+
+def test_load_env_file_ignores_blank_values(tmp_path):
+    from neuralsignal.config.env import load_env_file
+
+    path = tmp_path / ".env"
+    path.write_text("HF_TOKEN=hf_x\nNEURALSIGNAL_S3_BUCKET=\n", encoding="utf-8")
+
+    assert load_env_file(path) == {"HF_TOKEN": "hf_x"}

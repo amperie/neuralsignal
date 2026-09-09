@@ -14,11 +14,12 @@ def load_env_file(path: str | Path) -> dict[str, str]:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
+        cleaned = value.strip().strip('"').strip("'")
+        if cleaned:
+            values[key.strip()] = cleaned
     return values
 
 
 def apply_env(values: dict[str, str]) -> None:
     for key, value in values.items():
         os.environ.setdefault(key, value)
-

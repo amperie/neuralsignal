@@ -64,7 +64,7 @@ def remote_collect_lifecycle(
         apply_env(load_env_file(env_file))
     config = load_config(config_path)
     manifest = load_config(runpod_manifest_path)
-    secrets = {}
+    secrets = _forwarded_hf_env()
     if terraform_dir and Path(terraform_dir).exists():
         secrets.update(s3_settings_from_terraform(terraform_dir))
     if secrets_file:
@@ -105,6 +105,12 @@ def remote_collect_lifecycle(
         training_metrics = _train_s1_from_config(train_config_path, target, minio_uri)
     return RemoteCollectResult(run_id, pod_id, bundle_uri, str(target), training_metrics)
 
+
+
+
+def _forwarded_hf_env() -> dict[str, str]:
+    keys = ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN")
+    return {key: os.environ[key] for key in keys if os.environ.get(key)}
 
 def _train_s1_from_config(config_path: str | Path, dataset_dir: str | Path, minio_uri: str | None) -> dict:
     config = load_config(config_path)
@@ -164,3 +170,5 @@ def _minio_store() -> Boto3ObjectStore:
         access_key_id=os.environ.get("MINIO_ACCESS_KEY"),
         secret_access_key=os.environ.get("MINIO_SECRET_KEY"),
     )
+
+
