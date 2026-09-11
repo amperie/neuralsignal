@@ -1,14 +1,15 @@
 provider "aws" {
-  profile = var.aws_profile
+  profile = var.aws_profile != "" ? var.aws_profile : null
   region  = var.aws_region
 }
 
 data "aws_caller_identity" "current" {}
 
 locals {
-  bucket_name       = var.bucket_name != null ? var.bucket_name : "neuralsignal-runpod-handoff-${data.aws_caller_identity.current.account_id}"
-  state_bucket_name = var.state_bucket_name != null ? var.state_bucket_name : "neuralsignal-terraform-state-${data.aws_caller_identity.current.account_id}"
-  allowed_prefix    = trimsuffix(var.allowed_prefix, "/")
+  bucket_name          = var.bucket_name != null ? var.bucket_name : "neuralsignal-runpod-handoff-${data.aws_caller_identity.current.account_id}"
+  state_bucket_name    = var.state_bucket_name != null ? var.state_bucket_name : "neuralsignal-terraform-state-${data.aws_caller_identity.current.account_id}"
+  platform_bucket_name = var.platform_bucket_name != null ? var.platform_bucket_name : "neuralsignal-platform-artifacts-${data.aws_caller_identity.current.account_id}"
+  allowed_prefix       = trimsuffix(var.allowed_prefix, "/")
 }
 
 resource "aws_s3_bucket" "handoff" {
@@ -178,3 +179,115 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" 
     }
   }
 }
+
+
+resource "aws_s3_bucket" "platform_artifacts" {
+  count         = var.create_platform_bucket ? 1 : 0
+  bucket        = local.platform_bucket_name
+  force_destroy = var.platform_bucket_force_destroy
+
+  tags = {
+    Project = "neuralsignal"
+    Purpose = "platform-artifacts"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "platform_artifacts" {
+  count  = var.create_platform_bucket ? 1 : 0
+  bucket = aws_s3_bucket.platform_artifacts[0].id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "platform_artifacts" {
+  count  = var.create_platform_bucket ? 1 : 0
+  bucket = aws_s3_bucket.platform_artifacts[0].id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "platform_artifacts" {
+  count  = var.create_platform_bucket ? 1 : 0
+  bucket = aws_s3_bucket.platform_artifacts[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+data "aws_iam_policy_document" "platform" {
+  statement {
+    sid = "ListNeuralSignalBuckets"
+
+    actions = ["s3:ListBucket"]
+
+    resources = compact([
+      aws_s3_bucket.handoff.arn,
+      var.create_platform_bucket ? aws_s3_bucket.platform_artifacts[0].arn : "",
+    ])
+  }
+
+  statement {
+    sid = "ReadWriteHandoffObjects"
+
+    actions = [
+      "s3:AbortMultipartUpload",
+      "s3:DeleteObject",
+      "s3:GetObject",
+      "s3:ListMultipartUploadParts",
+      "s3:PutObject",
+    ]
+
+    resources = ["${aws_s3_bucket.handoff.arn}/${local.allowed_prefix}/*"]
+  }
+
+  statement {
+    sid = "ReadWritePlatformArtifacts"
+
+    actions = [
+      "s3:AbortMultipartUpload",
+      "s3:DeleteObject",
+      "s3:GetObject",
+      "s3:ListMultipartUploadParts",
+      "s3:PutObject",
+    ]
+
+    resources = var.create_platform_bucket ? ["${aws_s3_bucket.platform_artifacts[0].arn}/*"] : ["${aws_s3_bucket.handoff.arn}/${local.allowed_prefix}/*"]
+  }
+}
+
+resource "aws_iam_policy" "platform" {
+  count       = var.create_platform_user ? 1 : 0
+  name        = "neuralsignal-platform-${data.aws_caller_identity.current.account_id}"
+  description = "Runtime access for the NeuralSignal platform."
+  policy      = data.aws_iam_policy_document.platform.json
+}
+
+resource "aws_iam_user" "platform" {
+  count = var.create_platform_user ? 1 : 0
+  name  = var.platform_user_name
+
+  tags = {
+    Project = "neuralsignal"
+    Purpose = "platform-runtime"
+  }
+}
+
+resource "aws_iam_user_policy_attachment" "platform" {
+  count      = var.create_platform_user ? 1 : 0
+  user       = aws_iam_user.platform[0].name
+  policy_arn = aws_iam_policy.platform[0].arn
+}
+
+resource "aws_iam_access_key" "platform" {
+  count = var.create_platform_user ? 1 : 0
+  user  = aws_iam_user.platform[0].name
+}
+
