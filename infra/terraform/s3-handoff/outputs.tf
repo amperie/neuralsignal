@@ -44,9 +44,40 @@ output "terraform_backend_hcl" {
     "bucket       = \"${aws_s3_bucket.terraform_state[0].bucket}\"",
     "key          = \"neuralsignal/s3-handoff/terraform.tfstate\"",
     "region       = \"${var.aws_region}\"",
-    "profile      = \"${var.aws_profile}\"",
     "encrypt      = true",
   ]) : null
 }
 
 
+
+
+output "platform_bucket_name" {
+  value = var.create_platform_bucket ? aws_s3_bucket.platform_artifacts[0].bucket : null
+}
+
+output "platform_bucket_arn" {
+  value = var.create_platform_bucket ? aws_s3_bucket.platform_artifacts[0].arn : null
+}
+
+output "platform_user_name" {
+  value = var.create_platform_user ? aws_iam_user.platform[0].name : null
+}
+
+output "platform_access_key_id" {
+  value = var.create_platform_user ? aws_iam_access_key.platform[0].id : null
+}
+
+output "platform_secret_access_key" {
+  value     = var.create_platform_user ? aws_iam_access_key.platform[0].secret : null
+  sensitive = true
+}
+
+output "platform_secret_values" {
+  value = var.create_platform_user ? {
+    AWS_ACCESS_KEY_ID            = aws_iam_access_key.platform[0].id
+    AWS_DEFAULT_REGION           = var.aws_region
+    NEURALSIGNAL_S3_BUCKET       = aws_s3_bucket.handoff.bucket
+    NEURALSIGNAL_PLATFORM_BUCKET = var.create_platform_bucket ? aws_s3_bucket.platform_artifacts[0].bucket : null
+    AWS_SECRET_ACCESS_KEY        = "run terraform output -raw platform_secret_access_key"
+  } : null
+}

@@ -2,28 +2,26 @@ param(
     [string]$Profile = "qc",
     [string]$Region = "us-east-1",
     [switch]$Configure,
-    [string]$SsoStartUrl = "",
-    [string]$SsoRegion = "",
-    [string]$SsoAccountId = "",
-    [string]$SsoRoleName = "",
+    [string]$AccessKeyId = "",
+    [string]$SecretAccessKey = "",
+    [string]$SessionToken = "",
     [switch]$Help
 )
 
 if ($Help) {
     Write-Host "Usage: scripts/aws_login_qc.ps1 [-Profile qc] [-Region us-east-1] [-Configure]"
-    Write-Host "       scripts/aws_login_qc.ps1 -SsoStartUrl <url> -SsoRegion <region> -SsoAccountId <id> -SsoRoleName <role>"
+    Write-Host "       scripts/aws_login_qc.ps1 -AccessKeyId <id> -SecretAccessKey <secret> [-SessionToken <token>]"
     Write-Host ""
-    Write-Host "Logs into the AWS CLI SSO profile used by NeuralSignal Terraform."
+    Write-Host "Configures and verifies a standard AWS CLI access-key profile for NeuralSignal Terraform."
     Write-Host ""
     Write-Host "Options:"
-    Write-Host "  -Profile       AWS CLI profile name. Default: qc"
-    Write-Host "  -Region        Default AWS region for this process. Default: us-east-1"
-    Write-Host "  -Configure     Run aws configure sso before login. Use this if the profile does not exist yet."
-    Write-Host "  -SsoStartUrl   SSO start URL for non-interactive profile setup."
-    Write-Host "  -SsoRegion     SSO region for non-interactive profile setup."
-    Write-Host "  -SsoAccountId  AWS account id for non-interactive profile setup."
-    Write-Host "  -SsoRoleName   AWS role name for non-interactive profile setup."
-    Write-Host "  -Help          Show this help."
+    Write-Host "  -Profile          AWS CLI profile name. Default: qc"
+    Write-Host "  -Region           Default AWS region. Default: us-east-1"
+    Write-Host "  -Configure        Run interactive aws configure for the profile."
+    Write-Host "  -AccessKeyId      AWS access key id for non-interactive profile setup."
+    Write-Host "  -SecretAccessKey  AWS secret access key for non-interactive profile setup."
+    Write-Host "  -SessionToken     Optional AWS session token for temporary credentials."
+    Write-Host "  -Help             Show this help."
     exit 0
 }
 
@@ -50,50 +48,47 @@ function Get-AwsConfigValue($Name, $ProfileName) {
     }
 }
 
-function Invoke-CheckedAws($Arguments) {
+function Invoke-CheckedAws($Arguments, [string]$FailureMessage = "AWS command failed.") {
     & aws @Arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "AWS command failed: aws $($Arguments -join ' ')"
+        throw $FailureMessage
     }
 }
 
-function Configure-SsoProfile() {
-    $hasNonInteractiveConfig = $SsoStartUrl -and $SsoRegion -and $SsoAccountId -and $SsoRoleName
-    if ($hasNonInteractiveConfig) {
-        Write-Host "Configuring AWS SSO profile '$Profile' from script parameters..."
-        Invoke-CheckedAws @("configure", "set", "sso_start_url", $SsoStartUrl, "--profile", $Profile)
-        Invoke-CheckedAws @("configure", "set", "sso_region", $SsoRegion, "--profile", $Profile)
-        Invoke-CheckedAws @("configure", "set", "sso_account_id", $SsoAccountId, "--profile", $Profile)
-        Invoke-CheckedAws @("configure", "set", "sso_role_name", $SsoRoleName, "--profile", $Profile)
-        return
+function Configure-ProfileFromArgs() {
+    if (-not $AccessKeyId -or -not $SecretAccessKey) {
+        throw "Both -AccessKeyId and -SecretAccessKey are required for non-interactive setup. Otherwise use -Configure."
     }
 
-    Write-Host "Configuring AWS SSO profile '$Profile'..."
-    Invoke-CheckedAws @("configure", "sso", "--profile", $Profile)
+    Write-Host "Configuring AWS profile '$Profile' from script parameters..."
+    Invoke-CheckedAws @("configure", "set", "aws_access_key_id", $AccessKeyId, "--profile", $Profile) "Failed to set AWS access key id."
+    Invoke-CheckedAws @("configure", "set", "aws_secret_access_key", $SecretAccessKey, "--profile", $Profile) "Failed to set AWS secret access key."
+    if ($SessionToken) {
+        Invoke-CheckedAws @("configure", "set", "aws_session_token", $SessionToken, "--profile", $Profile) "Failed to set AWS session token."
+    }
 }
 
 Require-Command "aws"
 
+$profileAccessKey = Get-AwsConfigValue "aws_access_key_id" $Profile
 $profileRegion = Get-AwsConfigValue "region" $Profile
-$ssoStartUrl = Get-AwsConfigValue "sso_start_url" $Profile
-$ssoSession = Get-AwsConfigValue "sso_session" $Profile
 
-if ($Configure -or (-not $ssoStartUrl -and -not $ssoSession)) {
-    Configure-SsoProfile
+if ($AccessKeyId -or $SecretAccessKey -or $SessionToken) {
+    Configure-ProfileFromArgs
+} elseif ($Configure -or -not $profileAccessKey) {
+    Write-Host "Configuring AWS profile '$Profile'..."
+    Invoke-CheckedAws @("configure", "--profile", $Profile) "AWS profile configuration failed."
 }
 
 if (-not $profileRegion) {
-    Invoke-CheckedAws @("configure", "set", "region", $Region, "--profile", $Profile)
+    Invoke-CheckedAws @("configure", "set", "region", $Region, "--profile", $Profile) "Failed to set AWS region."
 }
 
 $env:AWS_PROFILE = $Profile
 $env:AWS_DEFAULT_REGION = $Region
 
-Write-Host "Logging into AWS profile '$Profile'..."
-Invoke-CheckedAws @("sso", "login", "--profile", $Profile)
+Write-Host "Verifying AWS auth for profile '$Profile'..."
+Invoke-CheckedAws @("sts", "get-caller-identity", "--profile", $Profile, "--output", "table") "AWS auth verification failed. Check the profile credentials."
 
-Write-Host "Verifying AWS auth..."
-Invoke-CheckedAws @("sts", "get-caller-identity", "--profile", $Profile, "--output", "table")
-
-Write-Host "AWS profile '$Profile' is authenticated."
+Write-Host "AWS profile '$Profile' is configured and authenticated."
 Write-Host "For this terminal session, run: `$env:AWS_PROFILE = '$Profile'"

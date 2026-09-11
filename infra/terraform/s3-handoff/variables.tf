@@ -58,3 +58,33 @@ variable "state_bucket_force_destroy" {
   type        = bool
   default     = false
 }
+
+variable "create_platform_user" {
+  description = "Create an IAM user/access key for the NeuralSignal platform runtime."
+  type        = bool
+  default     = true
+}
+
+variable "platform_user_name" {
+  description = "IAM user name for the NeuralSignal platform runtime."
+  type        = string
+  default     = "neuralsignal-platform"
+}
+
+variable "create_platform_bucket" {
+  description = "Create a private S3 bucket for durable platform artifacts."
+  type        = bool
+  default     = true
+}
+
+variable "platform_bucket_name" {
+  description = "Globally unique S3 bucket name for platform artifacts. If null, uses neuralsignal-platform-artifacts-{account_id}."
+  type        = string
+  default     = null
+}
+
+variable "platform_bucket_force_destroy" {
+  description = "Allow Terraform to delete a non-empty platform artifact bucket. Keep false unless intentionally tearing down."
+  type        = bool
+  default     = false
+}
