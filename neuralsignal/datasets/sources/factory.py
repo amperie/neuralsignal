@@ -14,7 +14,7 @@ def source_from_config(config: dict[str, Any]):
         return JsonlSource(dataset["path"])
     if source == "malt":
         return MaltTranscriptSource(
-            split=str(dataset.get("split") or "public"),
+            split=str(dataset.get("split") or "transcripts"),
             name=str(dataset.get("hf_dataset") or dataset.get("name") or "metr-evals/malt-transcripts-public"),
             config_name=dataset.get("config_name"),
             **dict(dataset.get("load_kwargs") or {}),

@@ -13,7 +13,7 @@ if [[ -z "$RUN_ID" ]]; then
   done
 fi
 RUN_ID="${RUN_ID:-run}"
-SESSION="neuralsignal-${RUN_ID}"
+SESSION="ns"
 LOG_DIR="${NEURALSIGNAL_RUN_WORKDIR:-/workspace/neuralsignal-runs}/${RUN_ID}"
 LOG_FILE="${LOG_DIR}/runpod.log"
 STATUS_FILE="${LOG_DIR}/exit_code"
@@ -25,6 +25,23 @@ CMD=(/opt/neuralsignal/.venv/bin/python -m neuralsignal.remote.job "$@")
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   exec "${CMD[@]}"
 fi
+# RunPod supplies account public keys through PUBLIC_KEY for custom images.
+SSH_KEYS="${SSH_PUBLIC_KEY:-${PUBLIC_KEY:-}}"
+if [[ -n "$SSH_KEYS" ]]; then
+  mkdir -p /root/.ssh /run/sshd
+  chmod 700 /root/.ssh
+  printf '%s\n' "$SSH_KEYS" > /root/.ssh/authorized_keys
+  chmod 600 /root/.ssh/authorized_keys
+  ssh-keygen -A
+  if /usr/sbin/sshd -o PasswordAuthentication=no -o KbdInteractiveAuthentication=no -o PermitRootLogin=prohibit-password; then
+    echo "SSH server started on port 22 (public-key authentication)"
+  else
+    echo "SSH server failed to start; see the error above. Feature collection will continue." >&2
+  fi
+else
+  echo "SSH unavailable: add your public SSH key to RunPod account settings before launching."
+fi
+
 printf -v TMUX_CMD ' %q' "${CMD[@]}"
 TMUX_CMD="${TMUX_CMD:1}"
 

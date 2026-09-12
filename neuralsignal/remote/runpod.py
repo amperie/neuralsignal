@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import ipaddress
 import os
 import urllib.error
 import urllib.request
@@ -53,6 +54,8 @@ def build_pod_payload(job: RunPodJob, secrets: dict[str, str] | None = None) -> 
         "env": env,
         "dockerStartCmd": ["--run-id", job.run_id],
         "computeType": "GPU",
+        "ports": list(runpod.get("ports", ["22/tcp"])),
+        "supportPublicIp": True,
         "cloudType": runpod.get("cloud_type", "SECURE"),
     }
     if runpod.get("cloud_type"):
@@ -97,6 +100,25 @@ def api(method: str, path: str, token: str, body: dict[str, Any] | None = None) 
 
 def launch(payload: dict[str, Any], token: str | None = None) -> dict[str, Any]:
     return api("POST", "/pods", token or _runpod_token(), payload)
+
+
+def get_pod(pod_id: str, token: str | None = None) -> dict[str, Any]:
+    return api("GET", f"/pods/{pod_id}", token or _runpod_token())
+
+
+def ssh_command(pod: dict[str, Any]) -> str | None:
+    host = pod.get("publicIp")
+    port = (pod.get("portMappings") or {}).get("22")
+    if not host or port is None:
+        return None
+    try:
+        address = ipaddress.ip_address(host)
+        port = int(port)
+    except (ValueError, TypeError):
+        return None
+    if not 1 <= port <= 65535:
+        return None
+    return f"ssh root@{address} -p {port}"
 
 
 def terminate(pod_id: str, token: str | None = None) -> dict[str, Any]:

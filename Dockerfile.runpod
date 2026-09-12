@@ -13,6 +13,7 @@ RUN apt-get update \
         python3 \
         python3-pip \
         tmux \
+        openssh-server \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -26,5 +27,7 @@ COPY neuralsignal ./neuralsignal
 COPY scripts/runpod_entrypoint.sh /usr/local/bin/neuralsignal-runpod-entrypoint
 RUN chmod +x /usr/local/bin/neuralsignal-runpod-entrypoint \
     && uv sync --frozen --no-editable
+
+EXPOSE 22
 
 ENTRYPOINT ["/usr/local/bin/neuralsignal-runpod-entrypoint"]
