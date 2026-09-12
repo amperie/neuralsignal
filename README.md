@@ -190,3 +190,53 @@ Compile check:
 ```powershell
 uv run python -m py_compile neuralsignal/cli/main.py neuralsignal/remote/lifecycle.py neuralsignal/remote/job.py
 ```
+## RunPod smoke test (macOS / Linux)
+
+Start Docker Desktop first. Build a Linux AMD64 image, including on Apple Silicon:
+
+```bash
+bash scripts/build_runpod_image.sh ghcr.io/amperie/neuralsignal-runpod-base:latest
+```
+
+Check the image entrypoint without a GPU:
+
+```bash
+docker run --rm --platform linux/amd64 ghcr.io/amperie/neuralsignal-runpod-base:latest --help
+```
+
+Authenticate to GHCR using your GitHub username and a token with package write
+access (enter the token at the password prompt), then build and push:
+
+```bash
+docker login ghcr.io -u YOUR_GITHUB_USERNAME
+PUSH=1 bash scripts/build_runpod_image.sh ghcr.io/amperie/neuralsignal-runpod-base:latest
+docker buildx imagetools inspect ghcr.io/amperie/neuralsignal-runpod-base:latest
+```
+
+The package must be public, or `runpod.container_registry_auth_id` in
+`configs/runpod_manifest.yaml` must identify RunPod registry credentials with
+read access. If publishing under another owner, change the image argument and
+the manifest's `runpod.image` together.
+
+Install the local environment and inspect the launch payload:
+
+```bash
+uv sync --frozen
+uv run ns remote collect configs/feature_collection/smoke_runpod_malt.yaml \
+  --run-id malt-smoke-001 --timeout-seconds 1800 --dry-run
+```
+
+Launch the eight-example GPU smoke test after the image is published:
+
+```bash
+uv run ns remote collect configs/feature_collection/smoke_runpod_malt.yaml \
+  --run-id "malt-smoke-$(date +%Y%m%d-%H%M%S)" --timeout-seconds 1800
+```
+
+This uses `.env` and Terraform handoff outputs by default, streams the MALT
+source, limits collection to eight normalized examples, and downloads the
+result under `runs/remote/<run-id>`. The CLI attempts pod termination when the
+bundle is ready, on interruption, or after the timeout. Keep the local command
+running until it finishes. The timeout includes model and dataset loading.
+This smoke test does not invoke MinIO or S1 training. Local tests and a dry-run
+do not verify GPU execution; that requires the published image and a real pod.

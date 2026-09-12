@@ -8,6 +8,7 @@ dependencies = [
     "torch",
     "transformers",
     "bitsandbytes",
+    "accelerate",
     "datasets",
     "boto3",
     "huggingface-hub",

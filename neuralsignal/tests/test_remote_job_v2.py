@@ -25,10 +25,10 @@ class FakeStore:
 
 def test_remote_job_collects_features_and_uploads_bundle(tmp_path, monkeypatch, capsys):
     input_path = tmp_path / "examples.jsonl"
-    input_path.write_text('{"id":"a","input":"abc","output":"xy"}\n', encoding="utf-8")
+    input_path.write_text('{"id":"a","input":"abc","output":"xy"}\n' * 3, encoding="utf-8")
     config = {
         "run": {"s3_output_uri": "s3://handoff/feature-runs"},
-        "dataset": {"source": "jsonl", "path": str(input_path)},
+        "dataset": {"source": "jsonl", "path": str(input_path), "max_examples": 1},
         "features": {"materialize": [{"name": "zones"}]},
         "storage": {"shard_size_rows": 10},
     }

@@ -3,6 +3,8 @@ runpod:
   container_registry_auth_id: null
   cloud_type: SECURE
   gpu_count: 1
+  gpu_type_ids:
+    - NVIDIA GeForce RTX 4090
   volume_gb: 75
   volume_mount_path: /workspace
   poll_seconds: 30

@@ -31,16 +31,25 @@ def build_pod_payload(job: RunPodJob, secrets: dict[str, str] | None = None) -> 
     env["NEURALSIGNAL_RUN_ID"] = job.run_id
     env["NEURALSIGNAL_FEATURE_CONFIG_B64"] = _encode_config(job.config)
 
-    command = f"--run-id {job.run_id}"
-    return {
+    for key in ("RUNPOD_API_KEY", "RUNPOD_KEY"):
+        env.pop(key, None)
+    payload = {
         "name": f"neuralsignal-{job.run_id}",
         "imageName": runpod["image"],
         "gpuCount": int(runpod.get("gpu_count", 1)),
         "containerDiskInGb": int(runpod.get("volume_gb", 75)),
         "volumeMountPath": runpod.get("volume_mount_path", "/workspace"),
         "env": env,
-        "dockerArgs": command,
+        "dockerStartCmd": ["--run-id", job.run_id],
+        "cloudType": runpod.get("cloud_type", "SECURE"),
+        "computeType": "GPU",
     }
+
+    if runpod.get("gpu_type_ids"):
+        payload["gpuTypeIds"] = list(runpod["gpu_type_ids"])
+    if runpod.get("container_registry_auth_id"):
+        payload["containerRegistryAuthId"] = runpod["container_registry_auth_id"]
+    return payload
 
 
 def load_secrets(path: str | Path) -> dict[str, str]:
@@ -59,13 +68,14 @@ def redacted(payload: dict[str, Any]) -> dict[str, Any]:
 
 def api(method: str, path: str, token: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
     request = urllib.request.Request(
-        f"https://api.runpod.io/v2{path}",
+        f"https://rest.runpod.io/v1{path}",
         data=json.dumps(body).encode("utf-8") if body is not None else None,
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         method=method,
     )
-    with urllib.request.urlopen(request) as response:
-        return json.loads(response.read().decode("utf-8"))
+    with urllib.request.urlopen(request, timeout=60) as response:
+        body = response.read().decode("utf-8")
+        return json.loads(body) if body.strip() else {}
 
 
 def launch(payload: dict[str, Any], token: str | None = None) -> dict[str, Any]:
@@ -97,6 +107,6 @@ def _redact(value):
 
 def _is_secret_key(key: str) -> bool:
     lowered = key.lower()
-    return any(part in lowered for part in ("token", "secret", "password", "access_key"))
+    return any(part in lowered for part in ("token", "secret", "password", "access_key", "runpod_key", "api_key"))
 
 
