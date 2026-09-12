@@ -23,6 +23,7 @@ def test_remote_collect_help_lists_lifecycle_options(capsys):
     assert exc.value.code == 0
     output = capsys.readouterr().out
     assert "--run-id" in output
+    assert "--launch-config" in output
     assert "--secrets-file" in output
     assert "--terraform-dir" in output
     assert "--minio-uri" in output
@@ -60,6 +61,27 @@ storage:
     assert result["rows"] == 1
     assert (tmp_path / "out" / "features" / "part-00000.parquet").exists()
 
+
+
+def test_remote_collect_launch_config_dry_run(tmp_path, capsys):
+    feature = tmp_path / "feature.yaml"
+    feature.write_text("run:\n  s3_output_uri: s3://handoff/feature-runs\ndataset:\n  name: fixture\n", encoding="utf-8")
+    manifest = tmp_path / "runpod.yaml"
+    manifest.write_text("runpod:\n  image: image:latest\n", encoding="utf-8")
+    launch = tmp_path / "launch.yaml"
+    launch.write_text(f"""
+remote_collect:
+  config: {feature.as_posix()}
+  manifest: {manifest.as_posix()}
+  run_id: run-1
+  terraform_dir: ""
+""", encoding="utf-8")
+
+    assert main(["remote", "collect", str(launch), "--dry-run"]) == 0
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["payload"]["name"] == "neuralsignal-run-1"
+    assert output["bundle_uri"] == "s3://handoff/feature-runs/run-1/bundle.zip"
 
 def test_remote_collect_dry_run_redacts_secrets(tmp_path, capsys):
     config = tmp_path / "feature.yaml"

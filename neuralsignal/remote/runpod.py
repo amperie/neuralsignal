@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,7 +32,6 @@ def build_pod_payload(job: RunPodJob, secrets: dict[str, str] | None = None) -> 
     env["NEURALSIGNAL_RUN_ID"] = job.run_id
     env["NEURALSIGNAL_FEATURE_CONFIG_B64"] = _encode_config(job.config)
 
-    command = f"--run-id {job.run_id}"
     return {
         "name": f"neuralsignal-{job.run_id}",
         "imageName": runpod["image"],
@@ -39,7 +39,7 @@ def build_pod_payload(job: RunPodJob, secrets: dict[str, str] | None = None) -> 
         "containerDiskInGb": int(runpod.get("volume_gb", 75)),
         "volumeMountPath": runpod.get("volume_mount_path", "/workspace"),
         "env": env,
-        "dockerArgs": command,
+        "dockerStartCmd": ["--run-id", job.run_id],
     }
 
 
@@ -59,13 +59,17 @@ def redacted(payload: dict[str, Any]) -> dict[str, Any]:
 
 def api(method: str, path: str, token: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
     request = urllib.request.Request(
-        f"https://api.runpod.io/v2{path}",
+        f"https://rest.runpod.io/v1{path}",
         data=json.dumps(body).encode("utf-8") if body is not None else None,
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json", "User-Agent": "neuralsignal-runpod-client/0.1"},
         method=method,
     )
-    with urllib.request.urlopen(request) as response:
-        return json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(request) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"RunPod API {method} {path} failed with HTTP {error.code}: {body}") from error
 
 
 def launch(payload: dict[str, Any], token: str | None = None) -> dict[str, Any]:

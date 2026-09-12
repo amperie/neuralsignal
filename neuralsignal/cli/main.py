@@ -85,13 +85,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    remote_collect.add_argument("config", help="Feature collection config YAML sent to the RunPod worker.")
-    remote_collect.add_argument("--manifest", default="configs/runpod_manifest.yaml", help="RunPod pod manifest YAML.")
-    remote_collect.add_argument("--run-id", required=True, help="Stable id for this feature run and bundle.")
+    remote_collect.add_argument("config", nargs="?", help="Feature collection config YAML, or remote collect launch config YAML.")
+    remote_collect.add_argument("--launch-config", help="Remote collect launch config YAML.")
+    remote_collect.add_argument("--manifest", help="RunPod pod manifest YAML.")
+    remote_collect.add_argument("--run-id", help="Stable id for this feature run and bundle.")
     remote_collect.add_argument("--secrets-file", help="Optional KEY=VALUE file forwarded to the RunPod worker environment.")
-    remote_collect.add_argument("--env-file", default=".env", help="Local .env file for RunPod, AWS/S3, MinIO, and MLflow settings.")
-    remote_collect.add_argument("--terraform-dir", default="infra/terraform/s3-handoff", help="Terraform folder used to read S3 handoff outputs.")
-    remote_collect.add_argument("--target-dir", default="runs/remote", help="Local directory where the downloaded bundle is unpacked.")
+    remote_collect.add_argument("--env-file", help="Local .env file for RunPod, AWS/S3, MinIO, and MLflow settings.")
+    remote_collect.add_argument("--terraform-dir", help="Terraform folder used to read S3 handoff outputs.")
+    remote_collect.add_argument("--target-dir", help="Local directory where the downloaded bundle is unpacked.")
     remote_collect.add_argument("--train-config", help="Optional S1 training config to run after bundle download.")
     remote_collect.add_argument("--minio-uri", help="Optional MinIO/S3 URI where unpacked datasets and artifacts are mirrored.")
     remote_collect.add_argument("--poll-seconds", type=float, default=30, help="Seconds between S3 completion checks.")
@@ -158,22 +159,59 @@ def _remote(args) -> int:
     if args.remote_command == "sync":
         sync_feature_run(Boto3ObjectStore(), args.remote_run_uri, args.local_dir)
         return 0
+    options = _remote_collect_options(args)
     result = remote_collect_lifecycle(
-        args.config,
-        args.manifest,
-        args.run_id,
-        args.target_dir,
-        env_file=args.env_file,
-        secrets_file=args.secrets_file,
-        terraform_dir=args.terraform_dir or None,
-        train_config_path=args.train_config,
-        minio_uri=args.minio_uri,
-        poll_seconds=args.poll_seconds,
-        timeout_seconds=args.timeout_seconds,
-        dry_run=args.dry_run,
+        options["config"],
+        options["manifest"],
+        options["run_id"],
+        options["target_dir"],
+        env_file=options["env_file"],
+        secrets_file=options["secrets_file"],
+        terraform_dir=options["terraform_dir"] or None,
+        train_config_path=options["train_config"],
+        minio_uri=options["minio_uri"],
+        poll_seconds=options["poll_seconds"],
+        timeout_seconds=options["timeout_seconds"],
+        dry_run=options["dry_run"],
     )
     print(json.dumps(result if isinstance(result, dict) else result.__dict__, indent=2, sort_keys=True))
     return 0
+
+
+def _remote_collect_options(args) -> dict:
+    defaults = {
+        "manifest": "configs/runpod_manifest.yaml",
+        "env_file": ".env",
+        "terraform_dir": "infra/terraform/s3-handoff",
+        "target_dir": "runs/remote",
+        "poll_seconds": 30,
+        "dry_run": False,
+        "secrets_file": None,
+        "train_config": None,
+        "minio_uri": None,
+        "timeout_seconds": None,
+    }
+    launch = {}
+    config = args.config
+    if args.launch_config:
+        loaded = load_config(args.launch_config)
+        launch = loaded.get("remote_collect") or loaded
+    elif config:
+        loaded = load_config(config)
+        if "remote_collect" in loaded:
+            launch = loaded["remote_collect"]
+            config = launch.get("config")
+
+    options = {**defaults, **launch}
+    for key in (*defaults.keys(), "config", "run_id"):
+        value = getattr(args, key, None)
+        if value is not None and not (key == "dry_run" and value is False):
+            options[key] = value
+    options["config"] = config or options.get("config")
+    missing = [key for key in ("config", "run_id") if not options.get(key)]
+    if missing:
+        raise SystemExit("missing remote collect option(s): " + ", ".join(missing))
+    return options
 
 
 def _placeholder_extractor(example, spec) -> dict[str, float]:
