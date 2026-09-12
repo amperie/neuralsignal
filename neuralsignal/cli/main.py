@@ -11,6 +11,7 @@ from neuralsignal.console import configure_logging
 from neuralsignal.config import load_config
 from neuralsignal.datasets.sources.jsonl import JsonlSource
 from neuralsignal.features.model_extractor import ModelFeatureExtractor
+from neuralsignal.features.selection import extraction_mode
 from neuralsignal.features.runner import collect_features, collect_features_batched
 from neuralsignal.remote.lifecycle import RemoteCollectCancelled, remote_collect_lifecycle
 from neuralsignal.remote.sync import sync_feature_run
@@ -151,6 +152,7 @@ def _dataset_import(args) -> int:
 
 def _collect_local(args) -> int:
     config = load_config(args.config)
+    mode = extraction_mode(config)
     out = Path(args.out)
     manifest = RunManifest(
         run_id=str((config.get("run") or {}).get("name") or "local-feature-run"),
@@ -159,11 +161,13 @@ def _collect_local(args) -> int:
     )
     writer = LocalFeatureShardWriter(out, manifest)
     source = JsonlSource(args.input_jsonl).iter_examples()
-    if ((config.get("extraction") or {}).get("mode") or "placeholder") == "model":
+    if mode == "model":
         extractor = ModelFeatureExtractor(config)
         collect_features_batched(source, config, writer, extractor.extract_batch)
     else:
         collect_features(source, config, writer, _placeholder_extractor)
+    manifest.state = "completed"
+    manifest.write_json(out / "manifest.json")
     print(json.dumps({"run_id": manifest.run_id, "rows": manifest.rows["written"], "out": str(out)}))
     return 0
 

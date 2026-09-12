@@ -16,6 +16,8 @@ class LocalFeatureShardWriter:
         self.manifest = manifest
         self.compression = compression
         self.features_dir = self.root / "features"
+        if any(self.features_dir.glob("part-*.parquet")):
+            raise FileExistsError(f"Feature shards already exist under {self.features_dir}; use a new run directory")
         self.features_dir.mkdir(parents=True, exist_ok=True)
 
     def write_shard(self, rows: list[dict[str, Any]]) -> ShardManifest:

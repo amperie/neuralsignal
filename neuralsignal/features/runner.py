@@ -41,6 +41,8 @@ def collect_features_batched(
 ) -> RunManifest:
     shard_size = int(((config.get("storage") or {}).get("shard_size_rows")) or 10000)
     feature_sets = materialized_feature_sets(config)
+    if not feature_sets:
+        raise ValueError("Feature collection requires at least one enabled feature set")
     resolved_batch_size = batch_size or int(((config.get("generation") or {}).get("batch_size")) or 1)
     buffer: list[dict[str, Any]] = []
     batch: list[DatasetExample] = []
@@ -58,6 +60,8 @@ def collect_features_batched(
     if batch:
         batch_index += 1
         row_index = _collect_batch(batch, feature_sets, writer, extractor, buffer, shard_size, row_index, batch_index)
+    if row_index == 0:
+        raise ValueError("No examples were produced by the dataset; check its schema and adapter")
     if buffer:
         logger.info("writing final feature shard buffered_rows=%s", len(buffer))
         writer.write_shard(buffer)
@@ -81,6 +85,8 @@ def _collect_batch(
     if len(extracted) != len(batch):
         raise RuntimeError(f"Extractor returned {len(extracted)} rows for a batch of {len(batch)}")
     for example, features in zip(batch, extracted):
+        if not features:
+            raise ValueError(f"No features extracted for example {example.id}")
         row = _base_row(writer.manifest.run_id, row_index, example)
         row.update(features)
         buffer.append(row)

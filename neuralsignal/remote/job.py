@@ -12,6 +12,7 @@ from neuralsignal.console import configure_logging
 from neuralsignal.config import load_config
 from neuralsignal.datasets.sources.factory import source_from_config
 from neuralsignal.features.model_extractor import ModelFeatureExtractor
+from neuralsignal.features.selection import extraction_mode
 from neuralsignal.features.runner import collect_features, collect_features_batched
 from neuralsignal.storage.bundle import create_bundle, upload_bundle
 from neuralsignal.storage.local import LocalFeatureShardWriter
@@ -32,6 +33,7 @@ def main() -> None:
         parser.error("--run-id or NEURALSIGNAL_RUN_ID is required")
     logger.info("remote job starting run_id=%s", args.run_id)
     config = load_config(args.config) if args.config else _load_config_from_env()
+    mode = extraction_mode(config)
     run_dir = Path(os.environ.get("NEURALSIGNAL_RUN_WORKDIR", "/workspace/neuralsignal-runs")) / args.run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     _log_config_summary(config, run_dir)
@@ -50,7 +52,7 @@ def main() -> None:
             raise ValueError("dataset.max_examples must be a positive integer")
         source = islice(source, max_examples)
     logger.info("feature collection starting")
-    if ((config.get("extraction") or {}).get("mode") or "placeholder") == "model":
+    if mode == "model":
         logger.info("model extractor initializing")
         extractor = ModelFeatureExtractor(config)
         logger.info("model extractor ready")

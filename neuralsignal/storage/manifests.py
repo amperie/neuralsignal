@@ -79,3 +79,15 @@ def sha256_file(path: str | Path) -> str:
             digest.update(chunk)
     return digest.hexdigest()
 
+
+
+def local_shard_path(root: str | Path, shard_path: str) -> Path:
+    """Resolve manifest paths without allowing writes or reads outside the run."""
+    root = Path(root).resolve()
+    relative = Path(shard_path)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ValueError(f"Invalid shard path: {shard_path}")
+    resolved = (root / relative).resolve()
+    if not resolved.is_relative_to(root) or resolved == root:
+        raise ValueError(f"Invalid shard path: {shard_path}")
+    return resolved

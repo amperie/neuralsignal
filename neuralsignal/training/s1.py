@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from neuralsignal.storage.manifests import local_shard_path, sha256_file
+
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.model_selection import train_test_split
@@ -71,7 +73,10 @@ def train_s1(
         raise ValueError(f"Missing label column: {label_column}")
 
     x = data[features].astype(float)
-    y = data[label_column].astype(int)
+    labels = pd.to_numeric(data[label_column], errors="raise")
+    if labels.isna().any() or not labels.isin([0, 1]).all():
+        raise ValueError("Binary labels must contain only 0 and 1")
+    y = labels.astype(int)
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25, random_state=random_state, stratify=y)
     model = LogisticRegression(max_iter=1000, random_state=random_state)
     model.fit(x_train, y_train)
@@ -102,7 +107,26 @@ def train_s1(
 def _read_features(path: str | Path) -> pd.DataFrame:
     path = Path(path)
     if path.is_dir():
-        frames = [pd.read_parquet(item) for item in sorted((path / "features").glob("part-*.parquet"))]
+        manifest_path = path / "manifest.json"
+        if manifest_path.exists():
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if manifest.get("state", "completed") != "completed":
+                raise ValueError("Feature run is not completed")
+            frames = []
+            seen = set()
+            for shard in manifest.get("shards", []):
+                item = local_shard_path(path, shard["path"])
+                if item in seen:
+                    raise ValueError(f"Duplicate shard path: {shard['path']}")
+                seen.add(item)
+                if sha256_file(item) != shard["sha256"]:
+                    raise ValueError(f"Shard checksum mismatch: {shard['path']}")
+                frame = pd.read_parquet(item)
+                if len(frame) != shard["rows"]:
+                    raise ValueError(f"Shard row count mismatch: {shard['path']}")
+                frames.append(frame)
+        else:
+            frames = [pd.read_parquet(item) for item in sorted((path / "features").glob("part-*.parquet"))]
         if not frames:
             raise ValueError(f"No feature shards found under {path / 'features'}")
         return pd.concat(frames, ignore_index=True)

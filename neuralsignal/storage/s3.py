@@ -47,8 +47,12 @@ class Boto3ObjectStore:
         try:
             self.client.head_object(Bucket=bucket, Key=key)
             return True
-        except Exception:
-            return False
+        except Exception as error:
+            from botocore.exceptions import ClientError
+
+            if isinstance(error, ClientError) and error.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+                return False
+            raise
 
 
 def parse_s3_uri(uri: str) -> tuple[str, str]:

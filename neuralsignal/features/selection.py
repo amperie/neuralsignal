@@ -40,3 +40,10 @@ def materialized_feature_sets(config: dict[str, Any]) -> list[FeatureSetSpec]:
     specs = [FeatureSetSpec.from_config(entry) for entry in entries]
     return [spec for spec in specs if spec.enabled]
 
+
+
+def extraction_mode(config: dict[str, Any]) -> str:
+    mode = (config.get("extraction") or {}).get("mode", "placeholder")
+    if mode not in ("model", "placeholder"):
+        raise ValueError("extraction.mode must be model or placeholder")
+    return mode

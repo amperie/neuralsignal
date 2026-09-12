@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import json
 import pandas as pd
+import numpy as np
 
 
 def aggregate_malt_runs(data: pd.DataFrame, features: list[str], label: str) -> pd.DataFrame:
+    if not np.isfinite(data[features].to_numpy(dtype=float)).all():
+        raise ValueError("MALT features must be finite before run aggregation")
     metadata = [json.loads(value) for value in data["metadata_json"]]
     if not any(label in meta.get("run_labels", []) for meta in metadata):
         raise ValueError(f"No MALT runs have the requested label: {label}")

@@ -174,83 +174,51 @@ def generate_from_batch(
         hndls = instrument_model(instrumentation_cfg, model, hc)
         model_instrumented = True
 
-    # Generation
-
-    input_list = input
-
-    if batch_size > 1:
-        # If batch size>1 we need padding
-        encoded = tokenizer(
-            input_list, return_tensors="pt",
-            padding=True, truncation=True)
-    elif truncation_length == 0:
-        # IF batch = 1 then see if we're truncating
-        encoded = tokenizer(
-            input_list, return_tensors="pt",
-            padding=False, truncation=False)
-    else:
-        encoded = tokenizer(
-            input_list, return_tensors="pt",
-            padding=False, truncation=True,
-            max_length=truncation_length)
-
-    input_ids = encoded.input_ids
-    attention_mask = getattr(encoded, "attention_mask", torch.ones_like(input_ids))
-    if torch.cuda.is_available():
-        input_ids = input_ids.to("cuda")
-        attention_mask = attention_mask.to("cuda")
     try:
-        input_ids = input_ids.to(model.device)
-        attention_mask = attention_mask.to(model.device)
-        output = model.generate(
-            input_ids=input_ids, attention_mask=attention_mask,
-            pad_token_id=tokenizer.eos_token_id,
-            max_new_tokens=max_new_tokens
+        tokenizer_options = {
+            "return_tensors": "pt",
+            "padding": batch_size > 1,
+            "truncation": truncation_length > 0,
+        }
+        if truncation_length > 0:
+            tokenizer_options["max_length"] = truncation_length
+        encoded = tokenizer(input, **tokenizer_options)
+        input_ids = encoded.input_ids.to(model.device)
+        attention_mask = getattr(encoded, "attention_mask", torch.ones_like(input_ids)).to(model.device)
+        aborted = False
+        try:
+            output = model.generate(
+                input_ids=input_ids, attention_mask=attention_mask,
+                pad_token_id=tokenizer.eos_token_id,
+                max_new_tokens=max_new_tokens,
             )
-    except NSAbortLLM as e:
-        # LLM execution was aborted by abort_on_layer_index
-        # This is fine so just continue as if execution finished
-        logging.debug(f"LLM execution aborted {e}")
-        # Set the output to "ABORT"
-        output = [71, 8471, 5934, 1]
-        pass
-    except Exception as e:
+        except NSAbortLLM as error:
+            logging.debug("LLM execution aborted %s", error)
+            aborted = True
+
+        if model_instrumented:
+            hc.finish_and_get_data()
+
+        results = []
+        for batch_idx in range(batch_size):
+            decoded_output = "ABORT" if aborted else tokenizer.decode(
+                output[batch_idx], skip_special_tokens=True)
+            gi = GenerationInstance({
+                "input": input[batch_idx],
+                "output": decoded_output,
+                "model_name": model.name_or_path,
+            })
+            gi.add_data({
+                "decoded_output": decoded_output,
+                "attention_mask": attention_mask[batch_idx].detach().cpu(),
+            })
+            if model_instrumented:
+                gi.add_data(hc.get_data_by_batch_index(batch_idx))
+            results.append(gi)
+        return results
+    finally:
         if model_instrumented:
             deinstrument_model(hndls)
-            model_instrumented = False
-        raise e
-
-    if model_instrumented:
-        hc.finish_and_get_data()
-
-    retVal = []
-    for batch_idx in range(batch_size):
-        decoded_output = tokenizer.decode(
-            output[batch_idx], skip_special_tokens=True)
-        gi = GenerationInstance({
-            "input": input[batch_idx],
-            "output": decoded_output,
-            "model_name": model.name_or_path
-        })
-        gi.add_data({
-            "decoded_output": decoded_output,
-            "attention_mask": attention_mask[batch_idx].detach().cpu()
-        })
-        if model_instrumented:
-            data = hc.get_data_by_batch_index(batch_idx)
-            # Add data to return value
-            gi.add_data(data)
-        retVal.append(gi)
-
-    if model_instrumented:
-        deinstrument_model(hndls)
-        model_instrumented = False
-
-    logging.debug(
-        f"Generated response for batch size {batch_size} "
-        f"input: {input} \n\n{decoded_output}")
-
-    return retVal
 
 
 def generate_from_string(
@@ -290,8 +258,10 @@ def get_model_type(model) -> str:
         model_name = model
     else:
         model_name = model.name_or_path
-    if not isinstance(model, str) and getattr(getattr(model, "config", None), "model_type", None) == "longt5":
-        return "longt5"
+    if not isinstance(model, str):
+        configured_type = getattr(getattr(model, "config", None), "model_type", None)
+        if configured_type in {"t5", "longt5"}:
+            return configured_type
     if "long-t5" in model_name.lower() or "longt5" in model_name.lower():
         return "longt5"
     if "t5" in model_name:

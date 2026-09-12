@@ -107,6 +107,8 @@ def process_tensor_dict_into_zones_by_layer(
 
         zs = get_layer_zone_size(lyr_name, zones_by_layer, default_zone_size)
         curr_zs = get_current_zone_size(lyr, current_zone_sizes)
+        if zs % curr_zs != 0:
+            raise ValueError(f"Layer {lyr_name} zone size {zs} must be a multiple of current zone size {curr_zs}")
         reduction_ratio = int(zs / curr_zs)
         if reduction_ratio < 1:
             raise ValueError(

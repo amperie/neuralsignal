@@ -30,6 +30,8 @@ class NeuralSignal:
         if not examples:
             return BatchDetectionResult([])
         rows = self._run_evaluator(examples)
+        if len(rows) != len(examples):
+            raise RuntimeError(f"Evaluator returned {len(rows)} results for {len(examples)} examples")
         return BatchDetectionResult([self._result_from_row(row) for row in rows])
 
     def _run_evaluator(self, examples: list[dict[str, str]]) -> list[dict[str, Any]]:

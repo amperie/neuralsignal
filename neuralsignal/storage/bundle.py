@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -39,11 +40,16 @@ def download_bundle(store: ObjectStore, bundle_uri: str, target_zip: str | Path)
 
 def unpack_bundle(bundle_path: str | Path, target_dir: str | Path) -> Path:
     target = Path(target_dir)
-    if target.exists():
-        shutil.rmtree(target)
-    target.mkdir(parents=True)
-    with zipfile.ZipFile(bundle_path, "r") as archive:
-        archive.extractall(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # Fully extract before replacing previously collected results.
+    with tempfile.TemporaryDirectory(dir=target.parent) as staging:
+        extracted = Path(staging) / "contents"
+        extracted.mkdir()
+        with zipfile.ZipFile(bundle_path, "r") as archive:
+            archive.extractall(extracted)
+        if target.exists():
+            shutil.rmtree(target)
+        extracted.rename(target)
     return target
 
 

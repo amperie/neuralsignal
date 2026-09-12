@@ -43,7 +43,10 @@ def include_layer(
         layer_indexes_to_include, curr_idx
         ) -> bool:
 
-    if "all" in layer_names_to_include:
+    if not layer_names_to_include and not layer_indexes_to_include:
+        return True
+
+    if layer_names_to_include and "all" in layer_names_to_include:
         return True
 
     inc_layer_name = (

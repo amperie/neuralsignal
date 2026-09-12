@@ -52,6 +52,11 @@ class ModelFeatureExtractor:
         for spec in specs:
             cfg = {"name": spec.name, **spec.config}
             columns, values = FeatureProcessor(feature_set_configs=[cfg]).featurize_scan(scan)
-            row.update({str(column): float(value) for column, value in zip(columns, values)})
+            if not columns or len(columns) != len(values):
+                raise ValueError(f"Feature set {spec.name} returned empty or misaligned columns and values")
+            names = [str(column) for column in columns]
+            if len(set(names)) != len(names) or set(names).intersection(row):
+                raise ValueError(f"Feature set {spec.name} returned duplicate columns")
+            row.update({column: float(value) for column, value in zip(names, values)})
         return row
 
