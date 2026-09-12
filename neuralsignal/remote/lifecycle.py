@@ -20,6 +20,16 @@ from neuralsignal.training import train_s1
 logger = logging.getLogger(__name__)
 
 
+class RemoteCollectCancelled(Exception):
+    def __init__(self, pod_id: str, terminated: bool):
+        self.pod_id = pod_id
+        self.terminated = terminated
+        message = (f"Cancelled. Pod {pod_id} terminated." if terminated else
+                   f"Cancelled, but could not confirm termination of pod {pod_id}. "
+                   "Terminate it in the RunPod console.")
+        super().__init__(message)
+
+
 class RunPodApi(Protocol):
     def launch(self, payload: dict) -> dict:
         ...
@@ -123,12 +133,19 @@ def remote_collect_lifecycle(
         raise
     finally:
         logger.info("terminating RunPod pod pod_id=%s", pod_id)
-        runpod_api.terminate(pod_id)
+        try:
+            runpod_api.terminate(pod_id)
+        except (Exception, KeyboardInterrupt):
+            if interrupted:
+                raise RemoteCollectCancelled(pod_id, terminated=False) from None
+            raise
         logger.info("RunPod pod terminated pod_id=%s", pod_id)
 
+    if interrupted:
+        raise RemoteCollectCancelled(pod_id, terminated=True)
+
     if not _bundle_available(store, bundle_uri):
-        reason = "interrupted" if interrupted else "finished without bundle"
-        raise RuntimeError(f"Remote run {reason}; bundle is not available: {bundle_uri}")
+        raise RuntimeError(f"Remote run finished without bundle; bundle is not available: {bundle_uri}")
 
     target = Path(target_dir) / run_id
     zip_path = Path(target_dir) / f"{run_id}.zip"
@@ -350,5 +367,4 @@ def _minio_store() -> Boto3ObjectStore:
         access_key_id=os.environ.get("MINIO_ACCESS_KEY"),
         secret_access_key=os.environ.get("MINIO_SECRET_KEY"),
     )
-
 

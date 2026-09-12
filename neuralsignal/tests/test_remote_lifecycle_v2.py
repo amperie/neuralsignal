@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from neuralsignal.remote.lifecycle import remote_collect_lifecycle
+from neuralsignal.remote.lifecycle import RemoteCollectCancelled, remote_collect_lifecycle
 from neuralsignal.remote.runpod import RunPodGpuType
 from neuralsignal.storage.bundle import create_bundle, upload_bundle
 
@@ -167,7 +167,7 @@ def test_remote_collect_dry_run_accepts_explicit_gpu_id(tmp_path):
     assert result["payload"]["gpuTypeIds"] == ["NVIDIA A40"]
 
 
-def test_remote_collect_interrupt_terminates_and_requires_bundle(tmp_path):
+def test_remote_collect_interrupt_terminates_and_cancels(tmp_path):
     class InterruptingStore(FakeStore):
         def exists(self, bucket: str, key: str) -> bool:
             raise KeyboardInterrupt
@@ -180,7 +180,7 @@ def test_remote_collect_interrupt_terminates_and_requires_bundle(tmp_path):
 
     import pytest
 
-    with pytest.raises(RuntimeError, match="bundle is not available"):
+    with pytest.raises(RemoteCollectCancelled, match="Pod pod-1 terminated"):
         remote_collect_lifecycle(
             feature_config,
             runpod_manifest,

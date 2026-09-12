@@ -24,9 +24,12 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     _configure_logging()
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run-id", required=True)
+    parser.add_argument("--run-id", default=os.environ.get("NEURALSIGNAL_RUN_ID"),
+                        help="Run ID; defaults to NEURALSIGNAL_RUN_ID on RunPod.")
     parser.add_argument("--config", help="Optional config path. Env config is used when omitted.")
     args = parser.parse_args()
+    if not args.run_id or not args.run_id.strip():
+        parser.error("--run-id or NEURALSIGNAL_RUN_ID is required")
     logger.info("remote job starting run_id=%s", args.run_id)
     config = load_config(args.config) if args.config else _load_config_from_env()
     run_dir = Path(os.environ.get("NEURALSIGNAL_RUN_WORKDIR", "/workspace/neuralsignal-runs")) / args.run_id
@@ -118,4 +121,3 @@ if __name__ == "__main__":
     except Exception:
         logger.exception("remote job failed")
         raise
-

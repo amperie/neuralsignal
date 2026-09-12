@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 
 from neuralsignal.console import configure_logging
@@ -11,7 +12,7 @@ from neuralsignal.config import load_config
 from neuralsignal.datasets.sources.jsonl import JsonlSource
 from neuralsignal.features.model_extractor import ModelFeatureExtractor
 from neuralsignal.features.runner import collect_features, collect_features_batched
-from neuralsignal.remote.lifecycle import remote_collect_lifecycle
+from neuralsignal.remote.lifecycle import RemoteCollectCancelled, remote_collect_lifecycle
 from neuralsignal.remote.sync import sync_feature_run
 from neuralsignal.storage.local import LocalFeatureShardWriter
 from neuralsignal.storage.manifests import RunManifest
@@ -20,6 +21,17 @@ from neuralsignal.training import train_s1
 
 
 def main(argv: list[str] | None = None) -> int:
+    try:
+        return _main(argv)
+    except RemoteCollectCancelled as error:
+        print(str(error), file=sys.stderr)
+        return 130 if error.terminated else 1
+    except KeyboardInterrupt:
+        print("Cancelled.", file=sys.stderr)
+        return 130
+
+
+def _main(argv: list[str] | None = None) -> int:
     _configure_logging()
     parser = argparse.ArgumentParser(
         prog="ns",
