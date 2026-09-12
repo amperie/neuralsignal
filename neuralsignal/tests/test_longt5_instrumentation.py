@@ -75,3 +75,22 @@ def test_longt5_loads_as_seq2seq(monkeypatch, name, quantization):
     assert load_model(dict(model_name=name, device="cpu", quantization=quantization)) == ("tokenizer", "model")
     assert len(calls) == 1
     assert ("quantization_config" in calls[0][1]) == (quantization != "none")
+
+
+def test_t5_dispatch_and_instrumentation_still_work():
+    from transformers import T5Config, T5ForConditionalGeneration
+    model = T5ForConditionalGeneration(T5Config(
+        vocab_size=32, d_model=16, d_kv=4, d_ff=32, num_layers=1,
+        num_heads=2, decoder_start_token_id=0, eos_token_id=1, pad_token_id=0,
+    )).eval()
+    model.name_or_path = "google/flan-t5-small"
+    assert get_model_type(model) == "t5"
+    collector = Collector({"zone_size_by_layer": {"default": 1}})
+    handles = instrument_model(dict(instrument_encoder=True, instrument_decoder=True, instrument_FF=True, instrument_attention=True), model, collector)
+    try:
+        with torch.no_grad():
+            model.generate(torch.tensor([[2, 3, 4]]), max_new_tokens=2)
+        assert any("T5LayerSelfAttention.SelfAttention.q" in name for name in collector.layer_names)
+        assert "decoder.output" in collector.layer_names
+    finally:
+        deinstrument_model(handles)

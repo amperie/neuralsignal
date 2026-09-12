@@ -1,8 +1,9 @@
 import logging
+from pathlib import Path
 
 import pytest
 
-from neuralsignal.remote.lifecycle import PodProgress, _wait_for_bundle
+from neuralsignal.remote.lifecycle import PodProgress, _ssh_identity_file, _wait_for_bundle
 from neuralsignal.remote.runpod import ssh_command, get_pod
 
 
@@ -17,6 +18,12 @@ def test_ssh_command_uses_assigned_endpoint(pod, expected):
     assert ssh_command(pod) == expected
 
 
+def test_ssh_command_includes_identity_file():
+    command = ssh_command({"publicIp": "203.0.113.1", "portMappings": {"22": 12345}}, "~/keys/runpod key")
+    key_path = Path("~/keys/runpod key").expanduser()
+    assert command == f"ssh -i '{key_path}' root@203.0.113.1 -p 12345"
+
+
 def test_progress_logs_status_changes_and_prints_ssh_once(capsys, caplog):
     class Api:
         pod = {"desiredStatus": "RUNNING"}
@@ -24,7 +31,7 @@ def test_progress_logs_status_changes_and_prints_ssh_once(capsys, caplog):
             assert pod_id == "pod-1"
             return self.pod
     api = Api()
-    progress = PodProgress(api, "pod-1")
+    progress = PodProgress(api, "pod-1", identity_file="~/.ssh/id_ed25519")
     with caplog.at_level(logging.INFO):
         progress()
         assert "Pod SSH" not in capsys.readouterr().out
@@ -32,9 +39,15 @@ def test_progress_logs_status_changes_and_prints_ssh_once(capsys, caplog):
         progress()
         progress()
     output = capsys.readouterr().out
-    assert output.count("ssh root@203.0.113.1 -p 12345") == 1
+    assert output.count("ssh -i ~/.ssh/id_ed25519 root@203.0.113.1 -p 12345") == 1
     assert "tmux attach -t ns" in output
     assert caplog.text.count("status=RUNNING") == 1
+
+
+def test_ssh_identity_file_prefers_manifest_then_env(monkeypatch):
+    monkeypatch.setenv("NEURALSIGNAL_SSH_KEY_PATH", "~/.ssh/from-env")
+    assert _ssh_identity_file({"runpod": {"ssh_key_path": "~/.ssh/from-manifest"}}) == "~/.ssh/from-manifest"
+    assert _ssh_identity_file({"runpod": {}}) == "~/.ssh/from-env"
 
 
 def test_status_failure_is_retried_without_logging_response_secrets(caplog):

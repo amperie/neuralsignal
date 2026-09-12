@@ -274,11 +274,12 @@ instead. Add `--dry-run` to query and select without launching a pod.
 
 The local launcher logs preparation, GPU selection, pod status changes, elapsed
 wait time, download, cleanup, and optional training with timestamps. When RunPod
-assigns the public SSH endpoint, it prints `ssh root@<ip> -p <port>` and
-`tmux attach -t ns`. The SSH service may need a moment to finish starting.
-Add your public SSH key to your RunPod account settings before launching; use
-`-i <private-key-path>` with the printed command if your key is not a default SSH
-identity. No private key is sent to the pod.
+assigns the public SSH endpoint, it prints
+`ssh -i ~/.ssh/id_ed25519 root@<ip> -p <port>` and `tmux attach -t ns`. The SSH
+service may need a moment to finish starting. Set `ssh_key_path` in the remote
+launch YAML or pass `--ssh-key-path` if you use a different private key. Add your
+public SSH key to your RunPod account settings before launching. No private key
+is sent to the pod.
 
 The image exposes TCP port 22 and starts an SSH server with public-key
 authentication using RunPod's injected public keys. Rebuild and push the image

@@ -117,6 +117,7 @@ def _main(argv: list[str] | None = None) -> int:
     remote_collect.add_argument("--yes", action="store_true", default=None, help="Choose the cheapest priced GPU matching the VRAM range without prompting.")
     remote_collect.add_argument("--poll-seconds", type=float, help="Seconds between S3 completion checks.")
     remote_collect.add_argument("--timeout-seconds", type=float, help="Maximum seconds to wait for the S3 bundle.")
+    remote_collect.add_argument("--ssh-key-path", help="Private SSH key path to include in the printed pod login command.")
     remote_collect.add_argument("--dry-run", action="store_true", help="Build and print a redacted RunPod payload without launching.")
     remote_sync = remote_sub.add_parser(
         "sync",
@@ -200,6 +201,7 @@ def _remote(args) -> int:
         gpu_vram_gb=options["gpu_vram_gb"],
         gpu_id=options["gpu_id"],
         yes=options["yes"],
+        ssh_key_path=options["ssh_key_path"],
     )
     print(json.dumps(result if isinstance(result, dict) else result.__dict__, indent=2, sort_keys=True))
     return 0
@@ -220,6 +222,7 @@ def _remote_collect_options(args) -> dict:
         "gpu_vram_gb": None,
         "gpu_id": None,
         "yes": False,
+        "ssh_key_path": None,
     }
     launch = {}
     config = args.config

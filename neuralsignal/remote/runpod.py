@@ -4,6 +4,7 @@ import base64
 import json
 import ipaddress
 import os
+import shlex
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -106,7 +107,7 @@ def get_pod(pod_id: str, token: str | None = None) -> dict[str, Any]:
     return api("GET", f"/pods/{pod_id}", token or _runpod_token())
 
 
-def ssh_command(pod: dict[str, Any]) -> str | None:
+def ssh_command(pod: dict[str, Any], identity_file: str | Path | None = None) -> str | None:
     host = pod.get("publicIp")
     port = (pod.get("portMappings") or {}).get("22")
     if not host or port is None:
@@ -118,11 +119,19 @@ def ssh_command(pod: dict[str, Any]) -> str | None:
         return None
     if not 1 <= port <= 65535:
         return None
-    return f"ssh root@{address} -p {port}"
+    identity = f" -i {_quote_identity_file(identity_file)}" if identity_file else ""
+    return f"ssh{identity} root@{address} -p {port}"
 
 
 def terminate(pod_id: str, token: str | None = None) -> dict[str, Any]:
     return api("DELETE", f"/pods/{pod_id}", token or _runpod_token())
+
+
+def _quote_identity_file(identity_file: str | Path) -> str:
+    value = str(identity_file)
+    if value and not any(char in value for char in " \t\n'\"\\$`;&|<>()"):
+        return value
+    return shlex.quote(str(Path(value).expanduser()))
 
 
 def list_gpu_types(gpu_count: int = 1, secure_cloud: bool = True, token: str | None = None) -> list[RunPodGpuType]:
@@ -195,5 +204,3 @@ def _redact(value):
 def _is_secret_key(key: str) -> bool:
     lowered = key.lower()
     return any(part in lowered for part in ("token", "secret", "password", "access_key", "api_key", "runpod_key"))
-
-

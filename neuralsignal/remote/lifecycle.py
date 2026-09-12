@@ -89,6 +89,7 @@ def remote_collect_lifecycle(
     gpu_vram_gb: int | None = None,
     gpu_id: str | None = None,
     yes: bool = False,
+    ssh_key_path: str | Path | None = None,
 ) -> RemoteCollectResult | dict:
     if env_file:
         logger.info("loading environment file path=%s", env_file)
@@ -124,7 +125,7 @@ def remote_collect_lifecycle(
     interrupted = False
     try:
         _wait_for_bundle(store, bundle_uri, poll_seconds, timeout_seconds,
-                         monitor=PodProgress(runpod_api, pod_id))
+                         monitor=PodProgress(runpod_api, pod_id, identity_file=_ssh_identity_file(manifest, ssh_key_path)))
     except KeyboardInterrupt:
         logger.warning("Interrupted; cleaning up pod %s", pod_id)
         interrupted = True
@@ -292,6 +293,7 @@ def _bundle_available(store: ObjectStore, bundle_uri: str) -> bool:
 class PodProgress:
     api: RunPodApi
     pod_id: str
+    identity_file: str | Path | None = None
     last_status: str | None = None
     last_command: str | None = None
     lookup_failed: bool = False
@@ -314,13 +316,24 @@ class PodProgress:
         if status != self.last_status:
             logger.info("Pod %s status=%s", self.pod_id, status)
             self.last_status = status
-        command = ssh_command(pod)
+        command = ssh_command(pod, self.identity_file)
         if command and command != self.last_command:
             print(f"\nPod SSH connection: {command}\nInside the pod: tmux attach -t ns\n", flush=True)
             logger.info("SSH endpoint assigned; the SSH service may take a moment to finish starting")
             self.last_command = command
         elif not command and self.last_command is None and status == "RUNNING":
             logger.debug("Pod is running; waiting for its public SSH port mapping")
+
+
+def _ssh_identity_file(manifest: dict, ssh_key_path: str | Path | None = None) -> str | None:
+    runpod = manifest.get("runpod") or {}
+    configured = ssh_key_path or runpod.get("ssh_key_path") or os.environ.get("NEURALSIGNAL_SSH_KEY_PATH") or os.environ.get("RUNPOD_SSH_KEY_PATH")
+    if configured:
+        return str(configured)
+    for candidate in ("~/.ssh/id_ed25519", "~/.ssh/id_rsa", "~/.ssh/id_ecdsa"):
+        if Path(candidate).expanduser().exists():
+            return candidate
+    return None
 
 
 def _wait_for_bundle(store: ObjectStore, bundle_uri: str, poll_seconds: float, timeout_seconds: float | None, monitor=None) -> None:
@@ -367,4 +380,3 @@ def _minio_store() -> Boto3ObjectStore:
         access_key_id=os.environ.get("MINIO_ACCESS_KEY"),
         secret_access_key=os.environ.get("MINIO_SECRET_KEY"),
     )
-
