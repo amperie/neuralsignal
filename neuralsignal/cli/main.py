@@ -179,6 +179,7 @@ def _train_s1(args) -> int:
         label_column=(config.get("dataset") or {}).get("label_column", "label"),
         feature_config=config.get("features") or {},
         mlflow_config=config.get("mlflow") or {},
+        model_config=config.get("model") or {},
     )
     print(json.dumps({"metrics": result.metrics, "features": result.feature_columns}))
     return 0

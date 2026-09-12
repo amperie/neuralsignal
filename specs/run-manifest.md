@@ -1,107 +1,50 @@
-# Run Manifest
+# Run manifest
 
-## Goal
+[RunManifest](../neuralsignal/storage/manifests.py) is written as `manifest.json`
+inside a local run directory and the remote ZIP bundle. The worker does not
+publish a separate manifest object during collection.
 
-The run manifest is the durable contract across local orchestration, RunPod
-execution, S3 upload, local sync, MinIO curation, and MLflow provenance.
-
-## Manifest Path
-
-```text
-s3://neuralsignal-runs/feature-runs/{run_id}/manifest.json
-```
-
-Local synced copy:
-
-```text
-data/runs/{run_id}/manifest.json
-```
-
-## Run States
-
-```text
-created
-pod_starting
-running
-uploading
-completed
-failed
-terminated
-sync_completed
-```
-
-## Required Fields
+Current fields:
 
 ```json
 {
   "schema_version": "run_manifest.v1",
-  "run_id": "2026-09-08T001122Z-malt-sabotage",
+  "run_id": "example-run",
   "state": "completed",
-  "created_at": "2026-09-08T00:11:22Z",
-  "updated_at": "2026-09-08T01:30:00Z",
-  "code": {
-    "git_sha": "...",
-    "git_branch": "codex/v2-refactor",
-    "image": "neuralsignal:feature-collector-v2"
-  },
-  "remote": {
-    "provider": "runpod",
-    "pod_id": "...",
-    "gpu": "..."
-  },
-  "dataset": {
-    "source": "hf",
-    "name": "metr-evals/malt-transcripts-public",
-    "split": "train",
-    "revision": null
-  },
-  "features": {
-    "schema_version": "features.v1",
-    "materialized_sets": []
-  },
-  "rows": {
-    "expected": null,
-    "written": 100000,
-    "uploaded": 100000
-  },
-  "shards": []
+  "dataset": {"source": "malt", "name": "metr-evals/malt-public", "split": "public"},
+  "features": {"schema_version": "features.v1", "materialized_sets": []},
+  "rows": {"expected": null, "written": 8, "uploaded": 0},
+  "shards": [
+    {"index": 0, "path": "features/part-00000.parquet", "rows": 8,
+     "sha256": "CHECKSUM", "state": "written", "bytes": 1234}
+  ]
 }
 ```
 
-## Shard Entry
+Values above illustrate the shape; a real checksum and byte count come from the
+file. Remote `materialized_sets` holds copied config entries, including disabled
+ones. The local collection CLI currently omits that list.
 
-```json
-{
-  "index": 0,
-  "state": "uploaded",
-  "path": "features/part-00000.parquet",
-  "rows": 10000,
-  "bytes": 12345678,
-  "sha256": "...",
-  "started_at": "...",
-  "completed_at": "..."
-}
-```
+## State and counters
 
-## Failure Entry
+The dataclass defaults to `created`; the remote worker starts at `running`.
+Local and remote collection mark `completed` after successful collection.
+Exceptions do not reliably persist a final `failed` manifest. There is no pod
+lifecycle state machine in this file.
 
-```json
-{
-  "state": "failed",
-  "failure": {
-    "stage": "feature_collection",
-    "message": "CUDA out of memory after retrying batch size 1",
-    "retryable": false
-  }
-}
-```
+`written` sums shard rows. `expected` stays null and `uploaded` stays zero in the
+bundle workflow; zero uploaded rows does not mean bundle upload failed. Shards
+stay `written`. Completion alone is not evidence that an older image produced
+usable features; inspect rows and files.
 
-The failure message must not include secrets.
+## Reader checks
 
-## Resume Rules
+Sync/training reject an explicitly non-completed run; missing state is accepted
+for older manifests. Sync accepts shard states written/uploaded/completed and
+rejects other states. Training verifies listed paths, checksums and per-shard row
+counts. It does not check all schema/version fields or shard state values.
 
-- Uploaded shards with valid checksums are immutable.
-- Local sync skips already verified shards.
-- Remote retry skips uploaded shard indexes.
-- A new run id is required if config hash, code SHA, dataset revision, or
-  materialized feature sets change.
+No code SHA, image digest, pod ID, model config, timestamps, failure payload,
+config hash, or prompt hash is automatically recorded. Remote resume and
+config-identity enforcement are absent. Use a new run ID and directory for each
+collection and record experiment provenance separately.

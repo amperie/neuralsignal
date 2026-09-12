@@ -1,69 +1,31 @@
-# Security and Secrets
+# Security and sensitive outputs
 
-## Goal
+Use ignored local environment/secrets files for credentials. Never put real
+credentials in feature YAML, dataset metadata, committed documentation, or MLflow
+extra params. The code does not universally scrub these fields before persistence.
 
-RunPod, Hugging Face, S3, MinIO, and MLflow integration must avoid leaking
-credentials into configs, manifests, logs, exceptions, or model metadata.
+## Implemented protections
 
-## Secret Sources
+- Launch dry-run recursively redacts keys containing token/secret/password/access-key/API-key patterns.
+- RunPod API keys are removed from worker environment payloads.
+- Local log configuration suppresses routine provider request chatter below WARNING.
+- Shard path resolution rejects absolute/parent-traversal paths and resolved escapes.
+- ZIP and shard checksums detect content mismatch.
+- Terraform blocks public bucket access and scopes handoff object permissions.
 
-Secrets come from environment variables:
+These are not blanket redaction or authenticity guarantees. Provider warnings,
+exceptions, arbitrary config fields, or dataset contents can still contain
+sensitive data; checksum sidecars are not signatures. The old smoke log contains
+provider request URLs from before noise suppression. Review artifacts before
+sharing them.
 
-```text
-HF_TOKEN
-RUNPOD_API_KEY
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-AWS_SESSION_TOKEN
-AWS_DEFAULT_REGION
-NEURALSIGNAL_S3_ENDPOINT_URL
-MINIO_ACCESS_KEY
-MINIO_SECRET_KEY
-MLFLOW_TRACKING_USERNAME
-MLFLOW_TRACKING_PASSWORD
-```
+Feature rows store raw input/output text plus metadata. Raw activation scans are
+not written by the CLI, but this does not make feature bundles free of source text.
+Remote manifests copy dataset/materialization config entries; avoid embedding
+credentials in those mappings.
 
-## Rules
-
-- Do not store secrets in YAML configs.
-- Do not store secrets in run manifests.
-- Do not log resolved credential values.
-- Do not log signed URLs.
-- Redact provider error messages before writing persistent logs.
-- Prefer short-lived credentials where practical.
-
-## Local Files
-
-`.env` files are allowed for local development but must remain gitignored.
-
-Example:
-
-```text
-.env
-.env.local
-.env.runpod
-```
-
-## Manifest Redaction
-
-Allowed:
-
-```json
-{
-  "s3_endpoint": "configured",
-  "hf_token": "configured"
-}
-```
-
-Forbidden:
-
-```json
-{
-  "hf_token": "hf_..."
-}
-```
-
-## MLflow Logging
-
-MLflow params may include dataset URIs and manifest hashes. They must not include
-credentials, presigned URLs, or raw environment dumps.
+Terraform state contains managed IAM key material even when outputs are marked
+sensitive. The currently configured backend is local; protect and back up state.
+S3 versioning means deletion can leave noncurrent data until lifecycle expiry.
+See [Terraform setup](../infra/terraform/s3-handoff/README.md) and
+[credential routing](required-secrets.md).

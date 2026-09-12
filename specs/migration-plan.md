@@ -1,58 +1,23 @@
-# Migration Plan
+# Migration status
 
-## Goal
+This file records current migration status rather than an unimplemented cutover
+plan. The repository uses the v2 CLI, dataset adapters, Parquet feature storage,
+local S1 trainer, and evaluator-based public SDK.
 
-Move to v2 without an unbounded rewrite. The first milestone is a working
-indirect-only feature collection and local S1 training flow.
+## Completed in code
 
-## Keep Initially
+- Removed the v1 public SDK, scan-first dataset/backend paths, and old automation files.
+- Added JSONL/Hugging Face/MALT adapters, batched model extraction, feature shards,
+  S3 bundle handoff, MinIO mirroring, and local training/MLflow integration.
+- Added real T5/LongT5 CPU instrumentation tests and the bug-sweep regressions.
 
-- existing judge model instrumentation;
-- existing collector hooks;
-- existing feature-set implementations;
-- existing S1 model wrapper where useful;
-- existing dataset code only as reference.
+## Boundaries still present
 
-## Replace First
+Core instrumentation and feature processors remain reused legacy components.
+The compatibility `sdk_config` singleton still exists. The SDK needs an injected
+evaluator and does not automatically load judge or S1 models. Remote resume,
+OOM recovery, full provenance, and broad batch-invariance guarantees are absent.
 
-- global mutable config singleton;
-- scan-first dataset creation;
-- public direct-mode stubs;
-- backend abstraction in the SDK path;
-- batch padding behavior.
-
-## First Usable Milestone
-
-```text
-local dataset examples -> local feature collection -> parquet features ->
-local S1 training -> local MLflow model artifact
-```
-
-No RunPod required for the first milestone.
-
-## Second Milestone
-
-```text
-local CLI -> RunPod feature collection -> remote S3 -> local sync ->
-local MinIO curated dataset -> local S1 training -> local MLflow
-```
-
-## Deletion Candidates
-
-After replacements exist:
-
-- direct-mode public API;
-- old dataset creator paths that require scan persistence;
-- backend code used only for raw scan storage;
-- unused automation YAMLs tied to old flow.
-
-## Cutover Criteria
-
-v2 becomes the default when:
-
-- SDK indirect evaluation works from the new public API;
-- feature datasets are reproducible and manifest-backed;
-- padding regression test passes;
-- one MALT import path works;
-- one S1 model trains locally and logs to MLflow;
-- remote feature collection can complete and sync on one small RunPod job.
+The collected September 12 smoke run was empty; passing local tests does not
+complete the remote validation milestone. See [current state](../docs/current-state.md)
+for evidence and the required rebuilt-image smoke verification.

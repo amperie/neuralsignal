@@ -1,91 +1,35 @@
-# Padding-Aware Batching
+# Padding and batching
 
-## Problem
+[generate_from_batch](../neuralsignal/core/modules/model_instrumentation.py)
+pads batches, applies a positive configured truncation length consistently to
+single and batched input, and retains each example's attention mask. Zero
+truncation length means no explicit truncation. Inputs move to the model device.
 
-Batch padding changes feature values when padded token positions are included in
-activation aggregation. This makes the same prompt produce different S1 inputs
-depending on which other prompts are in the batch.
+The mask is passed to generation and attached to the scan. Hook cleanup runs
+in a `finally` block across tokenization/generation/decoding/finalization failures.
+An intentional collector abort produces `ABORT` per example without indexing a
+fixed-size token list.
 
-The fix is to keep batching and make every token-position aggregation aware of
-the tokenizer attention mask.
+## Feature masking
 
-## Required Behavior
+- Zones filter matching token positions before sequence means.
+- Layer distributions filter matching token positions before histograms.
+- T-F-diff filters token positions before choosing the last valid token.
+- `inference/masking.py` supplies masked mean/variance/std helpers.
 
-The same example should produce equivalent features when evaluated:
+`apply_attention_mask` only filters when mask length equals tensor length;
+otherwise it returns the tensor unchanged. There is no semantic tracking of
+encoder versus decoder/global positions. A source-token mask is not a validated
+decoder or LongT5 global-block mask. Logit-lens remains outside the verified
+padding-aware feature path and is disabled in examples.
 
-- alone;
-- in a batch with same-length examples;
-- in a batch with much longer examples.
+## Evidence and limits
 
-Small floating-point differences are acceptable. Padding-driven feature drift is
-not.
+Synthetic padding fixtures test supported aggregations. Tiny T5/LongT5 tests
+exercise real generation and hook collection on CPU. The smoke-settings T5 test
+checks finite features and consistent column keys across a padded batch; it does
+not prove equality of all decoder features across independent runs/batch sizes.
+There is no automatic length bucketing, OOM batch-size retry, or universal
+pretrained GPU invariance guarantee.
 
-## Implementation Rule
-
-Tokenize batches with padding and retain `attention_mask`:
-
-```python
-encoded = tokenizer(
-    prompts,
-    padding=True,
-    truncation=True,
-    return_tensors="pt",
-)
-```
-
-Pass both tensors through generation:
-
-```python
-model.generate(
-    input_ids=encoded["input_ids"],
-    attention_mask=encoded["attention_mask"],
-    pad_token_id=tokenizer.eos_token_id,
-)
-```
-
-Attach the attention mask to each generation/activation container and pass it to
-the feature pipeline.
-
-## Masked Aggregation
-
-Mean pooling:
-
-```python
-def masked_mean(x, attention_mask):
-    mask = attention_mask.to(dtype=x.dtype, device=x.device).unsqueeze(-1)
-    return (x * mask).sum(dim=1) / mask.sum(dim=1).clamp_min(1)
-```
-
-Variance:
-
-```python
-def masked_var(x, attention_mask):
-    mean = masked_mean(x, attention_mask).unsqueeze(1)
-    mask = attention_mask.to(dtype=x.dtype, device=x.device).unsqueeze(-1)
-    denom = mask.sum(dim=1).clamp_min(1)
-    return (((x - mean) ** 2) * mask).sum(dim=1) / denom
-```
-
-Any feature set that reduces over sequence positions must use masked operations.
-
-## Throughput Optimization
-
-Length bucketing is still useful because it reduces wasted padded tokens:
-
-```text
-examples -> tokenize length estimate -> buckets -> padded batches -> features
-```
-
-Length bucketing improves speed and memory usage. It must not be required for
-correctness.
-
-## Regression Test
-
-Create a test with a short prompt and a long prompt:
-
-1. evaluate short prompt alone;
-2. evaluate short prompt batched with long prompt;
-3. assert feature vectors are close;
-4. assert detector scores are close.
-
-This test should run against deterministic generation settings.
+Run `uv run pytest neuralsignal/tests -q`; see [test coverage](testing-strategy.md).

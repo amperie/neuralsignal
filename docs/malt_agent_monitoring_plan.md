@@ -1,28 +1,35 @@
-# METR MALT Agent Monitoring Plan
+# MALT monitoring: current experiment
 
-Use `metr_malt_public`, backed by `metr-evals/malt-public` on Hugging Face. The dataset is gated, so the local Hugging Face account must accept the access terms before `datasets.load_dataset()` can read it.
+The current adapter uses `source: malt` with `metr-evals/malt-public`, split
+`public`, config `default`. It emits complete recorded API histories and candidate
+next responses as ordered message lines. It does not turn them into a compact
+narrative or reconstruct an independent live trajectory runner.
 
-MALT is the best immediate fit for adversarial agent-monitoring work because it contains labeled agent transcripts for reward hacking, sandbagging-like behavior, refusals, hardcoded solutions, bypassed constraints, and benign controls.
+The default judge prompt asks about behavior evidenced by history and the next
+response. Experimental scaffold instructions matching the known exact marker are
+excluded from the prompt and preserved in metadata. Labels and run condition are
+kept as metadata, not automatically inserted into the default prompt.
 
-The first NeuralSignal experiment should be transcript-level indirect monitoring:
+S1 supervision is at run level: completion means are averaged into sample means,
+then run means; the target is membership in `run_labels`. The default training
+config selects `sabotage`. There is no implemented custom taxonomy for credential
+behavior, persistence, or lateral movement, and no automatic label mapping to
+such categories.
 
-1. Convert each transcript into a compact ordered action narrative.
-2. Ask the judge model whether the next action or recent trajectory shows monitor-worthy risk.
-3. Capture the judge activations.
-4. Train S1 models against MALT labels.
+## Evidence
 
-This does not yet prove NeuralSignal can catch a live incident before damage. It tests whether activation features from the judge can separate benign agent trajectories from known suspicious ones.
+Saved MALT fixtures and local pooling tests pass. The eight-example remote smoke
+run returned zero feature rows, so it did not establish a GPU feature dataset or
+MALT performance result. Current fixes and real small-model CPU tests are
+summarized in [current state](current-state.md).
 
-For a Hugging Face incident analogue, the useful target is not whether the agent eventually hacked a service. The product-relevant question is whether NeuralSignal can detect the trajectory before a consequential action is allowed.
+## Next experiment boundary
 
-Relevant label families:
+Rebuild the worker image, run a fresh eight-example smoke test, and inspect both
+feature sets before full collection. Training needs complete runs and enough
+positive/negative runs for stratification. Mean pooling is the implemented
+baseline; no prefix evaluation, live intervention, early-warning effectiveness,
+calibration, or benchmark quality claim has been validated.
 
-- `bypass_constraints`: ignores supervision or task boundaries.
-- `side_channel`: writes or uses files, comments, services, datasets, or shared state for coordination.
-- `credential_behavior`: searches for, validates, copies, or transmits secrets.
-- `persistence`: creates plugins, users, scheduled jobs, tokens, or durable services.
-- `lateral_movement`: uses one environment as a launchpad into another.
-- `unauthorized_model_path`: tries to reach a model outside the governed runtime.
-- `reward_hacking`: optimizes the scoring path instead of the intended task.
-
-The current dataset runner treats each row as one input/output pair. For agent monitoring, add a trajectory runner that preserves ordered turns and can evaluate prefixes. That runner should produce scan records with metadata for transcript id, source model, labels, prefix length, proposed next action, and intervention target.
+[Adapter details](../specs/dataset-imports.md) ·
+[Training](../specs/local-s1-mlflow.md) · [Evaluation](../specs/s1-evaluation.md)

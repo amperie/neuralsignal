@@ -1,128 +1,51 @@
-# Feature Schema
+# Feature dataset schema
 
-## Goal
+[The runner](../neuralsignal/features/runner.py) writes one row per normalized
+example. Files are `features/part-00000.parquet`, incrementing per shard, with
+zstd compression by default.
 
-Feature datasets are the contract between GPU feature collection and local S1
-training. They must be compact, versioned, resumable, and easy to filter.
-
-## File Format
-
-Feature shards are parquet files:
-
-```text
-features/part-00000.parquet
-features/part-00001.parquet
-```
-
-Default compression: `zstd`.
-
-## Required Columns
+## Stored columns
 
 ```text
 run_id
-dataset_id
-dataset_name
-dataset_split
 example_id
 row_index
-detector
-label
-judge_model
-prompt_template_hash
-feature_set_version
-input_hash
-output_hash
-created_at
+input
+output
+labels_json
+metadata_json
+<feature columns>
 ```
 
-## Feature Columns
+Input/output text is retained, not hashed. No automatic dataset ID, detector,
+judge model, timestamps, prompt hash, or numeric target column is added.
+Feature values use `{feature_set_name}__{feature_name}` prefixes. Registered sets
+are `zones`, `layer_distribution`, `T-F-diff`, and `logit-lens`; the smoke config
+enables only the first two. Placeholders use the chosen prefixes but contain
+input/output character counts, not activation measurements.
 
-Feature columns use this naming convention:
+## Validation
 
-```text
-{feature_set_name}__{feature_name}
-```
+Collection rejects no enabled sets, no normalized examples, empty feature rows,
+and mismatched extractor batch lengths. Model extraction additionally rejects
+empty individual sets, column/value length mismatches, and duplicate columns.
+The writer refuses a directory already containing feature shards.
 
-Examples:
+Checksums and per-shard row counts are stored in the [manifest](run-manifest.md).
+Sync verifies checksums; manifest-backed training verifies paths, duplicate paths,
+checksums, and row counts and ignores files absent from the manifest.
 
-```text
-zones__layer_04_zone_02_mean
-layer_distribution__layer_10_std
-T-F-diff__layer_08_delta_mean
-logit-lens__layer_12_true_token_rank
-```
+## Versions and training selection
 
-The initial registered feature-set names match the existing implementation:
+The run manifest has `schema_version: run_manifest.v1` and nested
+`features.schema_version: features.v1`. Remote manifests copy raw materialization
+entries; local CLI manifests currently record only the feature schema version.
+There is no automatic column inventory/config hash or feature-version compatibility
+validation, even though `FeatureSetSpec` has version/manifest helper methods.
 
-```text
-zones
-logit-lens
-T-F-diff
-layer_distribution
-```
-
-## Feature Set Manifest Entry
-
-Each materialized feature set is recorded in `manifest.json`:
-
-```json
-{
-  "name": "zones",
-  "enabled": true,
-  "version": "v1",
-  "config_hash": "sha256:...",
-  "columns": [
-    "zones__layer_00_zone_00_mean"
-  ]
-}
-```
-
-## Schema Versioning
-
-The manifest includes:
-
-```json
-{
-  "schema_version": "features.v1",
-  "feature_set_version": "v2"
-}
-```
-
-Rules:
-
-- Adding feature columns is backward compatible.
-- Removing or renaming feature columns requires a new feature-set version.
-- Changing a feature calculation requires a new feature-set version.
-- Changing only training column selection does not require recollection.
-
-## Training-Time Feature Selection
-
-S1 training can select columns by feature set:
-
-```yaml
-features:
-  include_sets:
-    - zones
-    - layer_distribution
-  include_columns: []
-  exclude_columns:
-    - zones__debug_column
-```
-
-Selection is applied after loading the full materialized dataset. This allows one
-expensive RunPod collection job to support multiple S1 experiments.
-
-## Checksums
-
-Every shard has a SHA-256 checksum in the run manifest. Local sync must verify
-the checksum before marking a shard complete.
-
-## Compatibility Checks
-
-Training must fail fast if:
-
-- requested feature sets are missing;
-- requested columns are missing;
-- manifest schema version is unsupported;
-- feature-set version is incompatible with the training config;
-- row counts do not match the manifest.
+Training selects the union of matching `include_sets` and explicit
+`include_columns`, removes `exclude_columns`, and deduplicates names. With no
+inclusions it selects columns containing `__`. Missing requested columns/sets
+are silently unmatched unless the final selection is empty. Changing feature
+calculations requires recollection and separately recorded provenance; the
+current version strings alone do not identify that change.

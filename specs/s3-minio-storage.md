@@ -1,62 +1,42 @@
-# S3 and MinIO Storage
+# S3, MinIO, and local storage
 
-## Goal
-
-Remote S3-compatible storage moves feature datasets from RunPod to the local
-machine. Local MinIO stores curated feature datasets that local S1 training and
-MLflow can reference.
-
-## Remote Bucket Layout
+The remote worker's default transport is a bundle:
 
 ```text
-s3://neuralsignal-runs/
-  feature-runs/{run_id}/
-    manifest.json
-    features/part-*.parquet
-    logs/worker.log
+s3://<handoff-bucket>/feature-runs/<run-id>/bundle.zip
+s3://<handoff-bucket>/feature-runs/<run-id>/bundle.zip.sha256
 ```
 
-## Local MinIO Layout
+Inside the ZIP: `manifest.json`, `features/part-*.parquet`, and available worker
+logs. The worker does not upload individual shards atomically or publish a live
+manifest. Both bundle objects must exist before the launcher proceeds.
 
-```text
-s3://neuralsignal-local/
-  feature-datasets/{dataset_version}/
-    manifest.json
-    features/part-*.parquet
-  mlflow-artifacts/
-```
+Local collection stores `<target-dir>/<run-id>.zip`, its checksum sidecar, and
+unpacked `<target-dir>/<run-id>/`. These are the retained handoff results. Optional
+`--minio-uri` uploads the extracted directory and `minio-dataset-uri.txt` using
+MinIO endpoint/credentials. The remote S3 bundle objects are deleted first.
+Versioned S3 buckets may retain noncurrent object versions until lifecycle expiry.
 
-## Upload Semantics
+## Prefix sync
 
-RunPod writes shards locally first, then uploads to a temporary object name, then
-publishes the final shard path.
+`ns remote sync S3_PREFIX LOCAL_DIR` expects an expanded `manifest.json` and
+relative shard paths, such as a separately uploaded directory. It does not accept
+a ZIP despite the CLI argument's broad help wording. It uses default boto3
+configuration; that command does not load `.env` or wire the MinIO endpoint.
+The Python function can receive a configured object store.
 
-```text
-features/.part-00000.parquet.tmp
-features/part-00000.parquet
-```
+Sync clears any previous `.sync-complete`, rejects an explicitly unfinished run
+and unready shards, confines paths to the destination, reuses matching local
+checksums, verifies downloads, then writes a new completion marker. It is not an
+atomic directory transaction and does not remove unlisted old files. Manifest-backed
+training ignores those files. Missing run state is accepted for legacy manifests.
 
-The manifest is updated only after the final object exists and its checksum has
-been computed.
+## Integrity boundaries
 
-## Sync Semantics
+Bundle download checks SHA-256; staged extraction preserves old results on ZIP
+read/extract errors. Prefix sync verifies shard checksums. Training with a manifest
+also verifies per-shard row counts and duplicate paths. None of these checks prove
+that feature calculations are correct; use collection tests and inspect results.
 
-Local sync:
-
-1. downloads `manifest.json`;
-2. downloads missing completed shards;
-3. verifies SHA-256 checksums;
-4. writes local sync state;
-5. optionally copies verified shards into local MinIO as a curated dataset.
-
-## Source of Truth
-
-- Remote S3 is the source of truth for active feature collection runs.
-- Local MinIO is the source of truth for curated feature datasets used in local
-  S1 training.
-- Local disk is a cache and working copy.
-
-## Credentials
-
-Credential values come from environment variables. They are never written to
-manifests, logs, configs, or MLflow params.
+Training accepts local paths only. MinIO is an optional mirror, not an implicit
+training filesystem or a provisioned service. [Credentials](required-secrets.md).

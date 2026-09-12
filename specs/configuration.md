@@ -1,141 +1,62 @@
-# Configuration
+# Configuration reference
 
-## Goal
+Use the checked-in [feature configs](../configs/feature_collection/),
+[launch configs](../configs/remote/), [pod manifest](../configs/runpod_manifest.yaml),
+and [S1 config](../configs/training/sabotage_s1.yaml) as the supported shapes.
+The loader reads a YAML mapping, deep-merges programmatic overrides, then expands
+environment variables in string values. It does not validate every unknown key.
 
-Configuration should be explicit, composable, and safe to run locally or on
-RunPod. NeuralSignal v2 should not use a global mutable singleton.
+## Feature collection
 
-## Precedence
+| Section | Consumed settings |
+| --- | --- |
+| `run` | `name`, `s3_output_uri`, optional exact `bundle_uri` |
+| `extraction` | `mode`: `model` or `placeholder`; omission defaults to placeholder character-count features; invalid modes fail. |
+| `model` | `model_name`, `device`, `quantization` (`int8`, `int4`, or an unquantized value such as `none`) |
+| `generation` | `batch_size`, `max_new_tokens`, `truncation_length` |
+| `prompt` | `template` with `{input}` and `{output}`; metadata also available to custom templates. |
+| `instrumentation` | Encoder/decoder/FF/attention/embedding flags and `collector_config` |
+| `dataset` | Adapter settings; remote worker supports positive integer `max_examples` after normalization. |
+| `features` | `materialize` list of name/enabled/config entries |
+| `storage` | Runner consumes `shard_size_rows`; writer uses Parquet/zstd by default. |
 
-Configuration values resolve in this order:
+Legacy `indirect_config` and `indirect_instrumentation_config` are fallback aliases
+inside the model extractor. Use the current names for new configs.
 
-1. CLI flags
-2. YAML config file
-3. built-in defaults
+`format`, `compression`, and `save_scans` in example YAMLs are not forwarded as
+runtime switches by the CLI/worker. Raw scans are not persisted. The writer's
+Python constructor accepts a compression argument. No length buckets or OOM
+retry settings are implemented.
 
-Environment variables are used for secrets and provider credentials only.
+A positive truncation length applies to both single examples and batches; zero
+means no explicit truncation. The extractor defaults to 16 generated tokens.
+Collector `zone_size_by_layer: {}` uses global `zone_size`; optional map `default`
+overrides it. Empty layer name/index filters mean all layers. Per-layer reductions
+must be integer multiples of existing zone sizes.
 
-## Config Families
+`zones` needs `target_zone_size`, `field_to_process`, and layer filter settings.
+`layer_distribution` accepts the same name/index filters, defaults to 10 bins,
+and still accepts legacy `layers_to_process` (which takes precedence).
+`T-F-diff` requires an unembedding layer object; enabling it alone in plain YAML
+does not supply that object. Keep it and `logit-lens` disabled in the smoke config.
 
-```text
-configs/
-  datasets/
-    malt_import.yaml
-  feature_collection/
-    malt_features.yaml
-  training/
-    sabotage_s1.yaml
-  sdk/
-    local.yaml
-```
+## Launch and environment precedence
 
-## Feature Collection Config
+Explicit remote CLI options override launch YAML, then CLI defaults. The pod
+manifest supplies image/GPU/container/env settings, not the local wait timeout.
+See [provider mapping](runpod-orchestration-reference.md).
 
-This is the core runner config for RunPod and local GPU collection jobs.
+Remote collection loads `.env` without overwriting existing process variables.
+Worker environment combines manifest `env`, forwarded Hugging Face tokens,
+Terraform handoff outputs, then `--secrets-file` values. The latter overrides
+previous forwarded values. Local collection/training do not automatically load
+`.env`. See [credentials](required-secrets.md).
 
-```yaml
-run:
-  name: malt_sabotage_features
-  seed: 42
-  output_uri: s3://neuralsignal-runs/feature-runs
-  local_work_dir: /workspace/neuralsignal-runs
+## Training
 
-dataset:
-  source: hf
-  name: metr-evals/malt-transcripts-public
-  split: train
-  normalizer: malt_transcripts
-  max_rows: null
-
-judge:
-  model: google/flan-t5-large
-  device: cuda
-  dtype: auto
-  generation:
-    max_new_tokens: 1
-    do_sample: false
-
-batching:
-  batch_size: 16
-  length_bucket_size: 256
-  oom_retry_min_batch_size: 1
-
-features:
-  materialize:
-    - name: zones
-      enabled: true
-      version: v1
-      config:
-        output_format: name_and_value_columns
-    - name: layer_distribution
-      enabled: true
-      version: v1
-      config:
-        output_format: name_and_value_columns
-    - name: T-F-diff
-      enabled: true
-      version: v1
-      config:
-        output_format: name_and_value_columns
-    - name: logit-lens
-      enabled: false
-      version: v1
-      config:
-        output_format: name_and_value_columns
-
-storage:
-  shard_size_rows: 10000
-  format: parquet
-  compression: zstd
-  save_scans: false
-```
-
-## Feature Set Rules
-
-- `features.materialize` controls which feature columns are computed and stored.
-- Disabled feature sets are ignored by the runner.
-- Every enabled feature set writes columns with a stable prefix:
-  `{feature_set_name}__{feature_name}`.
-- Every feature dataset manifest records enabled feature sets, configs, and
-  versions.
-- S1 training may select a subset of materialized feature columns without
-  rerunning feature collection.
-
-## Training Config
-
-```yaml
-mlflow:
-  tracking_uri: file:./mlruns
-  experiment_name: neuralsignal-s1
-
-dataset:
-  uri: s3://neuralsignal-local/feature-datasets/malt_sabotage_v1
-  manifest: manifest.json
-
-features:
-  include_sets:
-    - zones
-    - layer_distribution
-  include_columns: []
-  exclude_columns: []
-
-model:
-  detector: sabotage
-  type: logistic_regression
-  registered_name: neuralsignal-sabotage-s1
-```
-
-## Environment Variables
-
-```text
-HF_TOKEN
-RUNPOD_API_KEY
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-AWS_DEFAULT_REGION
-NEURALSIGNAL_S3_ENDPOINT_URL
-MLFLOW_TRACKING_URI
-```
-
-Secrets must not be written to manifests, logs, MLflow params, or exception
-messages.
+Use `dataset.path` (local directory or Parquet file), `dataset.label_column`,
+`features.include_sets/include_columns/exclude_columns`, and optional `mlflow`.
+The checked-in config uses `label_column: sabotage` for MALT run pooling and
+`registered_model_name` for MLflow registration. Its dataset path is an example
+that must be changed. `model.type: xgboost` and `model.params` configure the classifier. Split YAML
+sections do not configure the current train/test split. [Training details](local-s1-mlflow.md).

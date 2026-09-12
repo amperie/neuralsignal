@@ -1,133 +1,48 @@
-# Remote Feature Collection Workflow
+# Remote collection and recovery
 
-## Centerpiece Workflow
+The supported launch is:
 
-NeuralSignal v2 treats RunPod as disposable GPU feature-collection capacity.
-The local machine remains the source of truth for orchestration, training, MLflow,
-and final model registration.
-
-## End-to-End Flow
-
-1. A local CLI command creates a run manifest and starts a RunPod pod with the
-   correct image, code version, dataset config, credentials, and output location.
-2. The RunPod job loads the dataset, runs the indirect judge model, collects
-   activations, computes feature rows, and writes feature shards locally inside
-   the pod.
-3. The RunPod job uploads feature shards and metadata to S3-compatible storage.
-4. The local CLI waits for completion, downloads the uploaded artifacts, verifies
-   manifest checksums, and terminates the pod.
-5. A local training command reads the synced feature dataset, creates S1 models,
-   logs metrics and artifacts to local MLflow, and records the feature dataset
-   URI from the local MinIO bucket.
-
-## Storage Topology
-
-Remote object storage:
-
-```text
-s3://neuralsignal-runs/feature-runs/{run_id}/
-  manifest.json
-  features/
-    part-00000.parquet
-    part-00001.parquet
-  logs/
-    worker.log
+```bash
+uv run ns remote collect configs/remote/malt_smoke.yaml --run-id YOUR_NEW_RUN_ID
 ```
 
-Local synced storage:
+Use a new run ID and an image built from the intended code. The local feature
+config is encoded into the pod environment; source code comes from the image.
 
-```text
-data/runs/{run_id}/
-  manifest.json
-  features/
-    part-00000.parquet
-    part-00001.parquet
-```
+## Actual lifecycle order
 
-Local MinIO curated dataset copy:
+1. Load environment/config/manifest and optional Terraform/forwarded secrets.
+2. Select a GPU and launch a pod (dry-run stops before launch).
+3. Worker normalizes examples, lazily loads the judge, collects and writes shards.
+4. Worker marks its manifest completed, creates a ZIP and SHA-256 sidecar, uploads both.
+5. Launcher waits for both objects and attempts pod termination in `finally`.
+6. Download and verify the ZIP checksum, delete remote ZIP/sidecar, extract locally.
+7. Optionally mirror the directory to MinIO and run local S1 training.
 
-```text
-s3://neuralsignal-local/feature-datasets/{dataset_version}/
-  manifest.json
-  features/
-    part-*.parquet
-```
+The bundle contains the manifest, features, and any log files present when it was
+created. Its worker log does not contain the later bundle-upload messages.
+The result reports `run_id`, `pod_id`, `bundle_uri`, `target_dir`, and
+`training_metrics` (null when training was not requested).
 
-MLflow stores S1 model artifacts and points back to the MinIO dataset URI.
+## Failure behavior
 
-## CLI Commands
+Waiting errors, timeout, and Ctrl-C trigger a termination attempt. Termination
+failure can prevent subsequent download. Worker process failure before upload
+is not automatically detected from the exit-code file; polling may wait until
+the local timeout. Partial shards and failure logs are not automatically synced.
+There is no remote resume, keep-pod flag, or dedicated terminate/status CLI.
 
-Launch and wait:
+S3 missing objects are treated as not ready; authorization/service/connection
+errors propagate. Use a finite timeout and keep the launcher running. If cleanup
+cannot be confirmed, inspect the pod in RunPod and terminate it there.
 
-```text
-ns remote collect configs/malt_features.yaml
-```
+Download verifies the ZIP checksum, but collection does not validate semantic
+manifest success or per-shard row counts before reporting handoff success.
+Inspect the output. Extraction stages the archive before replacing old results,
+so invalid archives do not erase the existing directory. Remote objects are
+deleted before extraction/mirroring/training; local ZIP and checksum are retained
+under the target parent directory for recovery.
 
-Equivalent explicit commands:
-
-```text
-ns remote launch configs/malt_features.yaml
-ns remote wait <run_id>
-ns remote sync <run_id>
-ns remote terminate <run_id>
-```
-
-Training:
-
-```text
-ns train s1 configs/sabotage_s1.yaml
-```
-
-## RunPod Job Contract
-
-The pod entrypoint receives:
-
-```text
---run-id
---config
---s3-output-uri
---dataset-cache-dir
---batch-size
---shard-size
-```
-
-It must:
-
-- write feature shards locally first;
-- upload completed shards atomically;
-- update `manifest.json` after each successful shard upload;
-- write checksums for every uploaded shard;
-- exit non-zero on unrecoverable failure;
-- never require MLflow connectivity.
-
-## Local Orchestrator Contract
-
-The local CLI must:
-
-- create a unique run id;
-- start the pod;
-- stream or poll job status;
-- sync only completed shards;
-- verify row counts and checksums;
-- terminate the pod on success, failure, or interrupt;
-- leave enough metadata to resume download or diagnose failure.
-
-## Failure Behavior
-
-If feature collection fails, completed uploaded shards remain valid. The local
-CLI records the failed state and still attempts pod termination.
-
-If local sync fails, the user can rerun:
-
-```text
-ns remote sync <run_id>
-```
-
-If pod termination fails, the CLI reports the pod id and keeps retry metadata.
-
-## Why MLflow Is Local Only
-
-S1 model creation happens locally, so MLflow should track local training runs,
-metrics, feature dataset versions, and model artifacts. RunPod should not be a
-required MLflow client. That keeps remote jobs simple and avoids networking
-problems between transient pods and the local MLflow server.
+`remote sync S3_PREFIX LOCAL_DIR` is only for an expanded manifest/shard layout,
+not the handoff ZIP. It cannot recover an already deleted remote bundle.
+[Storage details](s3-minio-storage.md) · [Provider settings](runpod-orchestration-reference.md).

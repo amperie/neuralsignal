@@ -1,104 +1,51 @@
-# CLI Contract
+# CLI reference
 
-## Goal
+The installed `ns` entry point calls [cli/main.py](../neuralsignal/cli/main.py).
+Run from the repository root so the checked-in relative config paths resolve.
 
-The CLI owns dataset import, remote feature collection, synchronization, local
-training, local evaluation, and SDK smoke tests. The public SDK remains focused
-on indirect-mode detection.
+| Command | Current behavior |
+| --- | --- |
+| `ns dataset import jsonl PATH` | Reads local JSONL and prints normalized row count; does not write an imported dataset. |
+| `ns features collect-local CONFIG --input-jsonl PATH --out DIR` | Collects local features and writes a completed manifest. |
+| `ns remote collect [CONFIG] [OPTIONS]` | Launches RunPod and collects a checksum-protected bundle. |
+| `ns remote sync S3_PREFIX LOCAL_DIR` | Downloads an expanded manifest and ready shards; not a ZIP downloader. |
+| `ns train s1 CONFIG` | Trains from `dataset.path` locally; prints metrics and selected columns. |
 
-## Command Groups
+There are no separate launch/wait/status/terminate, evaluation-only, or SDK smoke
+commands. Use each supported command's `--help` for argument syntax.
 
-```text
-ns dataset import
-ns remote collect
-ns remote launch
-ns remote wait
-ns remote sync
-ns remote terminate
-ns train s1
-ns eval s1
-ns sdk smoke-test
-```
+## Remote collection options
 
-## Common Rules
-
-- CLI flags override YAML config values.
-- Secrets come from environment variables only.
-- Commands emit structured logs.
-- Commands return non-zero exit codes on failure.
-- Long-running commands write resumable metadata before doing expensive work.
-- Interrupted remote commands attempt pod termination unless `--keep-pod` is set.
-
-## Dataset Import
+`CONFIG` can be a feature config or a YAML containing `remote_collect`.
+`--launch-config PATH` loads launch options explicitly. Supported overrides:
 
 ```text
-ns dataset import hf metr-evals/malt-transcripts-public --config configs/malt_import.yaml
+--manifest --run-id --env-file --secrets-file --terraform-dir --target-dir
+--train-config --minio-uri --poll-seconds --timeout-seconds --ssh-key-path
+-gb / --gpu-vram-gb   OR   --gpu-id
+--yes --dry-run
 ```
 
-Required output:
+CLI values override launch YAML, then defaults apply: manifest
+`configs/runpod_manifest.yaml`, `.env`, Terraform directory
+`infra/terraform/s3-handoff`, output `runs/remote`, polling 30 seconds, timeout
+1800 seconds. Config and run ID are required. Paths are relative to the current
+working directory, not the launch YAML. Use a fresh run ID on each launch.
 
-```text
-data/imported/{dataset_id}/
-  manifest.json
-  examples/part-*.parquet
-```
+Dry-run prints a redacted payload without launching; it can read Terraform outputs
+and query/prompt for GPU selection. There is no keep-pod option.
 
-## Remote Feature Collection
+## Output and errors
 
-One-shot command:
+Successful collection/training commands print JSON; logs and interactive GPU
+prompts can accompany it. Logs use timestamps, and worker logs are separate from
+local status polling. `NO_COLOR` disables terminal colors;
+`NEURALSIGNAL_LOG_LEVEL` controls application verbosity.
 
-```text
-ns remote collect configs/malt_features.yaml
-```
+Success returns 0. Argparse usage errors return 2. Ctrl-C returns 130 after
+confirmed cleanup (or 1 if cancellation cleanup cannot be confirmed). Other
+uncaught errors generally exit 1 with an exception; there is no stage-specific
+exit-code taxonomy or durable launcher resume record.
 
-Equivalent expanded flow:
-
-```text
-ns remote launch configs/malt_features.yaml
-ns remote wait <run_id>
-ns remote sync <run_id>
-ns remote terminate <run_id>
-```
-
-`collect` should perform the full flow and terminate the pod on success, failure,
-or interrupt.
-
-## Training
-
-```text
-ns train s1 configs/sabotage_s1.yaml
-```
-
-Training reads a synced feature dataset and logs the trained S1 model, config,
-metrics, and dataset provenance to local MLflow.
-
-## Evaluation
-
-```text
-ns eval s1 configs/sabotage_s1.yaml
-```
-
-Evaluation loads an existing S1 model and writes metrics without registering a
-new model version.
-
-## Smoke Test
-
-```text
-ns sdk smoke-test --detector sabotage
-```
-
-This verifies that the installed package can load the judge model, load one S1
-detector, and return a serializable `DetectionResult`.
-
-## Exit Codes
-
-```text
-0  success
-1  command/config error
-2  dataset/import error
-3  remote provider error
-4  feature collection failed
-5  sync/checksum verification failed
-6  training failed
-7  MLflow logging failed
-```
+[Workflow and recovery](remote-feature-collection-workflow.md) ·
+[Configuration](configuration.md)

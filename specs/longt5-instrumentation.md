@@ -1,34 +1,28 @@
-# LongT5 activation collection
+# T5 and LongT5 instrumentation
 
-Model names containing `long-t5` or `longt5` use the sequence-to-sequence loader
-in unquantized, 8-bit, and 4-bit modes. Already-loaded models are also recognized
-by `config.model_type == "longt5"`, including locally named checkpoints.
+Name-based loading recognizes `long-t5`/`longt5` as sequence-to-sequence models
+for unquantized, int8, and int4 settings. Already-loaded T5 and LongT5 objects
+are recognized by `config.model_type`, so local checkpoint names need not contain
+the architecture. Name-based loading still requires a recognized model name.
 
-`instrument_longt5` follows the T5 collector interface and selection flags:
+LongT5 captures encoder local/transient-global attention Q/K/V/O and layer norm,
+decoder self/cross-attention Q/K/V/O and layer norm, feed-forward input/output
+projections and activation, and the terminal output head as `decoder.output`.
+Selection flags control encoder, decoder, attention, and feed-forward hooks;
+the terminal head is always captured. Embeddings are not hooked by these paths.
 
-- Encoder local or transient-global attention: Q/K/V/O projections and layer norm.
-- Decoder self-attention and cross-attention: Q/K/V/O projections and layer norm.
-- Feed-forward layers: `wi` or gated `wi_0`/`wi_1`, activation, and `wo`.
-- Output head: always captured as `decoder.output`, matching T5's terminal hook.
+Names include stack, block, layer class, and projection. Transient-global K/V
+calls use separate collector identities (`global_k`, `global_v`) for summary
+positions. Their sequence lengths are global-block counts, not token counts.
+The reset pre-hooks and forward hooks are removed by `deinstrument_model`.
 
-LongT5 names include the stack, block index, layer class, and projection, for
-example `encoder.LongT5Block.0.LongT5LayerLocalSelfAttention.LocalSelfAttention.q`.
-As in the existing T5 implementation, embeddings are not hooked.
+Collector empty per-layer maps fall back to the global zone size. Layer filters
+work without per-layer overrides. Input-only topology uses inputs. Re-reduction
+rejects noninteger zone ratios rather than rounding them.
 
-Transient-global attention reuses K/V modules for token and global-summary
-positions. Global calls are recorded under separate collector identities named
-`global_k` and `global_v`. The global input layer norm is also captured. Their
-sequence dimension is the number of global blocks, not the number of tokens;
-use appropriate global masks if later computing masked statistics over these
-layers. Standard token attention masks must not be applied directly to them.
-All forward and reset pre-hooks are removed by `deinstrument_model`.
-
-Tests use tiny randomly initialized Hugging Face LongT5 models with both encoder
-attention types and both feed-forward variants, padded batches, real generation,
-and the real Collector. They verify unchanged generated tokens, distinct global
-shapes, collector finalization, selection flags, loader routing, and hook cleanup.
-Full pretrained GPU/quantized execution remains a separate integration check.
-
-To use an existing collection config, set `model.model_name` to
-`google/long-t5-tglobal-large` (or another LongT5 checkpoint). Input length, device,
-and memory settings are unchanged by instrumentation support.
+Real tiny CPU tests cover both LongT5 attention modes, both feed-forward variants,
+unchanged generated tokens, global shapes, collector finalization, flags and cleanup.
+The T5 smoke-settings integration exercises both enabled feature processors.
+Pretrained GPU/quantized execution and semantic global/decoder masking remain
+separate checks. See [padding limitations](padding-aware-batching.md) and
+[current verification](../docs/current-state.md).

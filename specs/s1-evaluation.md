@@ -1,98 +1,30 @@
-# S1 Evaluation
+# S1 evaluation behavior
 
-## Goal
+Evaluation currently happens inside [train_s1](../neuralsignal/training/s1.py).
+There is no evaluation-only CLI, saved-model evaluation loader, validation set,
+threshold search, calibration, or promotion automation.
 
-S1 evaluation must make model performance comparable across tests, datasets,
-feature sets, and slices. A single global score is not enough.
+## Split and predictions
 
-## Required Inputs
+The trainer uses a stratified 75/25 train/test split with random state 42 by
+default. MALT rows are pooled into runs first, keeping a run out of both partitions
+at once. Other datasets split by row and do not enforce arbitrary group isolation.
+XGBoost predicts class-1 probability; threshold 0.5 yields flags.
 
-- feature dataset URI;
-- feature dataset manifest hash;
-- detector name;
-- feature column selection;
-- label column;
-- train/validation/test split definition;
-- model config.
+## Reported metrics
 
-## Metrics
+| Scope | Keys |
+| --- | --- |
+| Global | `auroc`, `auprc`, `f1`, `precision`, `recall` |
+| Counts | `train_rows`, `test_rows`, `feature_count` |
+| When `run_source` exists | `<condition>_test_runs`, `<condition>_auroc`, `<condition>_f1` |
 
-Global metrics:
+AUPRC uses sklearn average precision. Metrics that raise `ValueError` become NaN;
+single-class slice AUROC can be undefined. Counts are returned as floats.
+There are no automatically reported accuracy, false-positive/negative rates,
+latency, duration, confusion matrix, or arbitrary task/model slices.
 
-```text
-AUROC
-AUPRC
-F1
-precision
-recall
-false_positive_rate
-false_negative_rate
-accuracy
-```
-
-Operational metrics:
-
-```text
-train_rows
-validation_rows
-test_rows
-feature_count
-training_seconds
-predict_seconds_per_1000_rows
-```
-
-## Slice Metrics
-
-Evaluate metrics by:
-
-- dataset split;
-- source dataset;
-- label type;
-- task family;
-- source model;
-- prompt template version;
-- feature-set selection.
-
-## Threshold Selection
-
-Thresholds are selected on validation data only. Test data is used only for final
-reporting.
-
-Store:
-
-- selected threshold;
-- selection metric;
-- validation metric at threshold;
-- test metric at threshold.
-
-## Baselines
-
-Each S1 experiment should compare against:
-
-- majority-class baseline;
-- simple logistic regression baseline when practical;
-- previous promoted S1 model for the same detector when available.
-
-## Promotion Criteria
-
-A model can be promoted only if:
-
-- test metrics beat baseline;
-- key slice metrics do not regress materially;
-- calibration is acceptable for the intended threshold;
-- feature dataset manifest is available and immutable;
-- training config and code SHA are logged.
-
-## MLflow Artifacts
-
-Log:
-
-- trained model;
-- training config;
-- resolved feature column list;
-- feature dataset manifest;
-- metrics JSON;
-- slice metrics table;
-- confusion matrix;
-- threshold report;
-- calibration data.
+Tests validate mechanics with small fixtures, not MALT detector performance.
+No successful post-fix GPU experiment or quality benchmark is established by
+those tests. See [current verification](../docs/current-state.md) and
+[MLflow output](local-s1-mlflow.md).

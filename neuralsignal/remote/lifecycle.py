@@ -278,6 +278,7 @@ def _train_s1_from_config(config_path: str | Path, dataset_dir: str | Path, mini
         label_column=(config.get("dataset") or {}).get("label_column", "label"),
         feature_config=config.get("features") or {},
         mlflow_config=mlflow,
+        model_config=config.get("model") or {},
     )
     return result.metrics
 
