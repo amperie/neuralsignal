@@ -12,16 +12,19 @@ RUN apt-get update \
         git \
         python3 \
         python3-pip \
+        tmux \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:${PATH}"
+ENV PATH=/root/.local/bin:${PATH}
 
-WORKDIR /workspace/neuralsignal
+WORKDIR /opt/neuralsignal
 COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --frozen --no-install-project && uv cache clean
+
 COPY neuralsignal ./neuralsignal
+COPY scripts/runpod_entrypoint.sh /usr/local/bin/neuralsignal-runpod-entrypoint
+RUN chmod +x /usr/local/bin/neuralsignal-runpod-entrypoint \
+    && uv sync --frozen --no-editable
 
-RUN uv sync --frozen
-
-ENTRYPOINT ["/workspace/neuralsignal/.venv/bin/python", "-m", "neuralsignal.remote.job"]
-
+ENTRYPOINT ["/usr/local/bin/neuralsignal-runpod-entrypoint"]

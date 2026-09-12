@@ -6,7 +6,7 @@ def test_build_pod_payload_encodes_config_and_excludes_local_api_key():
         run_id="run-1",
         config={"dataset": {"name": "fixture"}},
         manifest={
-            "runpod": {"image": "image:latest", "gpu_count": 1, "volume_gb": 75},
+            "runpod": {"image": "image:latest", "gpu_count": 1, "volume_gb": 75, "gpu_type_ids": ["NVIDIA GeForce RTX 4090"]},
             "env": {"HF_HOME": "/workspace/cache"},
         },
     )
@@ -17,6 +17,8 @@ def test_build_pod_payload_encodes_config_and_excludes_local_api_key():
     assert payload["imageName"] == "image:latest"
     assert payload["env"]["NEURALSIGNAL_RUN_ID"] == "run-1"
     assert payload["dockerStartCmd"] == ["--run-id", "run-1"]
+    assert payload["gpuTypeIds"] == ["NVIDIA GeForce RTX 4090"]
+    assert payload["gpuTypePriority"] == "custom"
     assert "NEURALSIGNAL_FEATURE_CONFIG_B64" in payload["env"]
     assert "RUNPOD_API_KEY" not in payload["env"]
     assert "RUNPOD_KEY" not in payload["env"]
