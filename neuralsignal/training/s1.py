@@ -62,6 +62,11 @@ def train_s1(
     )
     if not features:
         raise ValueError("No feature columns selected")
+    if "metadata_json" in data.columns:
+        metadata = [json.loads(value) for value in data["metadata_json"]]
+        if any(meta.get("source") == "metr-evals/malt-public" for meta in metadata):
+            from neuralsignal.features.malt_runs import aggregate_malt_runs
+            data = aggregate_malt_runs(data, features, label_column)
     if label_column not in data.columns:
         raise ValueError(f"Missing label column: {label_column}")
 
@@ -83,6 +88,13 @@ def train_s1(
         "test_rows": float(len(x_test)),
         "feature_count": float(len(features)),
     }
+    if "run_source" in data.columns:
+        conditions = data.loc[x_test.index, "run_source"]
+        for condition in conditions.unique():
+            mask = (conditions == condition).to_numpy()
+            metrics[f"{condition}_test_runs"] = float(mask.sum())
+            metrics[f"{condition}_auroc"] = _safe_metric(roc_auc_score, y_test.iloc[mask], scores[mask])
+            metrics[f"{condition}_f1"] = _safe_metric(f1_score, y_test.iloc[mask], preds[mask], zero_division=0)
     _log_mlflow(model, metrics, features, dataset_path, mlflow_config or {})
     return S1TrainingResult(model=model, metrics=metrics, feature_columns=features)
 

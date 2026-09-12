@@ -43,7 +43,7 @@ class ModelFeatureExtractor:
 
     def _prompt(self, example: DatasetExample) -> str:
         template = ((self.config.get("prompt") or {}).get("template")) or "{input}\n\n{output}"
-        values = {"input": example.input, "output": example.output, **example.metadata}
+        values = {**example.metadata, "input": example.input, "output": example.output}
         return wrap_with_prompt(template, values)
 
     def _featurize(self, scan: dict[str, Any], example: DatasetExample, specs: list[FeatureSetSpec]) -> dict[str, float]:

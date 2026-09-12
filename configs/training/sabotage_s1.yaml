@@ -1,6 +1,6 @@
 dataset:
-  path: runs/remote/example-run/features
-  label_column: label
+  path: runs/remote/example-run
+  label_column: sabotage
 
 features:
   include_sets:
