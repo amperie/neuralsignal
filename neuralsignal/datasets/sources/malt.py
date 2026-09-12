@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from typing import Iterable
 
 from neuralsignal.datasets.sources.hf import HuggingFaceSource
@@ -8,7 +9,7 @@ from neuralsignal.datasets.v2 import DatasetExample
 
 
 class MaltTranscriptSource(HuggingFaceSource):
-    def __init__(self, split: str = "public", name: str = "metr-evals/malt-transcripts-public", **load_kwargs) -> None:
+    def __init__(self, split: str = "transcripts", name: str = "metr-evals/malt-transcripts-public", **load_kwargs) -> None:
         super().__init__(name=name, split=split, normalizer=normalize_malt_record, **load_kwargs)
 
 
@@ -31,7 +32,7 @@ def normalize_malt_record(row: dict) -> Iterable[DatasetExample]:
     if not input_text or not output_text:
         return []
 
-    source_id = str(row.get("id") or row.get("transcript_id") or _stable_id(input_text, output_text))
+    source_id = str(row.get("id") or row.get("transcript_id") or row.get("run_id") or _stable_id(input_text, output_text))
     return [_example(row, source_id, input_text, output_text)]
 
 
@@ -47,7 +48,7 @@ def _examples_from_samples(row: dict) -> list[DatasetExample]:
         output_text = _messages_text(sample.get("output") or sample.get("outputs"), last_only=True)
         if not input_text or not output_text:
             continue
-        source_id = str(row.get("id") or row.get("transcript_id") or _stable_id(input_text, output_text))
+        source_id = str(row.get("id") or row.get("transcript_id") or row.get("run_id") or _stable_id(input_text, output_text))
         examples.append(_example(row, f"{source_id}:{index}", input_text, output_text))
     return examples
 
@@ -65,6 +66,8 @@ def _extract_messages(row: dict) -> list[dict]:
             messages = []
             for item in value:
                 if isinstance(item, dict):
+                    if isinstance(item.get("node_data"), dict):
+                        item = item["node_data"]
                     message = item.get("message") if isinstance(item.get("message"), dict) else item
                     messages.append(message)
             return messages
@@ -90,6 +93,20 @@ def _role(message: dict) -> str:
 
 def _content(message: dict) -> str:
     value = message.get("content") or message.get("text") or message.get("message") or ""
+    if not value and isinstance(message.get("function_call"), dict):
+        call = message["function_call"]
+        arguments = call.get("arguments")
+        if call.get("name") == "submit":
+            if isinstance(arguments, str):
+                try:
+                    arguments = json.loads(arguments)
+                except (ValueError, TypeError):
+                    pass
+            if isinstance(arguments, dict) and arguments.get("submission") is not None:
+                submission = arguments["submission"]
+                return submission if isinstance(submission, str) else json.dumps(submission, ensure_ascii=False)
+        # Keep tool-only assistant actions usable without mistaking them for prose.
+        return json.dumps({"function_call": call}, ensure_ascii=False)
     if isinstance(value, list):
         parts = []
         for item in value:

@@ -8,6 +8,7 @@ import os
 from itertools import islice
 from pathlib import Path
 
+from neuralsignal.console import configure_logging
 from neuralsignal.config import load_config
 from neuralsignal.datasets.sources.factory import source_from_config
 from neuralsignal.features.model_extractor import ModelFeatureExtractor
@@ -69,12 +70,7 @@ def main() -> None:
 
 
 def _configure_logging() -> None:
-    level = os.environ.get("NEURALSIGNAL_LOG_LEVEL", "INFO").upper()
-    logging.basicConfig(
-        level=getattr(logging, level, logging.INFO),
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-        force=True,
-    )
+    configure_logging()
 
 
 def _log_config_summary(config: dict, run_dir: Path) -> None:

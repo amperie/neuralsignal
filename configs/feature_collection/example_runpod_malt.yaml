@@ -43,7 +43,7 @@ instrumentation:
 dataset:
   source: malt
   name: metr-evals/malt-transcripts-public
-  split: public
+  split: transcripts
   config_name: default
 
 features:
@@ -81,5 +81,4 @@ storage:
   format: parquet
   compression: zstd
   save_scans: false
-
 

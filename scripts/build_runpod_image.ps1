@@ -1,6 +1,6 @@
 param(
     [string]$Image = "ghcr.io/amperie/neuralsignal-runpod-base:latest",
-    [switch]$Push
+    [switch]$Push = $true
 )
 
 Push-Location "$PSScriptRoot/.."
@@ -11,4 +11,3 @@ try {
 } finally {
     Pop-Location
 }
-

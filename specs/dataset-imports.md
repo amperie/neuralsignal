@@ -49,6 +49,15 @@ records into NeuralSignal examples and preserve original transcript metadata in
 The rest of NeuralSignal should not handle transcript DAGs directly. DAG parsing
 belongs only in the MALT source adapter.
 
+The current adapter loads the `transcripts` split and unwraps messages from
+`nodes[].node_data.message`. It joins user/environment text as the input and
+uses the last assistant message as the output. For a tool-only `submit` message,
+the output is its `submission` argument; other tool-only calls are retained as
+JSON. The source `run_id` is retained as the example ID when no explicit `id` or
+`transcript_id` is present. Labels describe the entire transcript, not individual
+turns. This conversion does not yet preserve the full conversation or reconstruct
+separate DAG paths.
+
 ## MALT Import Plan
 
 1. Load the gated Hugging Face dataset with a configured HF token.
@@ -75,9 +84,9 @@ ns remote collect configs/malt_features.yaml
 
 ```yaml
 dataset:
-  source: hf
+  source: malt
   name: metr-evals/malt-transcripts-public
-  split: train
+  split: transcripts
   gated: true
   normalizer: malt_transcripts
 

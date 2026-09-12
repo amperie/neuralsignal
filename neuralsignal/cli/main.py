@@ -6,6 +6,7 @@ import logging
 import os
 from pathlib import Path
 
+from neuralsignal.console import configure_logging
 from neuralsignal.config import load_config
 from neuralsignal.datasets.sources.jsonl import JsonlSource
 from neuralsignal.features.model_extractor import ModelFeatureExtractor
@@ -98,8 +99,10 @@ def main(argv: list[str] | None = None) -> int:
     remote_collect.add_argument("--target-dir", help="Local directory where the downloaded bundle is unpacked.")
     remote_collect.add_argument("--train-config", help="Optional S1 training config to run after bundle download.")
     remote_collect.add_argument("--minio-uri", help="Optional MinIO/S3 URI where unpacked datasets and artifacts are mirrored.")
-    remote_collect.add_argument("--gpu-vram-gb", type=int, help="Minimum GPU VRAM in GB; available matching RunPod GPUs are shown for selection.")
-    remote_collect.add_argument("--gpu-id", help="Exact RunPod GPU id to request, bypassing interactive GPU selection.")
+    gpu_selection = remote_collect.add_mutually_exclusive_group()
+    gpu_selection.add_argument("-gb", "--gpu-vram-gb", type=int, help="Target GPU VRAM in GB; list available GPUs within 25%% with prices.")
+    gpu_selection.add_argument("--gpu-id", help="Exact RunPod GPU id to request, bypassing interactive GPU selection.")
+    remote_collect.add_argument("--yes", action="store_true", default=None, help="Choose the cheapest priced GPU matching the VRAM range without prompting.")
     remote_collect.add_argument("--poll-seconds", type=float, help="Seconds between S3 completion checks.")
     remote_collect.add_argument("--timeout-seconds", type=float, help="Maximum seconds to wait for the S3 bundle.")
     remote_collect.add_argument("--dry-run", action="store_true", help="Build and print a redacted RunPod payload without launching.")
@@ -124,11 +127,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _configure_logging() -> None:
-    level = os.environ.get("NEURALSIGNAL_LOG_LEVEL", "INFO").upper()
-    logging.basicConfig(
-        level=getattr(logging, level, logging.INFO),
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    configure_logging()
 
 
 def _dataset_import(args) -> int:
@@ -188,6 +187,7 @@ def _remote(args) -> int:
         dry_run=options["dry_run"],
         gpu_vram_gb=options["gpu_vram_gb"],
         gpu_id=options["gpu_id"],
+        yes=options["yes"],
     )
     print(json.dumps(result if isinstance(result, dict) else result.__dict__, indent=2, sort_keys=True))
     return 0
@@ -207,6 +207,7 @@ def _remote_collect_options(args) -> dict:
         "timeout_seconds": 1800,
         "gpu_vram_gb": None,
         "gpu_id": None,
+        "yes": False,
     }
     launch = {}
     config = args.config
@@ -224,6 +225,12 @@ def _remote_collect_options(args) -> dict:
         value = getattr(args, key, None)
         if value is not None and not (key == "dry_run" and value is False):
             options[key] = value
+    if args.gpu_vram_gb is not None:
+        options["gpu_id"] = None
+    elif args.gpu_id is not None:
+        options["gpu_vram_gb"] = None
+    if options["gpu_vram_gb"] is not None and options["gpu_vram_gb"] <= 0:
+        raise SystemExit("-gb must be a positive number of GB")
     options["config"] = config or options.get("config")
     missing = [key for key in ("config", "run_id") if not options.get(key)]
     if missing:

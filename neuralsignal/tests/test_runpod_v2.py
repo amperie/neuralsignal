@@ -15,6 +15,8 @@ def test_build_pod_payload_encodes_config_and_excludes_local_api_key():
 
     assert payload["name"] == "neuralsignal-run-1"
     assert payload["imageName"] == "image:latest"
+    assert "22/tcp" in payload["ports"]
+    assert payload["supportPublicIp"] is True
     assert payload["env"]["NEURALSIGNAL_RUN_ID"] == "run-1"
     assert payload["dockerStartCmd"] == ["--run-id", "run-1"]
     assert payload["gpuTypeIds"] == ["NVIDIA GeForce RTX 4090"]

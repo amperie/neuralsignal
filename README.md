@@ -192,25 +192,24 @@ uv run python -m py_compile neuralsignal/cli/main.py neuralsignal/remote/lifecyc
 ```
 ## RunPod smoke test (macOS / Linux)
 
-Start Docker Desktop first. Build a Linux AMD64 image, including on Apple Silicon:
-
-```bash
-bash scripts/build_runpod_image.sh ghcr.io/amperie/neuralsignal-runpod-base:latest
-```
-
-Check the image entrypoint without a GPU:
-
-```bash
-docker run --rm --platform linux/amd64 ghcr.io/amperie/neuralsignal-runpod-base:latest --help
-```
-
-Authenticate to GHCR using your GitHub username and a token with package write
-access (enter the token at the password prompt), then build and push:
+Start Docker Desktop first. Authenticate to GHCR using your GitHub username and
+a token with package write access (enter the token at the password prompt),
+then build and push a Linux AMD64 image, including on Apple Silicon:
 
 ```bash
 docker login ghcr.io -u YOUR_GITHUB_USERNAME
-PUSH=1 bash scripts/build_runpod_image.sh ghcr.io/amperie/neuralsignal-runpod-base:latest
+bash scripts/build_runpod_image.sh
 docker buildx imagetools inspect ghcr.io/amperie/neuralsignal-runpod-base:latest
+```
+
+Both build scripts push by default. For a local-only build, use
+`PUSH=0 bash scripts/build_runpod_image.sh`, or pass `-Push:$false` to the
+PowerShell script.
+
+Check the published image entrypoint without a GPU:
+
+```bash
+docker run --rm --pull always --platform linux/amd64 ghcr.io/amperie/neuralsignal-runpod-base:latest --help
 ```
 
 The package must be public, or `runpod.container_registry_auth_id` in
@@ -222,16 +221,18 @@ Install the local environment and inspect the launch payload:
 
 ```bash
 uv sync --frozen
-uv run ns remote collect configs/feature_collection/smoke_runpod_malt.yaml \
-  --run-id malt-smoke-001 --timeout-seconds 1800 --dry-run
+uv run ns remote collect configs/remote/malt_smoke.yaml --dry-run
 ```
 
 Launch the eight-example GPU smoke test after the image is published:
 
 ```bash
-uv run ns remote collect configs/feature_collection/smoke_runpod_malt.yaml \
-  --run-id "malt-smoke-$(date +%Y%m%d-%H%M%S)" --timeout-seconds 1800
+uv run ns remote collect configs/remote/malt_smoke.yaml
 ```
+
+Edit `configs/remote/malt_smoke.yaml` to change the GPU, timeout, output directory,
+or run ID. Set a new `run_id` before each repeat run. The referenced feature
+config controls the model and eight-example limit.
 
 This uses `.env` and Terraform handoff outputs by default, streams the MALT
 source, limits collection to eight normalized examples, and downloads the
@@ -249,5 +250,44 @@ sample YAML's fixed `run_id` with a fresh `--run-id`.
 
 The image stores code and its environment under `/opt/neuralsignal`, leaving
 `/workspace` for caches and run outputs. Its entrypoint forwards worker arguments,
-runs collection in a tmux session, streams logs, and returns the worker's exit
+runs collection in the `ns` tmux session (`tmux attach -t ns`), streams logs,
+and returns the worker's exit
 code. `--help` runs directly without starting a tmux session.
+
+Choose a GPU by target VRAM (available GPUs within ±25% are listed with hourly
+prices, cheapest first):
+
+```bash
+uv run ns remote collect configs/remote/malt_smoke.yaml -gb 24
+```
+
+For 24 GB, the range is 18–30 GB. Select a numbered GPU, or use `--yes` to
+choose the cheapest matching GPU with a known price automatically:
+
+```bash
+uv run ns remote collect configs/remote/malt_smoke.yaml -gb 24 --yes
+```
+
+The smoke launch YAML also defaults to `gpu_vram_gb: 24`, so `-gb` is optional.
+`--gpu-vram-gb` remains an alias for `-gb`. Use `--gpu-id` for an exact GPU
+instead. Add `--dry-run` to query and select without launching a pod.
+
+The local launcher logs preparation, GPU selection, pod status changes, elapsed
+wait time, download, cleanup, and optional training with timestamps. When RunPod
+assigns the public SSH endpoint, it prints `ssh root@<ip> -p <port>` and
+`tmux attach -t ns`. The SSH service may need a moment to finish starting.
+Add your public SSH key to your RunPod account settings before launching; use
+`-i <private-key-path>` with the printed command if your key is not a default SSH
+identity. No private key is sent to the pod.
+
+The image exposes TCP port 22 and starts an SSH server with public-key
+authentication using RunPod's injected public keys. Rebuild and push the image
+after changing its entrypoint. Worker logs show model initialization, each batch,
+shard writes, and bundle upload; view them in tmux or in
+`/workspace/neuralsignal-runs/<run-id>/runpod.log`. Local status polling does not
+stream the worker logs. Set `NEURALSIGNAL_LOG_LEVEL=DEBUG` for more local detail.
+
+Interactive terminals show GPU models in cyan and prices in green. Logs use dim
+timestamps and source names, with subtle level colors (cyan for info, yellow for
+warnings, red for errors). Redirected output and worker log files stay plain;
+set `NO_COLOR=1` to disable terminal colors.
