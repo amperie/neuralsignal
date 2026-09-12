@@ -1,0 +1,10 @@
+remote_collect:
+  config: configs/feature_collection/example_runpod_jsonl_bs1.yaml
+  manifest: configs/runpod_manifest.yaml
+  run_id: padding-smoke-bs1-20260911
+  env_file: .env
+  terraform_dir: infra/terraform/s3-handoff
+  target_dir: runs/remote
+  minio_uri: s3://neuralsignal-datasets/padding-smoke-bs1-20260911
+  train_config: configs/training/sabotage_s1.yaml
+  timeout_seconds: 7200
