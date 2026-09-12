@@ -1,6 +1,8 @@
 import base64
 import json
 import sys
+
+import pytest
 from pathlib import Path
 
 from neuralsignal.remote import job
@@ -23,7 +25,8 @@ class FakeStore:
         return (bucket, key) in self.objects
 
 
-def test_remote_job_collects_features_and_uploads_bundle(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize("use_env", [False, True])
+def test_remote_job_collects_features_and_uploads_bundle(tmp_path, monkeypatch, capsys, use_env):
     input_path = tmp_path / "examples.jsonl"
     input_path.write_text('{"id":"a","input":"abc","output":"xy"}\n' * 3, encoding="utf-8")
     config = {
@@ -37,7 +40,8 @@ def test_remote_job_collects_features_and_uploads_bundle(tmp_path, monkeypatch, 
     monkeypatch.setenv("NEURALSIGNAL_FEATURE_CONFIG_B64", encoded)
     monkeypatch.setenv("NEURALSIGNAL_RUN_WORKDIR", str(tmp_path / "work"))
     monkeypatch.setattr(job, "_s3_store", lambda: store)
-    monkeypatch.setattr(sys, "argv", ["job", "--run-id", "run-1"])
+    monkeypatch.setenv("NEURALSIGNAL_RUN_ID", "run-1" if use_env else "env-overridden")
+    monkeypatch.setattr(sys, "argv", ["job"] if use_env else ["job", "--run-id", "run-1"])
 
     job.main()
 
@@ -46,3 +50,15 @@ def test_remote_job_collects_features_and_uploads_bundle(tmp_path, monkeypatch, 
     assert ("handoff", "feature-runs/run-1/bundle.zip") in store.objects
     assert ("handoff", "feature-runs/run-1/bundle.zip.sha256") in store.objects
 
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_remote_job_requires_run_identity(monkeypatch, capsys, value):
+    monkeypatch.delenv("NEURALSIGNAL_RUN_ID", raising=False)
+    if value is not None:
+        monkeypatch.setenv("NEURALSIGNAL_RUN_ID", value)
+    monkeypatch.setattr(sys, "argv", ["job"])
+    with pytest.raises(SystemExit) as error:
+        job.main()
+    assert error.value.code == 2
+    assert "--run-id or NEURALSIGNAL_RUN_ID is required" in capsys.readouterr().err

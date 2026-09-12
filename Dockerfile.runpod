@@ -20,13 +20,18 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH=/root/.local/bin:${PATH}
 
 WORKDIR /opt/neuralsignal
-COPY pyproject.toml uv.lock README.md ./
-RUN uv sync --frozen --no-install-project && uv cache clean
+# Keep documentation and source edits out of the expensive dependency layer.
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,id=neuralsignal-uv-linux-amd64,target=/root/.cache/uv,sharing=locked \
+    uv sync --frozen --no-install-project
 
+COPY README.md ./
 COPY neuralsignal ./neuralsignal
-COPY scripts/runpod_entrypoint.sh /usr/local/bin/neuralsignal-runpod-entrypoint
-RUN chmod +x /usr/local/bin/neuralsignal-runpod-entrypoint \
-    && uv sync --frozen --no-editable
+RUN --mount=type=cache,id=neuralsignal-uv-linux-amd64,target=/root/.cache/uv,sharing=locked \
+    uv sync --frozen --no-editable
+
+# Entrypoint edits do not require reinstalling the application.
+COPY --chmod=755 scripts/runpod_entrypoint.sh /usr/local/bin/neuralsignal-runpod-entrypoint
 
 EXPOSE 22
 

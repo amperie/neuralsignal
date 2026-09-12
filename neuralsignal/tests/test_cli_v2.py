@@ -134,3 +134,45 @@ def test_remote_launch_timing_precedence(tmp_path, monkeypatch, configured, flag
     monkeypatch.setattr(cli, "remote_collect_lifecycle", collect)
     assert main(["remote", "collect", "--launch-config", str(launch), *flags]) == 0
     assert (captured["timeout_seconds"], captured["poll_seconds"]) == expected
+
+
+@pytest.mark.parametrize("termination_fails", [False, True])
+def test_ctrl_c_terminates_active_pod_without_traceback(tmp_path, monkeypatch, capsys, termination_fails):
+    from neuralsignal.remote import lifecycle
+    config = tmp_path / "feature.yaml"
+    config.write_text("run:\n  s3_output_uri: s3://test/feature-runs\n")
+    manifest = tmp_path / "manifest.yaml"
+    manifest.write_text("runpod:\n  image: test:latest\n")
+    terminated = []
+    monkeypatch.setattr(lifecycle.DefaultRunPodApi, "launch", lambda *args: {"id": "active-pod"})
+    def terminate(self, pod_id):
+        terminated.append(pod_id)
+        if termination_fails:
+            raise RuntimeError("private API response")
+        return {}
+    def interrupt(*args, **kwargs):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(lifecycle.DefaultRunPodApi, "terminate", terminate)
+    monkeypatch.setattr(lifecycle, "Boto3ObjectStore", lambda **kwargs: object())
+    monkeypatch.setattr(lifecycle, "_wait_for_bundle", interrupt)
+    code = main(["remote", "collect", str(config), "--manifest", str(manifest),
+                 "--run-id", "test", "--terraform-dir", "", "--env-file", ""])
+    assert terminated == ["active-pod"]
+    assert code == (1 if termination_fails else 130)
+    output = capsys.readouterr().err
+    assert "Cancelled" in output and "active-pod" in output
+    assert "Traceback" not in output and "private API response" not in output
+    if termination_fails:
+        assert "could not confirm termination" in output
+    else:
+        assert "Pod active-pod terminated." in output
+
+
+def test_ctrl_c_before_launch_has_no_traceback(monkeypatch, capsys):
+    import importlib
+    cli = importlib.import_module("neuralsignal.cli.main")
+    def interrupt(*args):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(cli, "_main", interrupt)
+    assert cli.main([]) == 130
+    assert capsys.readouterr().err == "Cancelled.\n"
