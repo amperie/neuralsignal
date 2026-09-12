@@ -173,3 +173,4 @@ backend.hcl
 *.tfstate
 *.tfstate.*
 .terraform/
+/runpod.secrets
