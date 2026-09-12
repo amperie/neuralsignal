@@ -4,6 +4,7 @@ import argparse
 import base64
 import json
 import os
+from itertools import islice
 from pathlib import Path
 
 from neuralsignal.config import load_config
@@ -33,6 +34,11 @@ def main() -> None:
     )
     writer = LocalFeatureShardWriter(run_dir, manifest)
     source = _dataset_source(config).iter_examples()
+    max_examples = (config.get("dataset") or {}).get("max_examples")
+    if max_examples is not None:
+        if isinstance(max_examples, bool) or not isinstance(max_examples, int) or max_examples <= 0:
+            raise ValueError("dataset.max_examples must be a positive integer")
+        source = islice(source, max_examples)
     if ((config.get("extraction") or {}).get("mode") or "placeholder") == "model":
         extractor = ModelFeatureExtractor(config)
         collect_features_batched(source, config, writer, extractor.extract_batch)

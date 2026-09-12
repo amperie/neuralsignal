@@ -95,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     remote_collect.add_argument("--train-config", help="Optional S1 training config to run after bundle download.")
     remote_collect.add_argument("--minio-uri", help="Optional MinIO/S3 URI where unpacked datasets and artifacts are mirrored.")
     remote_collect.add_argument("--poll-seconds", type=float, default=30, help="Seconds between S3 completion checks.")
-    remote_collect.add_argument("--timeout-seconds", type=float, help="Maximum seconds to wait for the S3 bundle.")
+    remote_collect.add_argument("--timeout-seconds", type=float, default=1800, help="Maximum seconds to wait for the S3 bundle.")
     remote_collect.add_argument("--dry-run", action="store_true", help="Build and print a redacted RunPod payload without launching.")
     remote_sync = remote_sub.add_parser(
         "sync",

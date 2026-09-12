@@ -21,7 +21,7 @@ WORKDIR /workspace/neuralsignal
 COPY pyproject.toml uv.lock README.md ./
 COPY neuralsignal ./neuralsignal
 
-RUN uv sync --frozen --no-build-isolation
+RUN uv sync --frozen
 
-ENTRYPOINT ["uv", "run", "python", "-m", "neuralsignal.remote.job"]
+ENTRYPOINT ["/workspace/neuralsignal/.venv/bin/python", "-m", "neuralsignal.remote.job"]
 
