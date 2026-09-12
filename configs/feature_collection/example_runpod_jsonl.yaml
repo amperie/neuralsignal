@@ -1,0 +1,81 @@
+run:
+  name: example-runpod-jsonl
+  s3_output_uri: s3://${NEURALSIGNAL_S3_BUCKET}/feature-runs
+
+extraction:
+  mode: model
+
+model:
+  model_name: google/flan-t5-large
+  device: cuda:0
+  quantization: int8
+
+generation:
+  batch_size: 4
+  max_new_tokens: 8
+  truncation_length: 512
+
+prompt:
+  template: |
+    Evaluate the assistant response for the requested behavior.
+
+    User input:
+    {input}
+
+    Assistant output:
+    {output}
+
+instrumentation:
+  instrument_encoder: true
+  instrument_decoder: true
+  instrument_FF: true
+  instrument_attention: true
+  instrument_embedding: false
+  collector_config:
+    mode: additive
+    data_to_save: [outputs, layer_info, topology]
+    zone_size: 512
+    zone_size_by_layer: {}
+    layer_indexes_to_include: []
+    layer_names_to_include: []
+    abort_on_layer_index: 0
+
+dataset:
+  source: jsonl
+  path: /workspace/input/examples.jsonl
+
+features:
+  materialize:
+    - name: zones
+      enabled: true
+      config:
+        target_zone_size:
+          default: 512
+        field_to_process: outputs
+        layer_names_to_include: []
+        layer_indexes_to_include: []
+        output_format: name_and_value_columns
+    - name: layer_distribution
+      enabled: true
+      config:
+        field_to_process: outputs
+        layer_names_to_include: []
+        layer_indexes_to_include: []
+        output_format: name_and_value_columns
+    - name: T-F-diff
+      enabled: false
+      config:
+        field_to_process: outputs
+        layer_names_to_include: []
+        layer_indexes_to_include: []
+        output_format: name_and_value_columns
+    - name: logit-lens
+      enabled: false
+      config:
+        output_format: name_and_value_columns
+
+storage:
+  shard_size_rows: 10000
+  format: parquet
+  compression: zstd
+  save_scans: false

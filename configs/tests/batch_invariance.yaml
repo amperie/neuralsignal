@@ -1,0 +1,47 @@
+test:
+  name: batch_invariance
+  tolerance:
+    absolute: 1.0e-6
+    relative: 1.0e-6
+  sequence_lengths:
+    - 2
+    - 5
+    - 9
+
+scan:
+  layer_order:
+    - l0
+    - l1
+  layer_names:
+    l0: Dense.0
+    l1: Dense.1
+  hidden_size: 4
+
+features:
+  materialize:
+    - name: zones
+      enabled: true
+      config:
+        target_zone_size:
+          default: 1
+        field_to_process: outputs
+        layer_names_to_include:
+          - Dense
+        layer_indexes_to_include: null
+        output_format: name_and_value_columns
+    - name: layer_distribution
+      enabled: true
+      config:
+        layers_to_process:
+          - Dense
+        field_to_process: outputs
+        bin_count: 4
+        output_format: name_and_value_columns
+    - name: T-F-diff
+      enabled: true
+      config:
+        layers_to_process:
+          - Dense
+        dev_map: cpu
+        output_format: name_and_value_columns
+

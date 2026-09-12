@@ -8,16 +8,28 @@ dependencies = [
     "torch",
     "transformers",
     "bitsandbytes",
+    "accelerate",
     "datasets",
+    "boto3",
     "huggingface-hub",
-    "pymongo",
     "pandas",
     "scikit-learn",
-    "xgboost",
-    "hyperopt",
     "mlflow",
     "pygments",
     "pyyaml",
     "tqdm",
     "pytest",
+    "pip>=26.1.1",
+    "setuptools<82",
 ]
+
+[project.scripts]
+ns = "neuralsignal.cli.main:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["neuralsignal*"]
+

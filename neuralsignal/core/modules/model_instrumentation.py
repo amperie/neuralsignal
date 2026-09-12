@@ -60,7 +60,7 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
             bnb_4bit_compute_dtype=torch.bfloat16
             )
 
-        if model_type == "t5":
+        if model_type in {"t5", "longt5"}:
             model = AutoModelForSeq2SeqLM.from_pretrained(
                 model_config["model_name"],
                 device_map=model_config["device"],
@@ -84,7 +84,7 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
             bnb_8bit_compute_dtype=torch.bfloat16
             )
 
-        if model_type == "t5":
+        if model_type in {"t5", "longt5"}:
             model = AutoModelForSeq2SeqLM.from_pretrained(
                 model_config["model_name"],
                 device_map=model_config["device"],
@@ -101,7 +101,7 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
             f"Loaded {model_config['model_name']} in 8 bit quantization")
 
     else:
-        if model_type == "t5":
+        if model_type in {"t5", "longt5"}:
             model = AutoModelForSeq2SeqLM.from_pretrained(
                 model_config["model_name"],
                 device_map=model_config["device"])
@@ -180,26 +180,31 @@ def generate_from_batch(
 
     if batch_size > 1:
         # If batch size>1 we need padding
-        input_ids = tokenizer(
+        encoded = tokenizer(
             input_list, return_tensors="pt",
-            padding=True, truncation=True).input_ids
+            padding=True, truncation=True)
     elif truncation_length == 0:
         # IF batch = 1 then see if we're truncating
-        input_ids = tokenizer(
+        encoded = tokenizer(
             input_list, return_tensors="pt",
-            padding=False, truncation=False).input_ids
+            padding=False, truncation=False)
     else:
-        input_ids = tokenizer(
+        encoded = tokenizer(
             input_list, return_tensors="pt",
             padding=False, truncation=True,
-            max_length=truncation_length).input_ids
+            max_length=truncation_length)
 
+    input_ids = encoded.input_ids
+    attention_mask = getattr(encoded, "attention_mask", torch.ones_like(input_ids))
     if torch.cuda.is_available():
         input_ids = input_ids.to("cuda")
+        attention_mask = attention_mask.to("cuda")
     try:
         input_ids = input_ids.to(model.device)
+        attention_mask = attention_mask.to(model.device)
         output = model.generate(
-            input_ids=input_ids, pad_token_id=tokenizer.eos_token_id,
+            input_ids=input_ids, attention_mask=attention_mask,
+            pad_token_id=tokenizer.eos_token_id,
             max_new_tokens=max_new_tokens
             )
     except NSAbortLLM as e:
@@ -227,7 +232,10 @@ def generate_from_batch(
             "output": decoded_output,
             "model_name": model.name_or_path
         })
-        gi.add_data({"decoded_output": decoded_output})
+        gi.add_data({
+            "decoded_output": decoded_output,
+            "attention_mask": attention_mask[batch_idx].detach().cpu()
+        })
         if model_instrumented:
             data = hc.get_data_by_batch_index(batch_idx)
             # Add data to return value
@@ -282,6 +290,10 @@ def get_model_type(model) -> str:
         model_name = model
     else:
         model_name = model.name_or_path
+    if not isinstance(model, str) and getattr(getattr(model, "config", None), "model_type", None) == "longt5":
+        return "longt5"
+    if "long-t5" in model_name.lower() or "longt5" in model_name.lower():
+        return "longt5"
     if "t5" in model_name:
         return "t5"
     if "deberta" in model_name:
@@ -327,6 +339,8 @@ def instrument_model(cfg, model, hc: Collector) -> list:
     type = get_model_type(model)
     logging.debug(f"Instrumenting model of type: {type}")
 
+    if type == "longt5":
+        return instrument_longt5(cfg, model, hc)
     if type == "t5":
         return instrument_t5(cfg, model, hc)
     if type == "mpnet":
@@ -527,6 +541,82 @@ def instrument_t5(cfg, model, hc: Collector) -> list:
     model.lm_head.ns_name = "decoder.output"
     hc.last_layer = id(model.lm_head)
     return registered_hooks
+
+
+def instrument_longt5(cfg, model, hc: Collector) -> list:
+    """T5-style projections for local/transient-global encoders and decoders.
+
+    Global K/V calls have separate collector identities because they have fewer
+    sequence positions than token K/V calls. All handles, including the reset
+    pre-hooks, are returned for normal deinstrumentation.
+    """
+    from transformers.models.longt5.modeling_longt5 import (
+        LongT5LayerFF, LongT5LayerSelfAttention, LongT5LayerCrossAttention,
+        LongT5LayerLocalSelfAttention, LongT5LayerTransientGlobalSelfAttention,
+    )
+
+    handles = []
+
+    def capture(module, name):
+        module.ns_name = name
+        add_hook(module, hc, handles)
+
+    def capture_global_attention(attention, prefix):
+        calls = {"k": 0, "v": 0}
+
+        def reset(module, args):
+            calls.update(k=0, v=0)
+
+        handles.append(attention.register_forward_pre_hook(reset))
+        capture(attention.q, prefix + ".q")
+        for projection in ("k", "v"):
+            module = getattr(attention, projection)
+            module.ns_name = prefix + "." + projection
+            global_identity = torch.nn.Identity()
+            global_identity.ns_name = prefix + ".global_" + projection
+
+            def collect(module, inputs, output, key=projection, identity=global_identity):
+                target = module if calls[key] == 0 else identity
+                calls[key] += 1
+                hc(target, inputs, output)
+
+            handles.append(module.register_forward_hook(collect))
+        capture(attention.o, prefix + ".o")
+        capture(attention.global_input_layer_norm, prefix + ".global_input_layer_norm")
+
+    for stack_name in ("encoder", "decoder"):
+        if not cfg["instrument_" + stack_name]:
+            continue
+        for block_index, block in enumerate(getattr(model, stack_name).block):
+            for layer in block.layer:
+                prefix = f"{stack_name}.{block._get_name()}.{block_index}.{layer._get_name()}"
+                if isinstance(layer, LongT5LayerFF) and cfg["instrument_FF"]:
+                    dense = layer.DenseReluDense
+                    names = ("wi",) if hasattr(dense, "wi") else ("wi_0", "wi_1")
+                    for name in (*names, "wo", "act"):
+                        capture(getattr(dense, name), prefix + ".DenseReluDense." + name)
+                if not cfg["instrument_attention"]:
+                    continue
+                if isinstance(layer, LongT5LayerTransientGlobalSelfAttention):
+                    capture_global_attention(layer.TransientGlobalSelfAttention, prefix + ".TransientGlobalSelfAttention")
+                    capture(layer.layer_norm, prefix + ".layer_norm")
+                else:
+                    attention_name = None
+                    if isinstance(layer, LongT5LayerLocalSelfAttention):
+                        attention_name = "LocalSelfAttention"
+                    elif isinstance(layer, LongT5LayerSelfAttention):
+                        attention_name = "SelfAttention"
+                    elif isinstance(layer, LongT5LayerCrossAttention):
+                        attention_name = "EncDecAttention"
+                    if attention_name:
+                        attention = getattr(layer, attention_name)
+                        for name in ("q", "k", "v", "o"):
+                            capture(getattr(attention, name), prefix + "." + attention_name + "." + name)
+                        capture(layer.layer_norm, prefix + ".layer_norm")
+    # Like T5, always collect logits so the collector has a terminal layer.
+    capture(model.lm_head, "decoder.output")
+    hc.last_layer = id(model.lm_head)
+    return handles
 
 
 def instrument_bert(cfg, model, hc: Collector) -> list:
@@ -977,3 +1067,5 @@ def instrument_phi3(cfg, model, hc: Collector) -> list:
     model.lm_head.ns_name = "phi3.lm_head"
     hc.last_layer = id(model.lm_head)
     return registered_hooks
+
+

@@ -2,7 +2,7 @@ import torch
 from neuralsignal.core.modules.feature_sets.feature_set_base\
     import FeatureSetBase
 from neuralsignal.core.modules.feature_sets.feature_utils\
-    import is_layer_string_match_in_list
+    import is_layer_string_match_in_list, apply_attention_mask
 import pandas as pd
 from transformers import AutoModelForSeq2SeqLM
 from huggingface_hub import login
@@ -75,6 +75,7 @@ class FeatureSetTrueFalseDiff(FeatureSetBase):
                 # Layer is in the list to process
                 # Get the logits from it by feeding it into the unembed matrix
                 t = scan['outputs'][lyr]
+                t = apply_attention_mask(t, scan.get("attention_mask"))
                 t = t.to(self.dev_map)
                 logits = self.unembed.forward(t)
                 # print(logits.shape)

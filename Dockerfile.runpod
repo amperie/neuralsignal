@@ -1,0 +1,38 @@
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_LINK_MODE=copy
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+        python3 \
+        python3-pip \
+        tmux \
+        openssh-server \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH=/root/.local/bin:${PATH}
+
+WORKDIR /opt/neuralsignal
+# Keep documentation and source edits out of the expensive dependency layer.
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,id=neuralsignal-uv-linux-amd64,target=/root/.cache/uv,sharing=locked \
+    uv sync --frozen --no-install-project
+
+COPY README.md ./
+COPY neuralsignal ./neuralsignal
+RUN --mount=type=cache,id=neuralsignal-uv-linux-amd64,target=/root/.cache/uv,sharing=locked \
+    uv sync --frozen --no-editable
+
+# Entrypoint edits do not require reinstalling the application.
+COPY --chmod=755 scripts/runpod_entrypoint.sh /usr/local/bin/neuralsignal-runpod-entrypoint
+
+EXPOSE 22
+
+ENTRYPOINT ["/usr/local/bin/neuralsignal-runpod-entrypoint"]

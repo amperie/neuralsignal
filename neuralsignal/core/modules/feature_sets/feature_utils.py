@@ -80,3 +80,15 @@ def transform_tensor_dict_into_columns(
 def transform_tensor_dict_into_pandas(
         tensor_dict: dict):
     pass
+
+
+def apply_attention_mask(tensor, attention_mask):
+    """Filter padded token positions from a per-example activation tensor."""
+    if attention_mask is None:
+        return tensor
+    mask = attention_mask
+    if hasattr(mask, "detach"):
+        mask = mask.detach().to(device=tensor.device).bool().flatten()
+    if len(mask) != tensor.shape[0]:
+        return tensor
+    return tensor[mask]
