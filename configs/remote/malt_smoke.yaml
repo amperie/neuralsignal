@@ -1,0 +1,12 @@
+remote_collect:
+  config: configs/feature_collection/smoke_runpod_malt.yaml
+  manifest: configs/runpod_manifest.yaml
+  # Use a new run_id for each run to keep outputs separate.
+  run_id: malt-smoke-20260912-001
+  env_file: .env
+  terraform_dir: infra/terraform/s3-handoff
+  target_dir: runs/remote
+  gpu_vram_gb: 24
+  ssh_key_path: ~/.ssh/id_ed25519
+  poll_seconds: 30
+  timeout_seconds: 1800

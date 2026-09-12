@@ -2,7 +2,7 @@ import torch
 from neuralsignal.core.modules.feature_sets.feature_set_base\
     import FeatureSetBase
 from neuralsignal.core.modules.feature_sets.feature_utils\
-    import is_layer_string_match_in_list
+    import is_layer_string_match_in_list, apply_attention_mask, include_layer
 import pandas as pd
 
 
@@ -43,20 +43,26 @@ class FeatureSetLayerDistribution(FeatureSetBase):
         vals = []
         idx = 0
 
-        layers_to_process = self.config['layers_to_process']
+        layers_to_process = self.config.get('layers_to_process')
         field_to_process = self.config['field_to_process']
-        bin_count = self.config['bin_count']
+        bin_count = self.config.get('bin_count', 10)
 
         for i, lyr in enumerate(scan['layer_order']):
             lyr_name = scan['layer_id_to_name'][lyr]
 
-            if is_layer_string_match_in_list(lyr_name, layers_to_process):
+            selected = (
+                is_layer_string_match_in_list(lyr_name, layers_to_process)
+                if layers_to_process is not None else include_layer(
+                    self.config.get('layer_names_to_include'), lyr_name,
+                    self.config.get('layer_indexes_to_include'), i)
+            )
+            if selected:
                 # Layer is in the list to process
                 if field_to_process == 'deltas':
                     t = scan['outputs'][lyr] - scan['inputs'][lyr]
                 else:
                     t = scan[field_to_process][lyr]
-                # t = t.to(self.dev_map)
+                t = apply_attention_mask(t, scan.get("attention_mask"))
                 # Build feature names for all bins
                 for b in range(bin_count):
                     col_name = f"bin_{b}_{field_to_process}_{lyr_name}_{idx}"

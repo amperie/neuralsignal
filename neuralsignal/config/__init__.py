@@ -1,7 +1,4 @@
-﻿from .loader import ResolvedConfig, default_sdk_config_path, load_sdk_config
+from neuralsignal.config.loader import load_config
 
-__all__ = [
-    "ResolvedConfig",
-    "default_sdk_config_path",
-    "load_sdk_config",
-]
+__all__ = ["load_config"]
+

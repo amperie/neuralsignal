@@ -1,410 +1,139 @@
 # NeuralSignal
 
-**Detect behavioral anomalies in Large Language Model outputs through real-time model instrumentation.**
+NeuralSignal collects judge-model activation features, writes Parquet datasets,
+and trains local binary S1 classifiers. The public SDK wraps a caller-supplied
+inference evaluator. It does not yet load a trained detector automatically.
 
-NeuralSignal is a Python SDK that instruments transformer models at the layer level, captures internal activation patterns during inference, and uses trained classifiers (called **S1 models**) to detect behaviors such as hallucination, toxicity, bias, and identity attacks — without relying on the model's text output alone.
+## Current state
 
----
+The implementation includes the bug-sweep fixes and the XGBoost S1 trainer.
+The September 12, 2026 local verification passed **175 tests**, including real
+small T5/LongT5 CPU models and an XGBoost/MLflow save-load test.
 
-## How It Works
+The latest `malt-smoke-20260912-001` run (pod `1ljc4sl5wudxa3`, collected at
+12:53 local time) passed the int8 CUDA feature smoke checks: eight examples,
+one shard, 1,598 zone features and 5,530 distribution features, all finite, with
+matching bundle/shard checksums. It supersedes the earlier empty run using the
+same ID. It does not establish S1 quality or suitability of the partial smoke
+dataset for training. See [verification and limitations](docs/current-state.md).
 
-NeuralSignal operates on a simple but powerful idea: **an LLM's internal activations reveal more about its behavior than its text output alone**. By attaching hooks to every layer of a transformer model and analyzing the resulting activation patterns, NeuralSignal can classify whether a generation exhibits specific behaviors.
+## Install and test
 
-### Architecture Overview
-
-```mermaid
-graph TB
-    subgraph User Application
-        A[LLM Input/Output Pair] --> B[NeuralSignal SDK]
-    end
-
-    subgraph NeuralSignal SDK
-        B --> C[Prompt Construction]
-        C --> D[Instrumented Model]
-        D --> E[Collector]
-        E --> F[Zone Compression]
-        F --> G[Feature Extraction]
-        G --> H[S1 Classifier]
-        H --> I[Detection Results]
-    end
-
-    subgraph Storage
-        I --> J[(Backend)]
-        J --> K[MongoDB]
-        J --> L[File System]
-        J --> M[MLflow]
-    end
-```
-
-### The Instrumentation Pipeline
-
-The core innovation is the **instrumentation pipeline** — a process that intercepts and records the internal computations of a transformer model as it processes input.
-
-```mermaid
-sequenceDiagram
-    participant App as Application
-    participant SDK as NeuralSignal SDK
-    participant Model as Transformer Model
-    participant Collector as Collector
-    participant S1 as S1 Classifier
-
-    App->>SDK: evaluate_indirect(outputs, ["hallucination"])
-    SDK->>SDK: Build detector-specific prompt
-    SDK->>Model: Register forward hooks on all layers
-    SDK->>Model: model.generate(prompted_input)
-
-    loop For each layer during forward pass
-        Model->>Collector: Hook fires → capture activations
-        Collector->>Collector: Aggregate tensors (additive mode)
-    end
-
-    Model-->>SDK: Generation complete
-    SDK->>Collector: Compress activations into zones
-    Collector-->>SDK: Zoned activation data
-    SDK->>S1: Featurize zones → predict
-    S1-->>SDK: Behavior probability [P(class_0), P(class_1)]
-    SDK-->>App: DetectionResults
-```
-
-### Step 1: Model Instrumentation
-
-NeuralSignal uses [PyTorch forward hooks](https://pytorch.org/docs/stable/generated/torch.nn.Module.register_forward_hook.html) to intercept the input and output tensors of every layer in the model during a forward pass. This is non-destructive — the model's behavior is unchanged, but its internal state is recorded.
-
-For each supported architecture, hooks are attached to specific components:
-
-```mermaid
-graph LR
-    subgraph Transformer Layer
-        direction TB
-        EMB[Embedding Layer]
-        SA[Self-Attention<br/>Q, K, V, O projections]
-        CA[Cross-Attention<br/>Q, K, V, O projections]
-        FF[Feed-Forward<br/>gate, up, down projections]
-        LN[Layer Norms]
-        LH[LM Head]
-    end
-
-    HC[Collector] -->|hook| EMB
-    HC -->|hook| SA
-    HC -->|hook| CA
-    HC -->|hook| FF
-    HC -->|hook| LN
-    HC -->|hook| LH
-
-    style HC fill:#f96,stroke:#333
-```
-
-**Supported model architectures:**
-
-| Architecture | Models | Type |
-|---|---|---|
-| T5 | T5, FLAN-T5 | Encoder-Decoder |
-| LLaMA | LLaMA 2, JudgeLM | Causal LM |
-| Mistral | Mistral-7B | Causal LM |
-| Mixtral | Mixtral-8x7B | Mixture of Experts |
-| Phi | Phi-3 | Causal LM |
-| BERT | BERT | Masked LM |
-| DeBERTa | DeBERTa | Masked LM |
-| MPNet | MPNet | Masked LM |
-
-### Step 2: Activation Collection
-
-The `Collector` class acts as the hook callback. Each time a hook fires, the Collector:
-
-1. **Captures** the input and output tensors of that layer
-2. **Aggregates** them using additive mode — if the same layer fires multiple times (e.g., during autoregressive decoding), the tensors are summed together
-3. **Tracks** layer metadata: execution order, layer names, and pass counts
-
-This produces a complete "scan" — a snapshot of the model's internal state for a given input.
-
-### Step 3: Zone Compression
-
-Raw activation tensors are high-dimensional. NeuralSignal compresses them into fixed-size **zones** using average pooling (`torch.nn.functional.avg_pool1d`). A zone size of 1024 means each layer's activation tensor is reduced to a 1024-dimensional vector regardless of the original size.
-
-```mermaid
-graph LR
-    A["Raw Tensor<br/>[1, 16384]"] -->|avg_pool1d<br/>kernel=16| B["Zoned Tensor<br/>[1, 1024]"]
-    C["Raw Tensor<br/>[1, 4096]"] -->|avg_pool1d<br/>kernel=4| D["Zoned Tensor<br/>[1, 1024]"]
-
-    style A fill:#fdd,stroke:#333
-    style C fill:#fdd,stroke:#333
-    style B fill:#dfd,stroke:#333
-    style D fill:#dfd,stroke:#333
-```
-
-Zone sizes can be configured globally or per-layer, and layers can be selectively included or excluded.
-
-### Step 4: Feature Extraction & Classification
-
-The zoned activations are converted into a flat feature vector and fed into an **S1 model** — an XGBoost binary classifier trained to detect a specific behavior. Each detector has its own S1 model, its own prompt template, and its own classification threshold.
-
-```mermaid
-graph LR
-    subgraph Feature Extraction
-        Z1[Layer 1 Zones] --> FV
-        Z2[Layer 2 Zones] --> FV
-        Z3[Layer N Zones] --> FV[Flat Feature Vector]
-    end
-
-    FV --> XGB[XGBoost S1 Model]
-    XGB --> P["P(behavior) = 0.87"]
-
-    style XGB fill:#bbf,stroke:#333
-    style P fill:#ffd,stroke:#333
-```
-
-Available feature extraction strategies:
-- **Zones** — Pooled activation values per layer
-- **Tuned Lens** — Intermediate logit-space projections
-- **Logit Lens** — Direct logit-space analysis
-- **Layer Distributions** — Statistical distribution of activation values
-- **Delta Features** — Differences between input and output activations
-
-### Step 5: Detection
-
-The S1 model outputs a probability for each class. The result is returned as a `DetectionResults` object containing the behavior name, probability score, and optional threshold-based binary judgment.
-
----
-
-## Indirect vs Direct Evaluation
-
-NeuralSignal supports two evaluation modes:
-
-| Mode | How it works | Status |
-|---|---|---|
-| **Indirect** | Takes an existing LLM input/output pair, re-processes it through an instrumented "probe" model (e.g., FLAN-T5) with a behavior-specific prompt, and classifies the probe model's activations | Implemented |
-| **Direct** | Wraps the actual generation call, instrumenting the production model in real-time | Planned |
-
-In indirect mode, NeuralSignal doesn't need access to the original LLM. It uses a smaller instrumented model as a behavioral probe — the idea being that the probe model's internal activations when processing the original Q&A pair will reveal patterns indicative of the behavior being tested.
-
----
-
-## Project Structure
-
-```
-neuralsignal/
-├── sdk/
-│   ├── neuralsignal.py              # SDK class — main entry point
-│   └── neuralsignal_sdk.yaml        # Default configuration
-├── core/
-│   ├── modules/
-│   │   ├── model_instrumentation.py # Hook registration per architecture
-│   │   ├── collector.py             # Activation capture & aggregation
-│   │   ├── detector.py              # Behavior detector (wraps S1 model)
-│   │   ├── tensors.py               # Zone compression & featurization
-│   │   ├── s1_model.py              # S1 classifier wrapper
-│   │   ├── generation_instance.py   # Container for scan data
-│   │   ├── prompting.py             # Prompt template engine
-│   │   ├── neuralsignal_config.py   # Configuration management
-│   │   └── feature_sets/            # Feature extraction strategies
-│   │       ├── feature_set_zones.py
-│   │       ├── feature_set_tuned_lens.py
-│   │       └── feature_set_logit_lens.py
-│   └── exceptions/
-│       └── NSAbortLLM.py            # Early-stop exception
-├── backend/
-│   ├── ns_backend.py                # Backend abstraction
-│   ├── mongo_backend.py             # MongoDB storage
-│   ├── file_backend.py              # Pickle file storage
-│   └── ns_be_impl_v1.py             # NeuralSignal native backend
-├── datasets/
-│   ├── dataset.py                   # HuggingFace dataset wrapper
-│   ├── dataset_definitions.py       # Pre-configured datasets
-│   ├── dataset_runner.py            # Batch data collection
-│   ├── dataset_creator.py           # Build training CSVs from scans
-│   └── s1_trainer.py                # XGBoost S1 model training
-└── automation/
-    ├── dataset_automation_core.py   # End-to-end pipeline orchestration
-    └── *.yaml                       # Pipeline configurations
-```
-
----
-
-## Quick Start
-
-### Installation
+On macOS, install XGBoost’s OpenMP runtime once with `brew install libomp`.
+Run commands from the repository root:
 
 ```bash
-pip install torch transformers datasets pymongo bitsandbytes mlflow xgboost hyperopt scikit-learn pandas pygments pyyaml
+uv sync --frozen
+uv run ns --help
+uv run pytest neuralsignal/tests -q
 ```
 
-### Basic Usage — Detect Hallucinations
+## Collect features
+
+For local JSONL collection:
+
+```bash
+uv run ns dataset import jsonl data/examples.jsonl
+uv run ns features collect-local configs/feature_collection/example_runpod_jsonl.yaml --input-jsonl data/examples.jsonl --out runs/local/example
+```
+
+Supply your own input file. The example collection config uses CUDA and int8;
+change its model settings for a different environment. JSONL rows use:
+
+```json
+{"id":"example-1","input":"question","output":"response","labels":["sabotage"],"metadata":{}}
+```
+
+Collection preserves `labels` as `labels_json`; it does not create a numeric
+training target from that list. Generic S1 training needs a numeric 0/1 target
+column prepared separately. MALT sample collection has its own run-label pooling
+path. See [datasets](specs/dataset-imports.md) and [training](specs/local-s1-mlflow.md).
+
+Use a fresh output directory. Existing feature shards are rejected to prevent
+mixing runs. Set `extraction.mode: model` for activation features; omitted mode
+means `placeholder`, which writes character counts for pipeline testing.
+
+## RunPod smoke test
+
+Prepare local credentials using [.env.example](.env.example) and the
+[Terraform setup](infra/terraform/s3-handoff/README.md). Local S3 credentials and
+worker credentials are configured separately; see [required secrets](specs/required-secrets.md).
+
+Publish an image containing the current code before launching. With Docker
+running and GHCR access configured:
+
+```bash
+docker login ghcr.io -u YOUR_GITHUB_USERNAME
+bash scripts/build_runpod_image.sh
+docker run --rm --pull always --platform linux/amd64 ghcr.io/amperie/neuralsignal-runpod-base:latest --help
+```
+
+The build script pushes Linux AMD64 by default. The PowerShell equivalent is
+`scripts/build_runpod_image.ps1`. A manual GitHub workflow is also available;
+see [image publishing](specs/runpod-image.md). Select the intended current
+branch; source edits are baked into the image, not fetched at pod startup.
+
+Inspect the launch configuration, then launch using a fresh run ID:
+
+```bash
+uv run ns remote collect configs/remote/malt_smoke.yaml --run-id YOUR_NEW_RUN_ID --dry-run
+uv run ns remote collect configs/remote/malt_smoke.yaml --run-id YOUR_NEW_RUN_ID
+```
+
+Replace `YOUR_NEW_RUN_ID` before running. The launch YAML requests a GPU near
+24 GB VRAM, an eight-example limit, and a 30-minute timeout. GPU selection may
+prompt even on dry-run. `--yes` chooses the cheapest priced match; `--gpu-id`
+selects an exact GPU. CLI options override launch YAML values.
+
+Keep the local command running. It waits for `bundle.zip` and its checksum,
+attempts pod termination, downloads and verifies the bundle, deletes the remote
+handoff objects, then extracts locally. Results go under `runs/remote/<run-id>`.
+This smoke config does not request MinIO mirroring or S1 training, so
+`training_metrics: null` is expected. For acceptance, check for eight written
+rows, actual Parquet shards, and both enabled feature prefixes; handoff success
+alone does not validate features.
+
+Add a public SSH key to the RunPod account before launch. The launcher prints
+the SSH command when an endpoint appears; inside the pod use `tmux attach -t ns`.
+Set `--ssh-key-path` for a different private key. Worker logs are at
+`/workspace/neuralsignal-runs/<run-id>/runpod.log`; local polling does not stream
+them. See [lifecycle and recovery](specs/remote-feature-collection-workflow.md).
+
+## Train S1 locally
+
+Set `dataset.path` in [the training config](configs/training/sabotage_s1.yaml)
+to a complete local feature dataset, then run:
+
+```bash
+uv run ns train s1 configs/training/sabotage_s1.yaml
+```
+
+The trainer uses XGBoost, a stratified 75/25 split, and threshold
+0.5. The training config logs metrics and the XGBoost model to
+`http://z440.lan:5000`; this host must be reachable from the training machine. MALT training pools completions into samples
+and samples into runs before splitting; partial smoke-test runs are unsuitable
+for training. MinIO data must first be downloaded to a local path.
+
+## Public SDK
 
 ```python
-from neuralsignal.sdk.neuralsignal import SDK
+from neuralsignal import NeuralSignal
 
-# Initialize the SDK
-sdk = SDK(
-    application_name="my_app",
-    sub_application_name="hallucination_check"
-)
-
-# Define LLM outputs to evaluate
-outputs = [
-    {
-        "input": "What is the capital of France?",
-        "output": "The capital of France is Berlin.",
-        "context": "France is a country in Western Europe. Its capital is Paris.",
-    }
-]
-
-# Run hallucination detection
-results = sdk.evaluate_indirect(outputs, ["hallucination"])
-
-# Inspect results
-for result in results:
-    for detection in result.detections:
-        print(f"Behavior: {detection.behavior_name}")
-        print(f"Score: {detection.score}")
+# my_evaluator(examples, detectors) must return one score row per example.
+ns = NeuralSignal(detectors=["sabotage"], evaluator=my_evaluator)
+result = ns.evaluate("question", "response")
+print(result.to_json())
 ```
 
-### Using Detector Objects Directly
+`my_evaluator` is application-provided. See the [SDK contract](specs/sdk-public-surface.md).
 
-```python
-from neuralsignal.sdk.neuralsignal import SDK
-from neuralsignal.core.modules.detector import Detector
+## Documentation
 
-sdk = SDK(
-    application_name="my_app",
-    sub_application_name="multi_check"
-)
-
-# Build detector objects with custom configuration
-detectors = [
-    Detector({
-        "behavior_name": "hallucination",
-        "S1_model_path": "runs:/your_model_run_id/S1",
-        "prompt": "Is this answer correct? Question: {input} Answer: {output} Context: {context}",
-        "enabled": True,
-        "application_name": "my_app",
-        "sub_application_name": "multi_check",
-    })
-]
-
-outputs = [{"input": "...", "output": "...", "context": "..."}]
-results = sdk.evaluate_indirect_output(outputs, detectors)
-```
-
-### Custom Configuration
-
-```python
-sdk = SDK(
-    application_name="my_app",
-    sub_application_name="my_subapp",
-    config={
-        "evaluation_mode": "indirect",
-        "save_scans": False,
-        "max_new_tokens": 1,
-        "indirect_config": {
-            "indirect_model": "google/flan-t5-large",
-            "quantization": "int8",  # Use 8-bit quantization to save VRAM
-            "device": "auto",
-        },
-    }
-)
-```
-
----
-
-## Training Your Own S1 Models
-
-The full pipeline to train a behavior detector:
-
-```mermaid
-graph LR
-    A[Dataset<br/>with labels] --> B[Data Collection<br/>Run through SDK]
-    B --> C[Scans<br/>Saved to Backend]
-    C --> D[Dataset Creator<br/>Featurize scans into CSV]
-    D --> E[S1 Trainer<br/>XGBoost + Hyperopt]
-    E --> F[Trained S1 Model<br/>Saved to MLflow]
-
-    style A fill:#ffd,stroke:#333
-    style F fill:#dfd,stroke:#333
-```
-
-### 1. Collect Scans
-
-```python
-from neuralsignal.datasets.dataset_runner import DatasetRunner
-
-runner = DatasetRunner(config={
-    "application_name": "training",
-    "sub_application_name": "hallucination_v1",
-    "dataset_name": "halubench",
-    # ... additional config
-})
-runner.run()
-```
-
-### 2. Create Training Dataset
-
-```python
-from neuralsignal.datasets.dataset_creator import DatasetCreator
-
-creator = DatasetCreator(config={
-    "application_name": "training",
-    "sub_application_name": "hallucination_v1",
-    # feature set configuration
-})
-creator.create_dataset()
-```
-
-### 3. Train S1 Model
-
-```python
-from neuralsignal.datasets.s1_trainer import S1Trainer
-
-trainer = S1Trainer({
-    "application_name": "training",
-    "sub_application_name": "hallucination_v1",
-    "model_name": "hallucination_detector_v1",
-    "dataset_path": "path/to/training_data.csv",
-    "optimization_metric": "auc",
-    "max_evals": 50,
-    "device": "cuda",
-})
-model = trainer.train_model()
-```
-
-The trainer uses **Hyperopt** for Bayesian hyperparameter optimization over XGBoost parameters (`max_depth`, `reg_lambda`, `max_bin`, `n_estimators`) and reports accuracy, AUC, F1, precision, recall, and log loss on both train and test splits.
-
----
-
-## Configuration Reference
-
-The SDK is configured via `neuralsignal_sdk.yaml`. Key settings:
-
-| Setting | Description | Default |
-|---|---|---|
-| `evaluation_mode` | `indirect` or `direct` | `indirect` |
-| `indirect_config.indirect_model` | HuggingFace model used as the probe | `google/flan-t5-large` |
-| `indirect_config.quantization` | `no_quantization`, `int8`, or `int4` | `no_quantization` |
-| `indirect_config.device` | PyTorch device | `auto` |
-| `max_new_tokens` | Max tokens to generate during probe | `1` |
-| `save_scans` | Persist scans to backend | `True` |
-| `use_dynamic_batch_size` | Auto-reduce batch size on OOM | `True` |
-| `max_oom_count` | OOM retries before SDK disables itself | `20` |
-| `zone_size` | Default activation compression size | `1024` |
-| `backend_config.backend_type` | `neuralsignal_v1`, `mongo`, or `file` | `neuralsignal_v1` |
-
----
-
-## Requirements
-
-- Python 3.10+
-- PyTorch
-- Transformers (HuggingFace)
-- XGBoost
-- scikit-learn
-- Hyperopt
-- pandas
-- PyYAML
-- pymongo (for MongoDB backend)
-- bitsandbytes (for quantization)
-- MLflow (for model tracking)
-
----
-
-## License
-
-See [LICENSE](LICENSE) for details.
+- [Current state and validation](docs/current-state.md)
+- [Architecture](specs/v2-architecture.md) and [migration status](specs/migration-plan.md)
+- [CLI reference](specs/cli-contract.md) and [configuration](specs/configuration.md)
+- [MALT monitoring](docs/malt_agent_monitoring_plan.md) and [dataset adapters](specs/dataset-imports.md)
+- [Feature schema](specs/feature-schema.md), [manifest](specs/run-manifest.md), [padding](specs/padding-aware-batching.md), [LongT5](specs/longt5-instrumentation.md)
+- [Remote workflow](specs/remote-feature-collection-workflow.md), [provider reference](specs/runpod-orchestration-reference.md), [image](specs/runpod-image.md), [storage](specs/s3-minio-storage.md)
+- [Training and MLflow](specs/local-s1-mlflow.md), [evaluation](specs/s1-evaluation.md), [tests](specs/testing-strategy.md)
+- [Secrets](specs/required-secrets.md), [security](specs/security-and-secrets.md), [Terraform resources](specs/terraform-s3-handoff.md)

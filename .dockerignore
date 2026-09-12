@@ -1,0 +1,13 @@
+.git
+.idea
+.venv
+logs
+runs
+notebooks
+*.secrets
+.env
+.env.*
+pytest-cache-files-*
+.pytest_cache
+__pycache__
+*.pyc

@@ -1,0 +1,18 @@
+runpod:
+  image: ghcr.io/amperie/neuralsignal-runpod-base:latest
+  container_registry_auth_id: null
+  cloud_type: SECURE
+  gpu_count: 1
+  gpu_type_ids:
+    - NVIDIA GeForce RTX 4090
+  volume_gb: 75
+  volume_mount_path: /workspace
+  poll_seconds: 30
+  timeout_minutes: 0
+  terminate_on_exit: true
+
+env:
+  HF_HOME: /workspace/cache/huggingface
+  TRANSFORMERS_CACHE: /workspace/cache/huggingface
+  NEURALSIGNAL_RUN_WORKDIR: /workspace/neuralsignal-runs
+

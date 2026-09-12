@@ -42,10 +42,7 @@ class Collector:
         # Configuration variables
         self.mode = self.config['mode']
         self.data_to_save = self.config['data_to_save']
-        if "zone_size_by_layer" in self.config:
-            self.zone_size = self.config['zone_size_by_layer']['default']
-        else:
-            self.zone_size = self.config['zone_size']
+        self.zone_size = self.config['zone_size_by_layer'].get('default', self.config['zone_size'])
         self.abort_on_layer_index = self.config['abort_on_layer_index']
         self.curr_layer_index = 0
 
@@ -144,7 +141,7 @@ class Collector:
             if "inputs" in self.data_to_save:
                 retVal["inputs"] = {}
                 for batch_idx in range(self.batch_size):
-                    if not zones_by_layer:
+                    if not zones_by_layer and not layer_indexes_to_include and not layer_names_to_include:
                         # We are not doing different zone size per layer
                         rv = process_tensor_dict_into_zones(
                             self.inputs[batch_idx],
@@ -174,7 +171,7 @@ class Collector:
             if "outputs" in self.data_to_save:
                 retVal["outputs"] = {}
                 for batch_idx in range(self.batch_size):
-                    if not zones_by_layer:
+                    if not zones_by_layer and not layer_indexes_to_include and not layer_names_to_include:
                         # We are not doing different zone size per layer
                         rv = process_tensor_dict_into_zones(
                             self.outputs[batch_idx],
@@ -206,9 +203,8 @@ class Collector:
             raise NotImplementedError("Only additive mode is supported")
 
         if "topology" in self.data_to_save:
-            self.topology = [
-                list(self.outputs[0][key].shape) for key in self.outputs[0]
-                ]
+            topology_data = self.outputs if "outputs" in self.data_to_save else self.inputs
+            self.topology = [list(value.shape) for value in topology_data[0].values()]
             retVal["topology"] = self.topology
 
         if "layer_info" in self.data_to_save:
