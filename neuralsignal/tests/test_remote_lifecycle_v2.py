@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from neuralsignal.remote.lifecycle import remote_collect_lifecycle
+from neuralsignal.remote.runpod import RunPodGpuType
 from neuralsignal.storage.bundle import create_bundle, upload_bundle
 
 
@@ -29,6 +30,7 @@ class FakeRunPod:
     def __init__(self):
         self.payload = None
         self.terminated = []
+        self.gpu_queries = []
 
     def launch(self, payload: dict) -> dict:
         self.payload = payload
@@ -37,6 +39,14 @@ class FakeRunPod:
     def terminate(self, pod_id: str) -> dict:
         self.terminated.append(pod_id)
         return {"id": pod_id}
+
+    def list_gpu_types(self, gpu_count: int, secure_cloud: bool) -> list[RunPodGpuType]:
+        self.gpu_queries.append((gpu_count, secure_cloud))
+        return [
+            RunPodGpuType("NVIDIA GeForce RTX 3080", "RTX 3080", 10, "High", 0.10, (1,)),
+            RunPodGpuType("NVIDIA GeForce RTX 4090", "RTX 4090", 24, "High", 0.40, (1,)),
+            RunPodGpuType("NVIDIA A40", "A40", 48, "High", 0.20, (1,)),
+        ]
 
 
 def test_remote_collect_lifecycle_downloads_deletes_unpacks_and_uploads_minio(tmp_path):
@@ -107,6 +117,54 @@ def test_remote_collect_dry_run_redacts_payload(tmp_path):
     assert result["bundle_uri"] == "s3://handoff/feature-runs/run-1/bundle.zip"
     assert result["payload"]["env"]["HF_TOKEN"] == "<redacted>"
 
+
+
+def test_remote_collect_dry_run_selects_gpu_within_requested_vram_window(tmp_path, monkeypatch):
+    feature_config = tmp_path / "feature.yaml"
+    feature_config.write_text("run:\n  s3_output_uri: s3://handoff/feature-runs\n", encoding="utf-8")
+    runpod_manifest = tmp_path / "runpod.yaml"
+    runpod_manifest.write_text("runpod:\n  image: image:latest\n  gpu_count: 1\n  cloud_type: SECURE\n", encoding="utf-8")
+    runpod = FakeRunPod()
+    monkeypatch.setattr("builtins.input", lambda _: "1")
+
+    result = remote_collect_lifecycle(
+        feature_config,
+        runpod_manifest,
+        "run-1",
+        tmp_path,
+        env_file=None,
+        terraform_dir=None,
+        dry_run=True,
+        runpod_api=runpod,
+        gpu_vram_gb=24,
+    )
+
+    assert runpod.gpu_queries == [(1, True)]
+    assert result["payload"]["gpuTypeIds"] == ["NVIDIA GeForce RTX 4090"]
+    assert result["payload"]["gpuTypePriority"] == "custom"
+
+
+def test_remote_collect_dry_run_accepts_explicit_gpu_id(tmp_path):
+    feature_config = tmp_path / "feature.yaml"
+    feature_config.write_text("run:\n  s3_output_uri: s3://handoff/feature-runs\n", encoding="utf-8")
+    runpod_manifest = tmp_path / "runpod.yaml"
+    runpod_manifest.write_text("runpod:\n  image: image:latest\n", encoding="utf-8")
+    runpod = FakeRunPod()
+
+    result = remote_collect_lifecycle(
+        feature_config,
+        runpod_manifest,
+        "run-1",
+        tmp_path,
+        env_file=None,
+        terraform_dir=None,
+        dry_run=True,
+        runpod_api=runpod,
+        gpu_id="NVIDIA A40",
+    )
+
+    assert runpod.gpu_queries == []
+    assert result["payload"]["gpuTypeIds"] == ["NVIDIA A40"]
 
 
 def test_remote_collect_interrupt_terminates_and_requires_bundle(tmp_path):

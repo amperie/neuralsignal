@@ -28,6 +28,8 @@ def test_remote_collect_help_lists_lifecycle_options(capsys):
     assert "--terraform-dir" in output
     assert "--minio-uri" in output
     assert "--train-config" in output
+    assert "--gpu-vram-gb" in output
+    assert "--gpu-id" in output
 
 
 def test_dataset_import_jsonl_reports_rows(tmp_path, capsys):
@@ -75,6 +77,7 @@ remote_collect:
   manifest: {manifest.as_posix()}
   run_id: run-1
   terraform_dir: ""
+  gpu_id: NVIDIA GeForce RTX 4090
 """, encoding="utf-8")
 
     assert main(["remote", "collect", str(launch), "--dry-run"]) == 0
@@ -82,6 +85,7 @@ remote_collect:
     output = json.loads(capsys.readouterr().out)
     assert output["payload"]["name"] == "neuralsignal-run-1"
     assert output["bundle_uri"] == "s3://handoff/feature-runs/run-1/bundle.zip"
+    assert output["payload"]["gpuTypeIds"] == ["NVIDIA GeForce RTX 4090"]
 
 def test_remote_collect_dry_run_redacts_secrets(tmp_path, capsys):
     config = tmp_path / "feature.yaml"

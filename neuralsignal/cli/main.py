@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
+import os
 from pathlib import Path
 
 from neuralsignal.config import load_config
@@ -17,6 +19,7 @@ from neuralsignal.training import train_s1
 
 
 def main(argv: list[str] | None = None) -> int:
+    _configure_logging()
     parser = argparse.ArgumentParser(
         prog="ns",
         description="NeuralSignal v2 tools for dataset import, feature collection, remote RunPod jobs, and local S1 training.",
@@ -95,6 +98,8 @@ def main(argv: list[str] | None = None) -> int:
     remote_collect.add_argument("--target-dir", help="Local directory where the downloaded bundle is unpacked.")
     remote_collect.add_argument("--train-config", help="Optional S1 training config to run after bundle download.")
     remote_collect.add_argument("--minio-uri", help="Optional MinIO/S3 URI where unpacked datasets and artifacts are mirrored.")
+    remote_collect.add_argument("--gpu-vram-gb", type=int, help="Minimum GPU VRAM in GB; available matching RunPod GPUs are shown for selection.")
+    remote_collect.add_argument("--gpu-id", help="Exact RunPod GPU id to request, bypassing interactive GPU selection.")
     remote_collect.add_argument("--poll-seconds", type=float, default=30, help="Seconds between S3 completion checks.")
     remote_collect.add_argument("--timeout-seconds", type=float, help="Maximum seconds to wait for the S3 bundle.")
     remote_collect.add_argument("--dry-run", action="store_true", help="Build and print a redacted RunPod payload without launching.")
@@ -116,6 +121,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "remote":
         return _remote(args)
     return 1
+
+
+def _configure_logging() -> None:
+    level = os.environ.get("NEURALSIGNAL_LOG_LEVEL", "INFO").upper()
+    logging.basicConfig(
+        level=getattr(logging, level, logging.INFO),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
 
 
 def _dataset_import(args) -> int:
@@ -173,6 +186,8 @@ def _remote(args) -> int:
         poll_seconds=options["poll_seconds"],
         timeout_seconds=options["timeout_seconds"],
         dry_run=options["dry_run"],
+        gpu_vram_gb=options["gpu_vram_gb"],
+        gpu_id=options["gpu_id"],
     )
     print(json.dumps(result if isinstance(result, dict) else result.__dict__, indent=2, sort_keys=True))
     return 0
@@ -190,6 +205,8 @@ def _remote_collect_options(args) -> dict:
         "train_config": None,
         "minio_uri": None,
         "timeout_seconds": None,
+        "gpu_vram_gb": None,
+        "gpu_id": None,
     }
     launch = {}
     config = args.config

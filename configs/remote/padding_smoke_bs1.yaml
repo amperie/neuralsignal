@@ -7,4 +7,5 @@ remote_collect:
   target_dir: runs/remote
   minio_uri: s3://neuralsignal-datasets/padding-smoke-bs1-20260911
   train_config: configs/training/sabotage_s1.yaml
+  gpu_vram_gb: 24
   timeout_seconds: 7200
