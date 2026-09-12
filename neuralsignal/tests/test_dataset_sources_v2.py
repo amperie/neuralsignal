@@ -79,7 +79,7 @@ def test_source_factory_builds_malt_source():
     from neuralsignal.datasets.sources.factory import source_from_config
     from neuralsignal.datasets.sources.malt import MaltTranscriptSource
 
-    source = source_from_config({"dataset": {"source": "malt", "split": "transcripts", "config_name": "default"}})
+    source = source_from_config({"dataset": {"source": "malt_transcripts", "split": "transcripts", "config_name": "default"}})
 
     assert isinstance(source, MaltTranscriptSource)
     assert source.name == "metr-evals/malt-transcripts-public"
@@ -164,15 +164,16 @@ def test_malt_default_split_and_real_row_loading(monkeypatch):
 
     monkeypatch.setattr(hf, "_load_dataset", fake_load_dataset)
     assert MaltTranscriptSource().split == "transcripts"
-    source = source_from_config({"dataset": {"source": "malt"}})
+    source = source_from_config({"dataset": {"source": "malt_transcripts"}})
     assert list(source.iter_examples())[0].output == "persimmoniously"
 
 
 @pytest.mark.parametrize("filename", ["smoke_runpod_malt.yaml", "example_runpod_malt.yaml"])
-def test_malt_runpod_configs_use_transcripts_split(filename):
+def test_malt_runpod_configs_use_public_split(filename):
     import yaml
     from neuralsignal.datasets.sources.factory import source_from_config
 
     path = Path(__file__).resolve().parents[2] / "configs" / "feature_collection" / filename
     config = yaml.safe_load(path.read_text())
-    assert source_from_config(config).split == "transcripts"
+    assert source_from_config(config).split == "public"
+    assert source_from_config(config).name == "metr-evals/malt-public"
