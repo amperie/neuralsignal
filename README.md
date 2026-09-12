@@ -291,3 +291,38 @@ Interactive terminals show GPU models in cyan and prices in green. Logs use dim
 timestamps and source names, with subtle level colors (cyan for info, yellow for
 warnings, red for errors). Redirected output and worker log files stay plain;
 set `NO_COLOR=1` to disable terminal colors.
+
+## Manual GitHub image build
+
+The workflow `.github/workflows/build-runpod-image.yml` builds `Dockerfile.runpod`
+on a Linux AMD64 GitHub-hosted runner and pushes to
+`ghcr.io/amperie/neuralsignal-runpod-base`. It runs only when triggered manually,
+and publishes both `latest` and `sha-<full-commit-sha>`. Its run summary includes
+the image digest. The selected branch's committed code is built; local edits
+are not included. Every successful run updates `latest`, including branch runs.
+
+Setup:
+
+1. Commit and push the workflow. It must also exist on the repository's default
+   branch (`main`) for GitHub to display the manual run button. Select
+   `codex/v2-refactor` when running if that is the code you want to build.
+2. Ensure repository Actions settings allow GitHub's checkout action and Docker's
+   login, Buildx, and build/push actions.
+3. For the existing GHCR package, open **Package settings → Manage Actions access**,
+   add `amperie/neuralsignal`, and grant **Write** access if it does not already
+   have it. The workflow requests `contents: read` and `packages: write`.
+4. Open **Actions → Build and publish RunPod image → Run workflow**, select the
+   branch, and run it.
+
+No custom GitHub secrets are required. The workflow authenticates using the
+short-lived `GITHUB_TOKEN` supplied automatically by GitHub. Do not upload
+RunPod, AWS, Hugging Face, or SSH private keys for this image build; those are
+runtime settings. No Docker Hub account or token is required.
+
+For RunPod to pull the image, make the GHCR package public or configure a
+RunPod registry credential with read access and set `container_registry_auth_id`
+in the pod manifest. Image publication does not change package visibility.
+
+References: [GitHub image publishing](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images),
+[manual workflows](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow),
+[package access](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility).
