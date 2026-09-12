@@ -240,3 +240,14 @@ bundle is ready, on interruption, or after the timeout. Keep the local command
 running until it finishes. The timeout includes model and dataset loading.
 This smoke test does not invoke MinIO or S1 training. Local tests and a dry-run
 do not verify GPU execution; that requires the published image and a real pod.
+
+Remote launch YAMLs under `configs/remote/` can also be passed directly to
+`ns remote collect`, or supplied with `--launch-config`. Explicit command-line
+options override launch YAML values; otherwise the fallback timeout is 1800
+seconds and the polling interval is 30 seconds. For repeat runs, override the
+sample YAML's fixed `run_id` with a fresh `--run-id`.
+
+The image stores code and its environment under `/opt/neuralsignal`, leaving
+`/workspace` for caches and run outputs. Its entrypoint forwards worker arguments,
+runs collection in a tmux session, streams logs, and returns the worker's exit
+code. `--help` runs directly without starting a tmux session.

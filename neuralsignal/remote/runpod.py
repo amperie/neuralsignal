@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,16 @@ class RunPodJob:
     run_id: str
     config: dict[str, Any]
     manifest: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class RunPodGpuType:
+    id: str
+    display_name: str
+    memory_gb: int
+    stock_status: str
+    price_per_hour: float | None
+    available_gpu_counts: tuple[int, ...]
 
 
 def build_job(config_path: str | Path, run_id: str, manifest_path: str | Path) -> RunPodJob:
@@ -41,12 +52,14 @@ def build_pod_payload(job: RunPodJob, secrets: dict[str, str] | None = None) -> 
         "volumeMountPath": runpod.get("volume_mount_path", "/workspace"),
         "env": env,
         "dockerStartCmd": ["--run-id", job.run_id],
-        "cloudType": runpod.get("cloud_type", "SECURE"),
         "computeType": "GPU",
+        "cloudType": runpod.get("cloud_type", "SECURE"),
     }
-
+    if runpod.get("cloud_type"):
+        payload["cloudType"] = runpod["cloud_type"]
     if runpod.get("gpu_type_ids"):
         payload["gpuTypeIds"] = list(runpod["gpu_type_ids"])
+        payload["gpuTypePriority"] = runpod.get("gpu_type_priority", "custom")
     if runpod.get("container_registry_auth_id"):
         payload["containerRegistryAuthId"] = runpod["container_registry_auth_id"]
     return payload
@@ -70,12 +83,16 @@ def api(method: str, path: str, token: str, body: dict[str, Any] | None = None) 
     request = urllib.request.Request(
         f"https://rest.runpod.io/v1{path}",
         data=json.dumps(body).encode("utf-8") if body is not None else None,
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json", "User-Agent": "neuralsignal-runpod-client/0.1"},
         method=method,
     )
-    with urllib.request.urlopen(request, timeout=60) as response:
-        body = response.read().decode("utf-8")
-        return json.loads(body) if body.strip() else {}
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            response_body = response.read().decode("utf-8")
+            return json.loads(response_body) if response_body.strip() else {}
+    except urllib.error.HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"RunPod API {method} {path} failed with HTTP {error.code}: {body}") from error
 
 
 def launch(payload: dict[str, Any], token: str | None = None) -> dict[str, Any]:
@@ -84,6 +101,54 @@ def launch(payload: dict[str, Any], token: str | None = None) -> dict[str, Any]:
 
 def terminate(pod_id: str, token: str | None = None) -> dict[str, Any]:
     return api("DELETE", f"/pods/{pod_id}", token or _runpod_token())
+
+
+def list_gpu_types(gpu_count: int = 1, secure_cloud: bool = True, token: str | None = None) -> list[RunPodGpuType]:
+    query = """
+    query GpuTypes($gpuCount: Int!, $secureCloud: Boolean!) {
+      gpuTypes {
+        id
+        displayName
+        memoryInGb
+        lowestPrice(input: {gpuCount: $gpuCount, secureCloud: $secureCloud}) {
+          stockStatus
+          uninterruptablePrice
+          availableGpuCounts
+        }
+      }
+    }
+    """
+    response = graphql(query, {"gpuCount": gpu_count, "secureCloud": secure_cloud}, token or _runpod_token())
+    gpus = []
+    for item in ((response.get("data") or {}).get("gpuTypes") or []):
+        price = item.get("lowestPrice") or {}
+        gpus.append(RunPodGpuType(
+            id=str(item["id"]),
+            display_name=str(item.get("displayName") or item["id"]),
+            memory_gb=int(item.get("memoryInGb") or 0),
+            stock_status=str(price.get("stockStatus") or "None"),
+            price_per_hour=price.get("uninterruptablePrice"),
+            available_gpu_counts=tuple(int(count) for count in (price.get("availableGpuCounts") or ())),
+        ))
+    return gpus
+
+
+def graphql(query: str, variables: dict[str, Any], token: str) -> dict[str, Any]:
+    request = urllib.request.Request(
+        "https://api.runpod.io/graphql",
+        data=json.dumps({"query": query, "variables": variables}).encode("utf-8"),
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json", "User-Agent": "neuralsignal-runpod-client/0.1"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"RunPod GraphQL failed with HTTP {error.code}: {body}") from error
+    if result.get("errors"):
+        raise RuntimeError(f"RunPod GraphQL failed: {result['errors']}")
+    return result
 
 
 def _runpod_token() -> str:
@@ -107,6 +172,6 @@ def _redact(value):
 
 def _is_secret_key(key: str) -> bool:
     lowered = key.lower()
-    return any(part in lowered for part in ("token", "secret", "password", "access_key", "runpod_key", "api_key"))
+    return any(part in lowered for part in ("token", "secret", "password", "access_key", "api_key", "runpod_key"))
 
 
