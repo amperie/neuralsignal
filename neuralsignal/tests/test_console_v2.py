@@ -40,3 +40,46 @@ def test_gpu_model_and_price_are_colored(monkeypatch):
     _prompt_gpu_choice([RunPodGpuType("gpu", "RTX 4090", 24, "High", 0.3, (1,))], yes=True)
     assert "\033[36mRTX 4090\033[0m" in stream.getvalue()
     assert "\033[32m$0.300/hr\033[0m" in stream.getvalue()
+
+
+def test_provider_noise_filter_preserves_warnings_and_application_progress():
+    from neuralsignal.console import ProviderNoiseFilter, QUIET_LOGGERS
+
+    noise_filter = ProviderNoiseFilter()
+    for provider in QUIET_LOGGERS:
+        for name in (provider, provider + ".client"):
+            for level in (logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR):
+                record = logging.LogRecord(name, level, "", 1, "message", (), None)
+                assert noise_filter.filter(record) == (level >= logging.WARNING)
+    for name in ("neuralsignal.remote.job", "__main__", "datasets_custom"):
+        record = logging.LogRecord(name, logging.INFO, "", 1, "progress", (), None)
+        assert noise_filter.filter(record)
+
+
+def test_configured_handler_suppresses_http_urls_even_with_explicit_child_level(monkeypatch):
+    from neuralsignal.console import configure_logging, QUIET_LOGGERS
+
+    stream = io.StringIO()
+    monkeypatch.setattr("sys.stderr", stream)
+    monkeypatch.setenv("NEURALSIGNAL_LOG_LEVEL", "DEBUG")
+    root = logging.getLogger()
+    original_handlers, original_level = root.handlers[:], root.level
+    levels = {name: logging.getLogger(name).level for name in (*QUIET_LOGGERS, "httpx.client")}
+    try:
+        configure_logging()
+        child = logging.getLogger("httpx.client")
+        child.setLevel(logging.DEBUG)
+        child.info("GET signed-url-that-should-not-appear")
+        child.warning("Connection retry needed")
+        logging.getLogger("neuralsignal.remote.job").info("Extracting batch")
+        output = stream.getvalue()
+        assert "signed-url" not in output
+        assert "Connection retry needed" in output
+        assert "Extracting batch" in output
+    finally:
+        for handler in root.handlers:
+            handler.close()
+        root.handlers = original_handlers
+        root.setLevel(original_level)
+        for name, level in levels.items():
+            logging.getLogger(name).setLevel(level)

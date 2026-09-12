@@ -10,6 +10,22 @@ import sys
 
 STYLES = {"dim": "2", "cyan": "36", "green": "32", "yellow": "33", "red": "31"}
 
+# These libraries emit per-request, transfer, cache, or model-loading chatter.
+# Keep their diagnostics at WARNING even when NeuralSignal is in DEBUG mode.
+QUIET_LOGGERS = (
+    "httpx", "httpcore", "urllib3", "requests", "aiohttp",
+    "boto3", "botocore", "s3transfer", "fsspec", "s3fs",
+    "huggingface_hub", "datasets", "transformers", "filelock",
+)
+
+
+class ProviderNoiseFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.levelno >= logging.WARNING or not any(
+            record.name == name or record.name.startswith(name + ".")
+            for name in QUIET_LOGGERS
+        )
+
 
 def color(text: str, style: str, stream=None) -> str:
     stream = sys.stdout if stream is None else stream
@@ -38,5 +54,9 @@ class ConsoleFormatter(logging.Formatter):
 def configure_logging() -> None:
     handler = logging.StreamHandler()
     handler.setFormatter(ConsoleFormatter(handler.stream))
+    # A handler filter also catches children with explicitly enabled INFO/DEBUG.
+    handler.addFilter(ProviderNoiseFilter())
+    for name in QUIET_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
     level = os.environ.get("NEURALSIGNAL_LOG_LEVEL", "INFO").upper()
     logging.basicConfig(level=getattr(logging, level, logging.INFO), handlers=[handler], force=True)
