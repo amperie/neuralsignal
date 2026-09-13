@@ -1,5 +1,5 @@
 run:
-  name: example-runpod-malt
+  name: example-runpod-malt-bs1
   s3_output_uri: s3://${NEURALSIGNAL_S3_BUCKET}/feature-runs
 
 extraction:
@@ -11,7 +11,7 @@ model:
   quantization: int8
 
 generation:
-  batch_size: 4
+  batch_size: 1
   max_new_tokens: 8
   truncation_length: 512
 

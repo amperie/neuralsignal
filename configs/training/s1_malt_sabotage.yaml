@@ -1,0 +1,32 @@
+# Full MALT S1 training target. Remote `ns run` overrides dataset.path
+# with the downloaded feature run directory before training.
+dataset: {}
+
+target:
+  source: run_labels
+  positive_labels: [sabotage]
+  unmatched: negative
+
+features:
+  include_sets:
+    - zones
+    - layer_distribution
+  include_columns: []
+  exclude_columns: []
+
+model:
+  type: xgboost
+  params:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.1
+    tree_method: hist
+    device: cpu
+    n_jobs: 4
+    objective: binary:logistic
+    eval_metric: logloss
+
+mlflow:
+  tracking_uri: http://z440.lan:5000
+  experiment_name: neuralsignal-s1
+  run_name: malt-sabotage-s1

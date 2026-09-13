@@ -1,0 +1,11 @@
+remote_collect:
+  config: configs/feature_collection/example_runpod_malt.yaml
+  manifest: configs/runpod_manifest.yaml
+  env_file: .env
+  terraform_dir: infra/terraform/s3-handoff
+  target_dir: runs/remote
+  train_config: configs/training/s1_malt_sabotage.yaml
+  gpu_vram_gb: 24
+  ssh_key_path: ~/.ssh/id_ed25519
+  poll_seconds: 30
+  timeout_seconds: 14400
