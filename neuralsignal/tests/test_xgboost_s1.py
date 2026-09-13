@@ -17,7 +17,7 @@ def training_data(tmp_path):
 
 
 def test_s1_trains_xgboost_with_configured_parameters(tmp_path):
-    result = train_s1(training_data(tmp_path), 'label', model_config={'params': {'n_estimators': 12, 'max_depth': 2}})
+    result = train_s1(training_data(tmp_path), 'label', model_config={'params': {'n_estimators': 12, 'max_depth': 2}}, mlflow_config={'enabled': False}, output_root=tmp_path / 's1')
     assert isinstance(result.model, XGBClassifier)
     assert result.model.get_params()['n_estimators'] == 12
     assert result.model.get_params()['tree_method'] == 'hist'

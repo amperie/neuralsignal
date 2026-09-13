@@ -3,7 +3,7 @@
 The supported launch is:
 
 ```bash
-uv run ns remote collect configs/remote/malt_smoke.yaml --run-id YOUR_NEW_RUN_ID
+uv run ns collect --remote configs/remote/malt_smoke.yaml --run-id YOUR_NEW_RUN_ID
 ```
 
 Use a new run ID and an image built from the intended code. The local feature

@@ -64,7 +64,7 @@ def test_cli_gb_overrides_yaml_gpu_and_forwards_yes(tmp_path, monkeypatch):
         captured.update(kwargs)
         return {}
     monkeypatch.setattr(cli, "remote_collect_lifecycle", collect)
-    cli.main(["remote", "collect", str(config), "-gb", "24", "--yes"])
+    cli.main(["collect", "--remote", str(config), "--gpu-vram-gb", "24", "--yes"])
     assert captured["gpu_vram_gb"] == 24
     assert captured["gpu_id"] is None
     assert captured["yes"] is True

@@ -34,7 +34,7 @@ def test_train_s1_from_feature_directory(tmp_path):
         "label": [0, 0, 0, 0, 1, 1, 1, 1],
     }).to_parquet(features_dir / "part-00000.parquet", index=False)
 
-    result = train_s1(tmp_path, label_column="label", feature_config={"include_sets": ["zones"]})
+    result = train_s1(tmp_path, label_column="label", feature_config={"include_sets": ["zones"]}, mlflow_config={"enabled": False}, output_root=tmp_path / "s1")
 
     assert result.feature_columns == ["zones__a"]
     assert result.metrics["feature_count"] == 1

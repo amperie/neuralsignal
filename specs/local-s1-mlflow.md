@@ -3,12 +3,18 @@
 [training/s1.py](../neuralsignal/training/s1.py) trains XGBoost from local Parquet data. The CLI is:
 
 ```bash
-uv run ns train s1 configs/training/sabotage_s1.yaml
+uv run ns train configs/training/sabotage_s1.yaml --run runs/remote/complete-run
 ```
 
-Edit `dataset.path` to a real local run directory or Parquet file first.
-An S3/MinIO URI is not a supported training path. Download the dataset first.
-`remote collect --train-config PATH` instead trains from the freshly unpacked
+Omit CONFIG to select a YAML from `configs/`; omit `--run` to select a feature
+run from `runs/`. Explicit `--run` overrides `dataset.path` in the YAML. Scripts
+must supply both paths because selection requires a terminal. An S3/MinIO URI
+is not a supported training path: download the dataset first.
+
+`ns run [CONFIG] --train-config PATH` performs remote collection, verified
+download, and local training in one command. Omit `--train-config` to use launch
+YAML's `train_config` or choose interactively before launch. Both this command
+and `ns collect CONFIG --remote --train-config PATH` train on the freshly unpacked
 directory, overriding the training config's dataset path.
 
 ## Input validation
@@ -38,14 +44,19 @@ model family, not v1 Hyperopt tuning or cross-validation.
 
 ## MLflow
 
-An empty MLflow config disables logging in direct `train_s1`/CLI use. The remote
-training wrapper adds an `extra_params` mapping, so its training path invokes
-MLflow even when no other MLflow settings were supplied.
+MLflow reporting is enabled by default for CLI and Python training, including
+an empty config. Set `mlflow.enabled: false` to disable it. The tracking URI is
+chosen from YAML `tracking_uri`, then `MLFLOW_TRACKING_URI`, then
+`http://z440.lan:5000`. The default experiment is `neuralsignal-s1`.
 
-Supported settings: `tracking_uri`, `experiment_name`, `run_name`,
-`registered_model_name`, and `extra_params`. The checked-in config logs to `http://z440.lan:5000`. The training
-host must resolve and reach `z440.lan`; logging failures propagate rather than
-silently falling back to local storage.
+Supported settings: `enabled`, `tracking_uri`, `experiment_name`, `run_name`,
+`registered_model_name`, and `extra_params`. All reporting exceptions, including
+setup, metrics, artifact upload, and registration errors, are logged as warnings
+without failing completed training. Local artifacts are saved before reporting.
+Default HTTP requests time out after five seconds with no retries; explicit
+`MLFLOW_HTTP_REQUEST_TIMEOUT` and `MLFLOW_HTTP_REQUEST_MAX_RETRIES` environment
+settings override these defaults. Interruptions still cancel the command.
+
 The implementation logs:
 
 - `dataset_path`, `feature_count`, `model_type: xgboost`, XGBoost parameters, plus extra params;
@@ -56,6 +67,21 @@ The implementation logs:
 
 When remote collection also mirrors to MinIO, it adds `feature_dataset_uri` as
 an extra parameter. Full config, manifest hash, split IDs, calibration, and code revision are not
-automatically logged. Without MLflow the CLI
-prints results but does not save a separate model file; the Python API returns
-model, metrics, and feature columns.
+automatically logged to MLflow.
+
+## Durable local outputs
+
+Every successful fit writes a unique directory under `runs/s1/` containing:
+
+- `model.ubj`: reloadable XGBoost model;
+- `metrics.json` and `selected_features.json`;
+- `training.json`: source path, label column, selected feature settings, model
+  parameters, random seed, split fraction, and prediction threshold;
+- `predictions.csv`: held-out row indexes, labels, scores, and predictions;
+- `confusion_matrix.json` and `classification_report.json`.
+
+Undefined metrics are `null` in saved JSON. Separate training attempts get
+separate directories. The CLI prints metrics, selected columns, and `out`;
+the complete workflow prints `training_metrics` and `training_output_dir`.
+The Python result includes `model`, `metrics`, `feature_columns`, and
+`output_dir`; Python callers may override `output_root` for another destination.

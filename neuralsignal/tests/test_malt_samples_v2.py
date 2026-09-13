@@ -109,7 +109,7 @@ def test_training_splits_runs_not_samples(tmp_path):
             })})
     path = tmp_path / "features.parquet"
     pd.DataFrame(rows).to_parquet(path)
-    result = train_s1(path, label_column="sabotage")
+    result = train_s1(path, label_column="sabotage", mlflow_config={"enabled": False}, output_root=tmp_path / "s1")
     assert result.metrics["train_rows"] == 12
     assert result.metrics["test_rows"] == 4
     assert sum(v for k,v in result.metrics.items() if k.endswith("_test_runs")) == 4
