@@ -8,6 +8,8 @@ from pathlib import Path
 from copy import deepcopy
 from typing import Protocol
 
+import yaml
+
 from neuralsignal.console import color
 from neuralsignal.config import load_config
 from neuralsignal.config.env import apply_env, load_env_file
@@ -19,6 +21,14 @@ from neuralsignal.training import train_s1
 
 logger = logging.getLogger(__name__)
 
+
+
+
+class PodExitedError(RuntimeError):
+    pass
+
+
+_TERMINAL_POD_STATUSES = {"EXITED", "FAILED", "STOPPED", "TERMINATED", "DEAD"}
 
 class RemoteCollectCancelled(Exception):
     def __init__(self, pod_id: str, terminated: bool):
@@ -99,7 +109,7 @@ def remote_collect_lifecycle(
     config = load_config(config_path)
     logger.info("loading runpod manifest path=%s", runpod_manifest_path)
     manifest = load_config(runpod_manifest_path)
-    secrets = _forwarded_hf_env()
+    secrets = _forwarded_worker_env()
     if terraform_dir and Path(terraform_dir).exists():
         logger.info("loading terraform S3 handoff outputs dir=%s", terraform_dir)
         secrets.update(s3_settings_from_terraform(terraform_dir))
@@ -121,8 +131,9 @@ def remote_collect_lifecycle(
         return redacted({"payload": payload, "bundle_uri": bundle_uri})
 
     store = store or Boto3ObjectStore(endpoint_url=os.environ.get("NEURALSIGNAL_S3_ENDPOINT_URL"))
-    logger.info("uploading feature config path=%s uri=%s", config_path, config_uri)
-    upload_file(store, config_path, config_uri)
+    upload_config_path = _write_resolved_feature_config(config, target_dir, run_id)
+    logger.info("uploading feature config path=%s uri=%s", upload_config_path, config_uri)
+    upload_file(store, upload_config_path, config_uri)
     logger.info("launching RunPod pod")
     pod_id = str(runpod_api.launch(payload)["id"])
     logger.info("RunPod pod launched pod_id=%s", pod_id)
@@ -177,6 +188,13 @@ def remote_collect_lifecycle(
     return RemoteCollectResult(run_id, pod_id, bundle_uri, str(target), training_metrics, training_output_dir)
 
 
+
+
+def _write_resolved_feature_config(config: dict, target_dir: str | Path, run_id: str) -> Path:
+    path = Path(target_dir) / ".launch-configs" / run_id / "feature_config.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+    return path
 
 
 def _with_selected_gpu(
@@ -270,8 +288,18 @@ def _prompt_gpu_choice(choices: list[RunPodGpuType], yes: bool = False) -> RunPo
         raise RuntimeError(f"Invalid GPU selection: {raw}") from error
 
 
-def _forwarded_hf_env() -> dict[str, str]:
-    keys = ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN")
+def _forwarded_worker_env() -> dict[str, str]:
+    keys = (
+        "HF_TOKEN",
+        "HUGGING_FACE_HUB_TOKEN",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+        "AWS_DEFAULT_REGION",
+        "AWS_REGION",
+        "NEURALSIGNAL_S3_BUCKET",
+        "NEURALSIGNAL_S3_ENDPOINT_URL",
+    )
     return {key: os.environ[key] for key in keys if os.environ.get(key)}
 
 def _train_s1_from_config(config_path: str | Path, dataset_dir: str | Path, minio_uri: str | None):
@@ -328,6 +356,8 @@ class PodProgress:
         if status != self.last_status:
             logger.info("Pod %s status=%s", self.pod_id, status)
             self.last_status = status
+        if status.upper() in _TERMINAL_POD_STATUSES:
+            raise PodExitedError(f"RunPod pod {self.pod_id} is {status} before the remote bundle was available")
         command = ssh_command(pod, self.identity_file)
         if command and command != self.last_command:
             print(f"\nPod SSH connection: {command}\nInside the pod: tmux attach -t ns\n", flush=True)
@@ -353,11 +383,11 @@ def _wait_for_bundle(store: ObjectStore, bundle_uri: str, poll_seconds: float, t
     last_log = None
     logger.info("waiting for remote bundle uri=%s poll_seconds=%s timeout_seconds=%s", bundle_uri, poll_seconds, timeout_seconds)
     while True:
-        if monitor is not None:
-            monitor()
         if exists(store, bundle_uri) and exists(store, bundle_uri + ".sha256"):
             logger.info("remote bundle available uri=%s elapsed_seconds=%.1f", bundle_uri, time.monotonic() - started)
             return
+        if monitor is not None:
+            monitor()
         elapsed = time.monotonic() - started
         if last_log is None or elapsed - last_log >= 60:
             logger.info("still waiting for remote bundle uri=%s elapsed_seconds=%.1f", bundle_uri, elapsed)

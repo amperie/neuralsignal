@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -137,6 +138,53 @@ def test_remote_launch_timing_precedence(tmp_path, monkeypatch, configured, flag
     assert (captured["timeout_seconds"], captured["poll_seconds"]) == expected
 
 
+def test_run_launch_config_materializes_inline_feature_and_training_configs(tmp_path, monkeypatch, capsys):
+    import importlib
+    import yaml
+
+    cli = importlib.import_module("neuralsignal.cli.main")
+    monkeypatch.chdir(tmp_path)
+    launch = tmp_path / "launch.yaml"
+    launch.write_text(yaml.safe_dump({
+        "remote_collect": {
+            "manifest": "pod.yaml",
+            "run_id": "inline-run",
+            "terraform_dir": "",
+            "env_file": "",
+            "gpu_id": "NVIDIA GeForce RTX 4090",
+        },
+        "feature_config": {
+            "run": {"s3_output_uri": "s3://handoff/feature-runs"},
+            "prompt": {"template": "Judge this response.\n{input}\n{output}\n"},
+            "dataset": {"source": "malt", "max_examples": 500},
+            "generation": {"batch_size": 1},
+        },
+        "training_config": {
+            "dataset": {},
+            "target": {"source": "run_labels", "positive_labels": ["sabotage"], "unmatched": "negative"},
+            "mlflow": {"tracking_uri": "http://z440.lan:5000"},
+        },
+    }), encoding="utf-8")
+    captured = {}
+
+    def collect(*args, **kwargs):
+        captured.update(args=args, **kwargs)
+        return {"ok": True}
+
+    monkeypatch.setattr(cli, "remote_collect_lifecycle", collect)
+    assert main(["run", str(launch), "--dry-run"]) == 0
+
+    feature = yaml.safe_load(Path(captured["args"][0]).read_text(encoding="utf-8"))
+    training = yaml.safe_load(Path(captured["train_config_path"]).read_text(encoding="utf-8"))
+    assert captured["args"][2] == "inline-run"
+    assert feature["prompt"]["template"].startswith("Judge this response.")
+    assert feature["generation"]["batch_size"] == 1
+    assert feature["dataset"]["max_examples"] == 500
+    assert training["mlflow"]["tracking_uri"] == "http://z440.lan:5000"
+    assert training["target"]["positive_labels"] == ["sabotage"]
+    assert "ok" in capsys.readouterr().out
+
+
 @pytest.mark.parametrize("termination_fails", [False, True])
 def test_ctrl_c_terminates_active_pod_without_traceback(tmp_path, monkeypatch, capsys, termination_fails):
     from neuralsignal.remote import lifecycle
@@ -155,6 +203,7 @@ def test_ctrl_c_terminates_active_pod_without_traceback(tmp_path, monkeypatch, c
         raise KeyboardInterrupt
     monkeypatch.setattr(lifecycle.DefaultRunPodApi, "terminate", terminate)
     monkeypatch.setattr(lifecycle, "Boto3ObjectStore", lambda **kwargs: object())
+    monkeypatch.setattr(lifecycle, "upload_file", lambda *args, **kwargs: None)
     monkeypatch.setattr(lifecycle, "_wait_for_bundle", interrupt)
     code = main(["collect", "--remote", str(config), "--manifest", str(manifest),
                  "--run-id", "test", "--terraform-dir", "", "--env-file", ""])

@@ -21,6 +21,46 @@ STATUS_FILE="${LOG_DIR}/exit_code"
 mkdir -p "$LOG_DIR"
 touch "$LOG_FILE"
 
+read_status() {
+  local status
+  status="$(cat "$STATUS_FILE" 2>/dev/null || true)"
+  if [[ ! "$status" =~ ^[0-9]+$ ]]; then
+    status=1
+  fi
+  echo "$status"
+}
+
+wait_for_session() {
+  tail -n +1 -F "$LOG_FILE" &
+  local tail_pid=$!
+  while tmux has-session -t "$SESSION" 2>/dev/null; do
+    sleep 2
+  done
+  sleep 1
+  kill "$tail_pid" 2>/dev/null || true
+  wait "$tail_pid" 2>/dev/null || true
+}
+
+if [[ -f "$STATUS_FILE" ]]; then
+  status="$(read_status)"
+  echo "Run ${RUN_ID} already finished with exit code ${status}; refusing to restart the job." | tee -a "$LOG_FILE"
+  echo "log file: ${LOG_FILE}" | tee -a "$LOG_FILE"
+  echo "Previous log follows:"
+  cat "$LOG_FILE"
+  exit 0
+fi
+
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "Run ${RUN_ID} is already running in tmux session ${SESSION}; tailing existing log." | tee -a "$LOG_FILE"
+  echo "log file: ${LOG_FILE}" | tee -a "$LOG_FILE"
+  echo "attach with: tmux attach -t ${SESSION}" | tee -a "$LOG_FILE"
+  wait_for_session
+  if [[ -f "$STATUS_FILE" ]]; then
+    exit "$(read_status)"
+  fi
+  exit 1
+fi
+
 CMD=(/opt/neuralsignal/.venv/bin/python -m neuralsignal.remote.job "$@")
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   exec "${CMD[@]}"
@@ -56,16 +96,9 @@ printf -v WORKER_CMD 'cd /opt/neuralsignal && set -o pipefail; %s 2>&1 | tee -a 
 printf -v SHELL_CMD 'bash -c %q' "$WORKER_CMD"
 tmux new-session -d -s "$SESSION" "$SHELL_CMD" || exit $?
 
-tail -n +1 -F "$LOG_FILE" &
-TAIL_PID=$!
-while tmux has-session -t "$SESSION" 2>/dev/null; do
-  sleep 2
-done
-sleep 1
-kill "$TAIL_PID" 2>/dev/null || true
-wait "$TAIL_PID" 2>/dev/null || true
+wait_for_session
 
 if [[ -f "$STATUS_FILE" ]]; then
-  exit "$(cat "$STATUS_FILE")"
+  exit "$(read_status)"
 fi
 exit 1

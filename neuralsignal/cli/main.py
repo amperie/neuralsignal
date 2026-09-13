@@ -10,6 +10,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 from uuid import uuid4
 
+import yaml
+
 from neuralsignal.cli.targets import select_target
 from neuralsignal.training.targets import TargetError
 from neuralsignal.cli.selection import choose_config, choose_run
@@ -429,18 +431,28 @@ def _remote_collect_options(args) -> dict:
         "ssh_key_path": None,
     }
     launch = {}
+    inline_feature_config = None
+    inline_training_config = None
+    config_arg_is_launch = False
     config = args.config
     if args.launch_config:
         loaded = load_config(args.launch_config)
         launch = loaded.get("remote_collect") or loaded
+        inline_feature_config = loaded.get("feature_config")
+        inline_training_config = loaded.get("training_config")
     elif config:
         loaded = load_config(config)
         if "remote_collect" in loaded:
             launch = loaded["remote_collect"]
             config = launch.get("config")
+            config_arg_is_launch = True
+            inline_feature_config = loaded.get("feature_config")
+            inline_training_config = loaded.get("training_config")
 
     options = {**defaults, **launch}
     for key in (*defaults.keys(), "config", "run_id"):
+        if key == "config" and config_arg_is_launch:
+            continue
         value = getattr(args, key, None)
         if value is not None and not (key == "dry_run" and value is False):
             options[key] = value
@@ -453,10 +465,25 @@ def _remote_collect_options(args) -> dict:
     options["config"] = config or options.get("config")
     if args.command == "run" and not options.get("run_id"):
         options["run_id"] = datetime.now(timezone.utc).strftime("run-%Y%m%dT%H%M%S-") + uuid4().hex[:8]
+    if inline_feature_config and not options.get("config"):
+        options["config"] = _write_inline_run_config(options["run_id"], "feature_config", inline_feature_config)
+    if inline_training_config and not options.get("train_config"):
+        options["train_config"] = _write_inline_run_config(options["run_id"], "training_config", inline_training_config)
     missing = [key for key in ("config", "run_id") if not options.get(key)]
     if missing:
         raise SystemExit("missing remote collection option(s): " + ", ".join(missing))
     return options
+
+
+def _write_inline_run_config(run_id: str | None, name: str, config: dict) -> str:
+    if not run_id:
+        raise SystemExit("inline run configs require run_id")
+    if not isinstance(config, dict):
+        raise SystemExit(f"{name} must be a YAML mapping")
+    path = Path("runs") / "launch-configs" / run_id / f"{name}.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+    return str(path)
 
 
 def _placeholder_extractor(example, spec) -> dict[str, float]:
