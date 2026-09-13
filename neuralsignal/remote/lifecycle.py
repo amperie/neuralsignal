@@ -277,9 +277,12 @@ def _train_s1_from_config(config_path: str | Path, dataset_dir: str | Path, mini
     if minio_uri:
         extra["feature_dataset_uri"] = minio_uri
     mlflow["extra_params"] = extra
+    from neuralsignal.cli.targets import select_target
+    target = select_target(dataset_dir, config)
     result = train_s1(
         dataset_dir,
-        label_column=(config.get("dataset") or {}).get("label_column", "label"),
+        label_column=(config.get("dataset") or {}).get("label_column"),
+        target_config=target,
         feature_config=config.get("features") or {},
         mlflow_config=mlflow,
         model_config=config.get("model") or {},

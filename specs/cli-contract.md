@@ -29,7 +29,7 @@ ns collect configs/feature_collection/example_runpod_jsonl.yaml --input data/exa
 ns collect configs/remote/malt_smoke.yaml --remote --run-id smoke-001 --dry-run
 ns collect configs/remote/malt_smoke.yaml --remote --run-id smoke-002 --gpu-vram-gb 24 --yes
 ns download s3://my-bucket/feature-runs/example --out runs/downloaded/example
-ns train configs/training/sabotage_s1.yaml --run runs/downloaded/example
+ns train configs/training/s1.yaml --run runs/downloaded/example
 ```
 
 Config arguments are YAML paths, not named presets. Omitted config paths open a colored
@@ -46,6 +46,20 @@ The former `dataset import jsonl`, `features collect-local`, `remote collect`,
 `remote sync`, and `train s1` command forms have been removed. Use `--input`
 instead of `--input-jsonl`, `--out` instead of `--target-dir`, and
 `--gpu-vram-gb` instead of `-gb`.
+
+## Target selection
+
+The neutral `configs/training/s1.yaml` does not force a label. Interactive
+training offers target columns, scalar metadata fields, and available label lists.
+Choose an existing 0/1 target or define positive/negative values. `--target-column`
+and `--positive-label` provide explicit overrides; YAML `target` supports saved
+mappings. Existing `dataset.label_column` configs remain compatible. See
+[target definitions](local-s1-mlflow.md#target-definitions).
+
+Too few independent examples and conflicting targets produce an actionable
+`Cannot train:` message and exit code 2. Incomplete MALT samples/completions
+produce warnings and training uses available features. Individual completions
+are still pooled into runs rather than treated as independent training rows.
 
 ## Complete workflow
 

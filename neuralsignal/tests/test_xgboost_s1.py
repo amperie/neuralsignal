@@ -25,7 +25,7 @@ def test_s1_trains_xgboost_with_configured_parameters(tmp_path):
 
 
 def test_training_config_targets_remote_mlflow():
-    config = load_config('configs/training/sabotage_s1.yaml')
+    config = load_config('configs/training/s1.yaml')
     assert config['model']['type'] == 'xgboost'
     assert config['mlflow']['tracking_uri'] == 'http://z440.lan:5000'
     assert config['features']['include_sets'] == ['zones', 'layer_distribution']

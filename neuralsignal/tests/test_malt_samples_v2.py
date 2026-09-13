@@ -120,10 +120,11 @@ def test_transcript_source_remains_available():
     assert source.split == "transcripts"
 
 
-def test_pooling_rejects_partial_run_from_smoke_limit():
+def test_pooling_warns_for_partial_run_from_smoke_limit(caplog):
     e = list(normalize_malt_samples(sample_row()))[0]
     data = pd.DataFrame([{"zones__a": 1, "metadata_json": json.dumps(e.metadata)}])
-    with pytest.raises(ValueError, match="Incomplete or duplicate completions"):
-        aggregate_malt_runs(data, ["zones__a"], "sabotage")
+    result = aggregate_malt_runs(data, ["zones__a"], "sabotage")
+    assert len(result) == 1
+    assert "continuing with available completions" in caplog.text
     with pytest.raises(ValueError, match="requested label"):
         aggregate_malt_runs(data, ["zones__a"], "nonexistent-label")

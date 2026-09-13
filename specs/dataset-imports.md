@@ -10,14 +10,15 @@ inspects local JSONL and prints a count.
 ## JSONL and generic Hugging Face
 
 JSONL requires `input` and `output`, accepts `id` or `example_id`, and preserves
-`labels` and `metadata`. Use a list for labels. A singular top-level `label`
-is not retained by this adapter. Missing IDs currently stringify to `None`.
+`labels` and `metadata`. Use a list for labels. Extra top-level fields, including singular `label` and custom targets, are
+preserved in metadata. Explicit metadata entries take precedence on name collisions. Missing IDs currently stringify to `None`.
 Generic Hugging Face uses `name`, `split`, optional `config_name`, and `load_kwargs`;
 its default normalizer expects input/output fields and preserves other fields
 as metadata. It does not accept a normalizer name from YAML.
 
-Feature collection serializes label lists, rather than generating numeric binary
-targets for generic S1 training. Prepare the target column separately.
+Feature collection serializes label lists and metadata. Training resolves binary
+targets from existing columns, scalar metadata fields, example label membership,
+or run label membership. See [target definitions](local-s1-mlflow.md#target-definitions).
 
 ## MALT samples (default)
 
@@ -47,8 +48,9 @@ from system/developer input messages and retained in
 instruction sanitizer. Ordinary task instructions and agent admissions remain.
 
 MALT S1 training averages completions per sample, then samples per run, before
-splitting. It rejects missing/nonfinite features, incomplete recorded runs,
-duplicate/missing recorded completions, and conflicting run labels/source.
+splitting. Missing samples or completions produce warnings and pooling uses
+available features. It still rejects nonfinite features, duplicate completions,
+invalid indexes, and conflicting run labels/source.
 `max_examples` caps normalized examples, not source rows or complete runs; the
 smoke limit can therefore produce a dataset unsuitable for training.
 

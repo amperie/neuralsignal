@@ -10,6 +10,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from neuralsignal.cli.targets import select_target
+from neuralsignal.training.targets import TargetError
 from neuralsignal.cli.selection import choose_config, choose_run
 
 from neuralsignal.console import color, configure_logging
@@ -29,6 +31,9 @@ from neuralsignal.training import train_s1
 def main(argv: list[str] | None = None) -> int:
     try:
         return _main(argv)
+    except TargetError as error:
+        print(f"Cannot train: {error}", file=sys.stderr)
+        return 2
     except RemoteCollectCancelled as error:
         print(str(error), file=sys.stderr)
         return 130 if error.terminated else 1
@@ -99,7 +104,7 @@ Examples:
   ns validate data/examples.jsonl
   ns collect configs/feature_collection/example_runpod_jsonl.yaml --input data/examples.jsonl --out runs/local/example
   ns collect configs/remote/malt_smoke.yaml --remote --run-id smoke-001 --dry-run
-  ns train configs/training/sabotage_s1.yaml --run runs/remote/complete-run
+  ns train configs/training/s1.yaml --run runs/remote/complete-run
   ns download s3://my-bucket/feature-runs/example --out runs/downloaded/example
 
 Help:
@@ -140,8 +145,8 @@ Next step:
   Set extraction.mode: model to extract model activations. Omitted mode uses
   placeholder character counts. Match model device/quantization to your machine;
   the checked-in RunPod example uses CUDA and int8.
-  Labels are preserved as labels_json; generic training needs a separately
-  prepared numeric 0/1 target column.
+  Labels are preserved as labels_json. During training, choose a label or
+  map an existing column/metadata field to a binary target.
 
 Remote collection:
   CONFIG may be a feature YAML or a launch YAML containing remote_collect.
@@ -209,8 +214,8 @@ Results:
 
 Examples:
   ns run
-  ns run configs/feature_collection/example_runpod_malt.yaml --train-config configs/training/sabotage_s1.yaml --gpu-vram-gb 24 --yes
-  ns run configs/remote/malt_smoke.yaml --train-config configs/training/sabotage_s1.yaml --run-id preview-001 --dry-run
+  ns run configs/feature_collection/example_runpod_malt.yaml --train-config configs/training/s1.yaml --gpu-vram-gb 24 --yes
+  ns run configs/remote/malt_smoke.yaml --train-config configs/training/s1.yaml --run-id preview-001 --dry-run
 
 Options:
   Remote execution is automatic. Options above control collection and training.
@@ -229,10 +234,19 @@ Options:
   --run PATH selects a feature directory or Parquet file and overrides
   dataset.path. Without --run, choose a run from runs/ interactively.
   In scripts, supply both CONFIG and --run explicitly.
-  dataset.label_column selects the numeric 0/1 target (default: label).
+  Without target settings, choose an existing column, metadata field, or label
+  list, then choose how values become 0 and 1. --target-column and
+  --positive-label override YAML settings. Existing dataset.label_column configs
+  are still supported. In scripts, conventional numeric label/target columns
+  are detected automatically; other mappings require target settings in YAML.
+  MALT features are pooled to complete runs before splitting. Too few runs,
+  missing labels or conflicting targets produce clear errors. Incomplete MALT
+  samples/completions produce warnings; training uses the available features.
+  The resolved mapping and class counts are saved in training.json; split.json
+  records the training/test assignments.
   features selects included sets/columns and excluded columns.
   model configures the classifier; mlflow configures tracking and artifacts.
-  The checked-in sabotage_s1.yaml uses XGBoost and http://z440.lan:5000 for
+  The checked-in s1.yaml uses XGBoost and http://z440.lan:5000 for
   MLflow. Reporting is enabled even without an mlflow section.
   Tracking URI: YAML tracking_uri, then MLFLOW_TRACKING_URI, then
   http://z440.lan:5000. Set mlflow.enabled: false to disable reporting.
@@ -242,16 +256,16 @@ Options:
   confusion_matrix.json, and classification_report.json.
 
 Data requirements:
-  Generic labels_json is not automatically converted into a binary target.
+  Label lists require an explicit positive class (interactive or configured).
   MALT training pools completions into samples and then runs before splitting;
   partial smoke-test datasets are unsuitable for training.
 
 Examples:
-  ns train configs/training/sabotage_s1.yaml --run runs/remote/complete-run
+  ns train configs/training/s1.yaml --run runs/remote/complete-run
   ns train
-  uv run ns train configs/training/sabotage_s1.yaml --run runs/remote/complete-run
+  uv run ns train configs/training/s1.yaml --run runs/remote/complete-run
   ns download s3://my-bucket/feature-runs/complete-run --out runs/downloaded/complete-run
-  ns train configs/training/sabotage_s1.yaml --run runs/downloaded/complete-run
+  ns train configs/training/s1.yaml --run runs/downloaded/complete-run
 
 Details:
   See specs/local-s1-mlflow.md for feature selection, pooling, and MLflow.
@@ -259,6 +273,9 @@ Details:
     )
     train.add_argument("config", nargs="?", metavar="CONFIG", help="Training YAML path containing dataset, features, model, and optional mlflow settings.")
     train.add_argument("--run", dest="dataset_path", metavar="PATH", help="Feature run directory or Parquet file; omit to choose from runs/. Overrides dataset.path in YAML.")
+    target_options = train.add_mutually_exclusive_group()
+    target_options.add_argument("--target-column", help="Existing binary column, or metadata.FIELD; overrides target settings in YAML.")
+    target_options.add_argument("--positive-label", help="Create 1 for this label and 0 for other labels; uses MALT run labels or generic example labels.")
     download = sub.add_parser(
         "download", help="Download and verify an expanded S3 feature dataset.",
         formatter_class=HelpFormatter,
@@ -280,7 +297,7 @@ Examples:
 
 Next step:
   Pass the downloaded feature run with --run:
-  ns train configs/training/sabotage_s1.yaml --run runs/downloaded/example
+  ns train configs/training/s1.yaml --run runs/downloaded/example
 """,
     )
     download.add_argument("remote_run_uri", metavar="URI", help="S3 prefix containing manifest.json and expanded shards (not bundle.zip).")
@@ -349,9 +366,11 @@ def _collect_local(args) -> int:
 def _train_s1(args) -> int:
     config = load_config(args.config or choose_config("training"))
     dataset_path = args.dataset_path or choose_run()
+    target = select_target(dataset_path, config, args.target_column, args.positive_label)
     result = train_s1(
         dataset_path,
-        label_column=(config.get("dataset") or {}).get("label_column", "label"),
+        label_column=(config.get("dataset") or {}).get("label_column"),
+        target_config=target,
         feature_config=config.get("features") or {},
         mlflow_config=config.get("mlflow") or {},
         model_config=config.get("model") or {},

@@ -31,7 +31,7 @@ uv run pytest neuralsignal/tests -q
 The CLI has five commands: `run`, `validate`, `collect`, `train`, and `download`.
 Use `ns collect CONFIG --remote` for RunPod execution; collection runs locally
 by default. Pass YAML paths directly, or omit them to choose from `configs/`.
-The picker lists nested YAML files and highlights configs that fit the command.
+The picker lists only YAML configs that fit the command, including nested files.
 Each command's help includes examples, configuration details, and data requirements:
 
 ```bash
@@ -60,7 +60,7 @@ Keep the command running until training completes.
 For explicit configuration:
 
 ```bash
-uv run ns run configs/feature_collection/example_runpod_malt.yaml --train-config configs/training/sabotage_s1.yaml --gpu-vram-gb 24 --yes
+uv run ns run configs/feature_collection/example_runpod_malt.yaml --train-config configs/training/s1.yaml --gpu-vram-gb 24 --yes
 ```
 
 RunPod credentials, the handoff storage setup, and a published worker image are
@@ -90,10 +90,11 @@ change its model settings for a different environment. JSONL rows use:
 {"id":"example-1","input":"question","output":"response","labels":["sabotage"],"metadata":{}}
 ```
 
-Collection preserves `labels` as `labels_json`; it does not create a numeric
-training target from that list. Generic S1 training needs a numeric 0/1 target
-column prepared separately. MALT sample collection has its own run-label pooling
-path. See [datasets](specs/dataset-imports.md) and [training](specs/local-s1-mlflow.md).
+Collection preserves `labels` as `labels_json` and other JSONL annotations
+as metadata. Training can use an existing numeric target, map a categorical
+column or metadata field, or create a target from label membership. MALT
+sample features are pooled per run before training; incomplete coverage warns
+and uses the available samples. See [datasets](specs/dataset-imports.md) and [training](specs/local-s1-mlflow.md).
 
 Use a fresh output directory. Existing feature shards are rejected to prevent
 mixing runs. Set `extraction.mode: model` for activation features; omitted mode
@@ -151,7 +152,7 @@ Select a config and an existing feature run interactively with `uv run ns train`
 or supply both paths explicitly:
 
 ```bash
-uv run ns train configs/training/sabotage_s1.yaml --run runs/remote/complete-run
+uv run ns train configs/training/s1.yaml --run runs/remote/complete-run
 ```
 
 The trainer uses XGBoost, a stratified 75/25 split, and threshold
@@ -161,6 +162,18 @@ training. `--run` overrides `dataset.path`; without `--run`, the CLI lists
 available runs for selection. MALT training pools completions into samples
 and samples into runs before splitting; partial smoke-test runs are unsuitable
 for training. MinIO data must first be downloaded to a local path.
+
+For target selection, the neutral `configs/training/s1.yaml` leaves the target
+unspecified. The CLI shows available columns and labels, then asks which values
+are positive and negative. An explicit numeric column can be selected with
+`--target-column outcome` (or `--target-column metadata.outcome`); label membership
+can be selected with `--positive-label gives_up`. Existing configs with
+`dataset.label_column` still work. No dataset is assumed to contain sabotage.
+
+Your target definition and class counts are saved in `training.json`, and split
+assignments in `split.json`. The small smoke run remains insufficient for training;
+selecting a valid label now reports a clear data error instead of a traceback.
+See [target definitions](specs/local-s1-mlflow.md#target-definitions) for YAML mappings.
 
 ## Public SDK
 

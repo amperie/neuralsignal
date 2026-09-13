@@ -42,7 +42,7 @@ def choose_config(kind):
                 category = "pod manifest"
             elif "extraction" in config or "materialize" in (config.get("features") or {}):
                 category = "feature collection"
-            elif "dataset" in config and ("label_column" in config["dataset"] or "path" in config["dataset"]):
+            elif (config.get("model") or {}).get("type") == "xgboost" or "target" in config or ("dataset" in config and ("label_column" in config["dataset"] or "path" in config["dataset"])):
                 category = "training"
             else:
                 category = "other config"
@@ -50,7 +50,8 @@ def choose_config(kind):
             category = "unreadable config"
         eligible = category == "training" if kind == "training" else category in (
             {"feature collection", "remote launch"} if kind == "remote" else {"feature collection"})
-        entries.append((path, category + ("" if eligible else " (not selectable here)"), eligible))
+        if eligible:
+            entries.append((path, category, True))
     return choose(entries, f"Choose a {kind} config from configs/", "Pass a compatible YAML config path explicitly.")
 
 

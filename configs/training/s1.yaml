@@ -1,6 +1,6 @@
-dataset:
-  path: runs/remote/example-run
-  label_column: sabotage
+# Targets are selected from the chosen run unless explicitly configured.
+# Existing numeric label/target columns also work without a target mapping.
+dataset: {}
 
 features:
   include_sets:
@@ -24,6 +24,5 @@ model:
 mlflow:
   tracking_uri: http://z440.lan:5000
   experiment_name: neuralsignal-s1
-  run_name: sabotage-s1-local
-  registered_model_name: neuralsignal-sabotage-s1
+  run_name: s1-local
 

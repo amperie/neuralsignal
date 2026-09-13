@@ -36,13 +36,13 @@ def test_config_picker_lists_nested_yaml_and_colors_eligible_files(tmp_path, mon
     monkeypatch.setattr('sys.stdout', stream)
     monkeypatch.delenv('NO_COLOR', raising=False)
     monkeypatch.setenv('TERM', 'xterm')
-    answers = iter(['no', '1', '3'])
+    answers = iter(['no', '2', '1'])
     monkeypatch.setattr('builtins.input', lambda _: next(answers))
     assert choose_config('remote') == 'configs/nested/c.yaml'
     text = stream.getvalue()
-    assert 'configs/a.yaml' in text and 'configs/b.yml' in text
+    assert 'configs/a.yaml' not in text and 'configs/b.yml' not in text
     assert '\033[32mconfigs/nested/c.yaml' in text
-    assert 'not selectable here' in text
+    assert 'not selectable here' not in text
 
 
 def test_run_picker_finds_nested_runs_and_excludes_s1(tmp_path, monkeypatch, capsys):

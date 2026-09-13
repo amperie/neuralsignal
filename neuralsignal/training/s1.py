@@ -15,6 +15,8 @@ from typing import Any
 import pandas as pd
 from neuralsignal.storage.manifests import local_shard_path, sha256_file
 
+from neuralsignal.training.targets import prepare_training_data
+
 from xgboost import XGBClassifier
 from sklearn.metrics import (average_precision_score, f1_score, precision_score, recall_score,
                              roc_auc_score, accuracy_score, confusion_matrix, classification_report,
@@ -59,12 +61,13 @@ def select_feature_columns(
 
 def train_s1(
     dataset_path: str | Path,
-    label_column: str,
+    label_column: str | None = None,
     feature_config: dict[str, Any] | None = None,
     mlflow_config: dict[str, Any] | None = None,
     random_state: int = 42,
     model_config: dict[str, Any] | None = None,
     output_root: str | Path = "runs/s1",
+    target_config: dict[str, Any] | None = None,
 ) -> S1TrainingResult:
     data = _read_features(dataset_path)
     features = select_feature_columns(
@@ -75,19 +78,11 @@ def train_s1(
     )
     if not features:
         raise ValueError("No feature columns selected")
-    if "metadata_json" in data.columns:
-        metadata = [json.loads(value) for value in data["metadata_json"]]
-        if any(meta.get("source") == "metr-evals/malt-public" for meta in metadata):
-            from neuralsignal.features.malt_runs import aggregate_malt_runs
-            data = aggregate_malt_runs(data, features, label_column)
-    if label_column not in data.columns:
-        raise ValueError(f"Missing label column: {label_column}")
-
+    data, features, target_column, target_definition, target_summary = prepare_training_data(
+        data, features, target_config, label_column)
+    logging.getLogger(__name__).info("Training target: %s; data: %s", target_definition, target_summary)
     x = data[features].astype(float)
-    labels = pd.to_numeric(data[label_column], errors="raise")
-    if labels.isna().any() or not labels.isin([0, 1]).all():
-        raise ValueError("Binary labels must contain only 0 and 1")
-    y = labels.astype(int)
+    y = data[target_column].astype(int)
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25, random_state=random_state, stratify=y)
     model_config = model_config or {}
     if model_config.get("type", "xgboost") != "xgboost":
@@ -131,8 +126,14 @@ def train_s1(
     _write_json(output / "training.json", {
         "dataset_path": str(Path(dataset_path).resolve()), "label_column": label_column,
         "random_state": random_state, "test_size": 0.25, "threshold": 0.5,
+        "target": target_definition, "target_summary": target_summary,
         "model_params": model.get_params(), "features": feature_config or {},
     })
+    split_rows = {"train": x_train.index.tolist(), "test": x_test.index.tolist()}
+    if "group_id" in data:
+        split_rows["train_groups"] = data.loc[x_train.index, "group_id"].tolist()
+        split_rows["test_groups"] = data.loc[x_test.index, "group_id"].tolist()
+    _write_json(output / "split.json", split_rows)
     preds = (scores >= 0.5).astype(int)
     _write_json(output / "confusion_matrix.json", {
         "labels": [0, 1], "rows": "actual", "columns": "predicted",

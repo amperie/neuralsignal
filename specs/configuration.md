@@ -2,7 +2,7 @@
 
 Use the checked-in [feature configs](../configs/feature_collection/),
 [launch configs](../configs/remote/), [pod manifest](../configs/runpod_manifest.yaml),
-and [S1 config](../configs/training/sabotage_s1.yaml) as the supported shapes.
+and [S1 config](../configs/training/s1.yaml) as the supported shapes.
 The loader reads a YAML mapping, deep-merges programmatic overrides, then expands
 environment variables in string values. It does not validate every unknown key.
 
@@ -54,9 +54,12 @@ previous forwarded values. Local collection/training do not automatically load
 
 ## Training
 
-Use `dataset.path` (local directory or Parquet file), `dataset.label_column`,
-`features.include_sets/include_columns/exclude_columns`, and optional `mlflow`.
-The checked-in config uses `label_column: sabotage` for MALT run pooling and
-`registered_model_name` for MLflow registration. Its dataset path is an example
-that must be changed. `model.type: xgboost` and `model.params` configure the classifier. Split YAML
-sections do not configure the current train/test split. [Training details](local-s1-mlflow.md).
+Use `target` to define column mappings or label membership, or retain
+`dataset.label_column` for existing numeric target configs. The CLI accepts
+`--run` for the feature dataset, and offers target selection when unspecified.
+The neutral `configs/training/s1.yaml` does not force a dataset path, target,
+or registered model name. `features.include_sets/include_columns/exclude_columns`
+controls features; `model.type: xgboost` and `model.params` configure the classifier.
+MLflow settings are optional; `registered_model_name` enables model registration.
+Split YAML sections do not configure the current train/test split.
+See [target definitions and training details](local-s1-mlflow.md).
