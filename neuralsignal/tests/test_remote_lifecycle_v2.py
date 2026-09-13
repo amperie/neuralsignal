@@ -89,6 +89,8 @@ features:
 
     assert result.pod_id == "pod-1"
     assert runpod.terminated == ["pod-1"]
+    assert ("handoff", "feature-runs/run-1/inputs/feature_config.yaml") in handoff.objects
+    assert runpod.payload["env"]["NEURALSIGNAL_FEATURE_CONFIG_URI"] == "s3://handoff/feature-runs/run-1/inputs/feature_config.yaml"
     assert (tmp_path / "downloads" / "run-1" / "manifest.json").exists()
     assert ("handoff", "feature-runs/run-1/bundle.zip") in handoff.deleted
     assert ("local-minio", "feature-datasets/run-1/manifest.json") in minio.objects
@@ -116,6 +118,8 @@ def test_remote_collect_dry_run_redacts_payload(tmp_path):
 
     assert result["bundle_uri"] == "s3://handoff/feature-runs/run-1/bundle.zip"
     assert result["payload"]["env"]["HF_TOKEN"] == "<redacted>"
+    assert result["payload"]["env"]["NEURALSIGNAL_FEATURE_CONFIG_URI"] == "s3://handoff/feature-runs/run-1/inputs/feature_config.yaml"
+    assert "NEURALSIGNAL_FEATURE_CONFIG_B64" not in result["payload"]["env"]
 
 
 

@@ -14,7 +14,7 @@ from neuralsignal.config.env import apply_env, load_env_file
 from neuralsignal.remote.runpod import RunPodGpuType, RunPodJob, build_pod_payload, launch, list_gpu_types, load_secrets, redacted, terminate, get_pod, ssh_command
 from neuralsignal.remote.terraform import s3_settings_from_terraform
 from neuralsignal.storage.bundle import delete_bundle, download_bundle, unpack_bundle
-from neuralsignal.storage.s3 import Boto3ObjectStore, ObjectStore, exists, s3_join, upload_directory
+from neuralsignal.storage.s3 import Boto3ObjectStore, ObjectStore, exists, s3_join, upload_directory, upload_file
 from neuralsignal.training import train_s1
 
 logger = logging.getLogger(__name__)
@@ -109,9 +109,11 @@ def remote_collect_lifecycle(
     _fill_s3_defaults(config, secrets)
 
     bundle_uri = _bundle_uri(config, run_id)
-    logger.info("remote collect prepared run_id=%s bundle_uri=%s", run_id, bundle_uri)
+    config_uri = _config_uri(config, run_id)
+    logger.info("remote collect prepared run_id=%s bundle_uri=%s config_uri=%s", run_id, bundle_uri, config_uri)
     runpod_api = runpod_api or DefaultRunPodApi()
     manifest = _with_selected_gpu(manifest, runpod_api, gpu_vram_gb, gpu_id, yes=yes)
+    secrets["NEURALSIGNAL_FEATURE_CONFIG_URI"] = config_uri
     payload = build_pod_payload(RunPodJob(run_id, config, manifest), secrets)
     logger.info("runpod payload ready name=%s image=%s gpu_count=%s gpu_type_ids=%s", payload.get("name"), payload.get("imageName"), payload.get("gpuCount"), payload.get("gpuTypeIds"))
     if dry_run:
@@ -119,6 +121,8 @@ def remote_collect_lifecycle(
         return redacted({"payload": payload, "bundle_uri": bundle_uri})
 
     store = store or Boto3ObjectStore(endpoint_url=os.environ.get("NEURALSIGNAL_S3_ENDPOINT_URL"))
+    logger.info("uploading feature config path=%s uri=%s", config_path, config_uri)
+    upload_file(store, config_path, config_uri)
     logger.info("launching RunPod pod")
     pod_id = str(runpod_api.launch(payload)["id"])
     logger.info("RunPod pod launched pod_id=%s", pod_id)
@@ -367,13 +371,22 @@ def _bundle_uri(config: dict, run_id: str) -> str:
     run = config.get("run") or {}
     if run.get("bundle_uri"):
         return str(run["bundle_uri"])
+    return s3_join(_run_output_base(config), run_id, "bundle.zip")
+
+
+def _config_uri(config: dict, run_id: str) -> str:
+    return s3_join(_run_output_base(config), run_id, "inputs", "feature_config.yaml")
+
+
+def _run_output_base(config: dict) -> str:
+    run = config.get("run") or {}
     base = run.get("s3_output_uri")
     if not base:
         bucket = os.environ.get("NEURALSIGNAL_S3_BUCKET")
         if not bucket:
             raise RuntimeError("NEURALSIGNAL_S3_BUCKET or run.s3_output_uri is required")
         base = f"s3://{bucket}/feature-runs"
-    return s3_join(str(base), run_id, "bundle.zip")
+    return str(base)
 
 
 def _fill_s3_defaults(config: dict, secrets: dict[str, str]) -> None:

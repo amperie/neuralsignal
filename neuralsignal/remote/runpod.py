@@ -42,7 +42,10 @@ def build_pod_payload(job: RunPodJob, secrets: dict[str, str] | None = None) -> 
     env = dict(job.manifest.get("env") or {})
     env.update(secrets or {})
     env["NEURALSIGNAL_RUN_ID"] = job.run_id
-    env["NEURALSIGNAL_FEATURE_CONFIG_B64"] = _encode_config(job.config)
+    if env.get("NEURALSIGNAL_FEATURE_CONFIG_URI"):
+        env.pop("NEURALSIGNAL_FEATURE_CONFIG_B64", None)
+    else:
+        env["NEURALSIGNAL_FEATURE_CONFIG_B64"] = _encode_config(job.config)
 
     for key in ("RUNPOD_API_KEY", "RUNPOD_KEY"):
         env.pop(key, None)

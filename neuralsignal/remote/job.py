@@ -17,7 +17,7 @@ from neuralsignal.features.runner import collect_features, collect_features_batc
 from neuralsignal.storage.bundle import create_bundle, upload_bundle
 from neuralsignal.storage.local import LocalFeatureShardWriter
 from neuralsignal.storage.manifests import RunManifest
-from neuralsignal.storage.s3 import Boto3ObjectStore, s3_join
+from neuralsignal.storage.s3 import Boto3ObjectStore, download_file, s3_join
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +91,16 @@ def _log_config_summary(config: dict, run_dir: Path) -> None:
 
 
 def _load_config_from_env() -> dict:
+    uri = os.environ.get("NEURALSIGNAL_FEATURE_CONFIG_URI")
+    if uri:
+        path = Path(os.environ.get("NEURALSIGNAL_RUN_WORKDIR", "/workspace/neuralsignal-runs")) / "inputs" / "feature_config.yaml"
+        logger.info("downloading feature config uri=%s path=%s", uri, path)
+        download_file(_s3_store(), uri, path)
+        return load_config(path)
     encoded = os.environ.get("NEURALSIGNAL_FEATURE_CONFIG_B64")
     if not encoded:
-        raise RuntimeError("NEURALSIGNAL_FEATURE_CONFIG_B64 is required")
+        raise RuntimeError("NEURALSIGNAL_FEATURE_CONFIG_URI or NEURALSIGNAL_FEATURE_CONFIG_B64 is required")
+    logger.info("loading feature config from NEURALSIGNAL_FEATURE_CONFIG_B64 fallback")
     return json.loads(base64.b64decode(encoded).decode("utf-8"))
 
 
