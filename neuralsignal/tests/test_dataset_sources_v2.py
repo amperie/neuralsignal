@@ -168,12 +168,61 @@ def test_malt_default_split_and_real_row_loading(monkeypatch):
     assert list(source.iter_examples())[0].output == "persimmoniously"
 
 
-@pytest.mark.parametrize("filename", ["smoke_runpod_malt.yaml", "example_runpod_malt.yaml"])
-def test_malt_runpod_configs_use_public_split(filename):
+@pytest.mark.parametrize("path", [
+    *(Path(__file__).resolve().parents[2] / "configs" / "feature_collection").glob("*malt*.yaml"),
+    *(Path(__file__).resolve().parents[2] / "configs" / "remote").glob("*malt*.yaml"),
+])
+def test_malt_configs_use_row_level_public_source(path):
     import yaml
     from neuralsignal.datasets.sources.factory import source_from_config
+    from neuralsignal.datasets.sources.malt_samples import MaltPublicSource
 
-    path = Path(__file__).resolve().parents[2] / "configs" / "feature_collection" / filename
-    config = yaml.safe_load(path.read_text())
-    assert source_from_config(config).split == "public"
-    assert source_from_config(config).name == "metr-evals/malt-public"
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    feature_config = config.get("feature_config") or config
+    dataset = feature_config.get("dataset") or {}
+    if dataset.get("source") != "malt":
+        pytest.skip(f"not a MALT public collection config: {path}")
+    source = source_from_config(feature_config)
+    assert isinstance(source, MaltPublicSource)
+    assert source.split == "public"
+    assert source.name == "metr-evals/malt-public"
+    assert dataset.get("source") != "malt_samples"
+
+
+def test_full_malt_normal_remote_config_runs_all_rows_with_normal_positive_target():
+    import yaml
+
+    path = Path(__file__).resolve().parents[2] / "configs" / "remote" / "malt_full_normal_bs1.yaml"
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    feature = config["feature_config"]
+    training = config["training_config"]
+
+    assert feature["dataset"]["source"] == "malt"
+    assert feature["dataset"]["name"] == "metr-evals/malt-public"
+    assert "max_examples" not in feature["dataset"]
+    assert feature["generation"]["batch_size"] == 1
+    assert config["remote_collect"]["timeout_seconds"] == 43200
+    assert training["target"] == {
+        "source": "run_labels",
+        "positive_labels": ["normal"],
+        "unmatched": "negative",
+    }
+
+
+def test_batch12_malt_config_keeps_500_rows_with_normal_positive_target():
+    import yaml
+
+    path = Path(__file__).resolve().parents[2] / "configs" / "remote" / "malt_real_bs12.yaml"
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    feature = config["feature_config"]
+    training = config["training_config"]
+
+    assert feature["dataset"]["source"] == "malt"
+    assert feature["dataset"]["max_examples"] == 500
+    assert feature["generation"]["batch_size"] == 12
+    assert training["target"] == {
+        "source": "run_labels",
+        "positive_labels": ["normal"],
+        "unmatched": "negative",
+    }
+    assert training["mlflow"]["run_name"] == "malt-normal-bs12-500-s1"
