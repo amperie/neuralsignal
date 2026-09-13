@@ -6,7 +6,7 @@ Run the complete local suite from the repository root:
 uv run pytest neuralsignal/tests -q
 ```
 
-Last verified September 12, 2026: **175 passed**. This includes the bug sweeps and XGBoost trainer changes. The suite runs without downloading pretrained weights or launching pods.
+Last verified September 12, 2026: **177 passed**. This includes the bug sweeps and XGBoost trainer changes. The suite runs without downloading pretrained weights or launching pods.
 
 ## Coverage
 

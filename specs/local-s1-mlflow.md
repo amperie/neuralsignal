@@ -50,11 +50,12 @@ The implementation logs:
 
 - `dataset_path`, `feature_count`, `model_type: xgboost`, XGBoost parameters, plus extra params;
 - the [implemented metrics](s1-evaluation.md);
-- `selected_features.json`;
+- `selected_features.json`, `metrics.json`, and `classification_report.json`;
+- confusion matrices as labeled JSON, CSV, and PNG;
 - the XGBoost model under artifact path `model`, optionally registered.
 
 When remote collection also mirrors to MinIO, it adds `feature_dataset_uri` as
-an extra parameter. Full config, manifest hash, split IDs, calibration, confusion
-matrix, and code revision are not automatically logged. Without MLflow the CLI
+an extra parameter. Full config, manifest hash, split IDs, calibration, and code revision are not
+automatically logged. Without MLflow the CLI
 prints results but does not save a separate model file; the Python API returns
 model, metrics, and feature columns.

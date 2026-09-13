@@ -7,7 +7,7 @@ inference evaluator. It does not yet load a trained detector automatically.
 ## Current state
 
 The implementation includes the bug-sweep fixes and the XGBoost S1 trainer.
-The September 12, 2026 local verification passed **175 tests**, including real
+The September 12, 2026 local verification passed **177 tests**, including real
 small T5/LongT5 CPU models and an XGBoost/MLflow save-load test.
 
 The latest `malt-smoke-20260912-001` run (pod `1ljc4sl5wudxa3`, collected at
