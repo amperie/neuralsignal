@@ -63,29 +63,27 @@ def test_example_label_membership_and_conflicts():
 def malt_data():
     rows = []
     for run in range(8):
-        for sample in range(2):
-            rows.append({'zones__x': float(run % 2), 'existing': run % 2,
-                         'metadata_json': json.dumps({'source': 'metr-evals/malt-public', 'group_id': str(run),
-                             'label_scope': 'transcript', 'run_labels': ['gives_up'] if run % 2 else ['normal'],
-                             'sample_count': 2, 'sample_index': sample, 'completion_count': 1, 'completion_index': 0})})
+        rows.append({'zones__x': float(run % 2), 'existing': run % 2,
+                     'metadata_json': json.dumps({'source': 'metr-evals/malt-public', 'group_id': str(run),
+                         'label_scope': 'transcript', 'malt_grain': 'run',
+                         'run_labels': ['gives_up'] if run % 2 else ['normal']})})
     return pd.DataFrame(rows)
 
 
-def test_malt_targets_are_run_scoped_and_existing_numeric_columns_still_work():
+def test_malt_targets_are_row_scoped_and_existing_numeric_columns_still_work():
     for definition, legacy in [({'source': 'run_labels', 'positive_labels': ['gives_up'], 'unmatched': 'negative'}, None),
                                (None, 'existing')]:
         prepared, _, column, _, summary = prepare_training_data(malt_data(), ['zones__x'], definition, legacy)
-        assert len(prepared) == 8 and summary['source_rows'] == 16
+        assert len(prepared) == 8 and summary['source_rows'] == 8
         assert summary['unit'] == 'run' and summary['positive'] == 4
         assert prepared[column].tolist() == [0, 1] * 4
 
 
-def test_incomplete_malt_run_warns_and_prepares_available_samples(caplog):
-    frame = malt_data().iloc[1:]
-    prepared, _, _, _, summary = prepare_training_data(frame, ['zones__x'],
-        {'source': 'run_labels', 'positive_labels': ['gives_up'], 'unmatched': 'negative'})
-    assert len(prepared) == 8 and summary['training_units'] == 8
-    assert 'continuing with available samples' in caplog.text
+def test_duplicate_malt_run_errors_instead_of_pooling_samples():
+    frame = pd.concat([malt_data(), malt_data().iloc[[0]]], ignore_index=True)
+    with pytest.raises(TargetError, match='Duplicate MALT run'):
+        prepare_training_data(frame, ['zones__x'],
+            {'source': 'run_labels', 'positive_labels': ['gives_up'], 'unmatched': 'negative'})
 
 
 def test_generic_grouping_prevents_related_rows_becoming_independent_examples():
@@ -138,7 +136,7 @@ def test_small_run_returns_actionable_error_without_traceback(tmp_path, capsys):
     config.write_text('model:\n  type: xgboost\n')
     assert main(['train', str(config), '--run', str(path), '--positive-label', 'gives_up']) == 2
     text = capsys.readouterr().err
-    assert 'Insufficient data' in text and '2 independent runs' in text
+    assert 'Insufficient data' in text and '4 independent runs' in text
     assert 'Traceback' not in text
 
 
@@ -164,19 +162,18 @@ def test_default_config_has_no_forced_target():
     assert 'sabotage' not in str(config)
 
 
-def test_training_succeeds_with_partial_malt_runs(tmp_path, caplog):
+def test_training_succeeds_with_row_level_malt_runs(tmp_path):
     path = tmp_path / 'partial.parquet'
     malt_data().iloc[1:].to_parquet(path)
     result = train_s1(path, target_config={'source': 'run_labels', 'positive_labels': ['gives_up'], 'unmatched': 'negative'},
                       mlflow_config={'enabled': False}, model_config={'params': {'n_estimators': 5}}, output_root=tmp_path / 's1')
-    assert result.metrics['train_rows'] == 6
+    assert result.metrics['train_rows'] == 5
     assert result.metrics['test_rows'] == 2
     assert Path(result.output_dir, 'model.ubj').exists()
-    assert 'Incomplete MALT run' in caplog.text
 
 
-def test_duplicate_completions_still_fail():
+def test_duplicate_malt_rows_fail():
     frame = malt_data()
     frame = pd.concat([frame, frame.iloc[:1]], ignore_index=True)
-    with pytest.raises(TargetError, match='Duplicate completions'):
+    with pytest.raises(TargetError, match='Duplicate MALT run'):
         prepare_training_data(frame, ['zones__x'], {'source': 'column', 'column': 'existing'})

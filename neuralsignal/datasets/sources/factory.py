@@ -5,7 +5,7 @@ from typing import Any
 from neuralsignal.datasets.sources.hf import HuggingFaceSource
 from neuralsignal.datasets.sources.jsonl import JsonlSource
 from neuralsignal.datasets.sources.malt import MaltTranscriptSource
-from neuralsignal.datasets.sources.malt_samples import MaltSampleSource
+from neuralsignal.datasets.sources.malt_samples import MaltPublicSource, MaltSampleSource
 
 
 def source_from_config(config: dict[str, Any]):
@@ -18,7 +18,7 @@ def source_from_config(config: dict[str, Any]):
             "metr-evals/malt-transcripts-public" if source == "malt_transcripts" else "metr-evals/malt-public"
         ))
         transcripts = name == "metr-evals/malt-transcripts-public" or source == "malt_transcripts"
-        source_class = MaltTranscriptSource if transcripts else MaltSampleSource
+        source_class = MaltTranscriptSource if transcripts else (MaltSampleSource if source == "malt_samples" else MaltPublicSource)
         return source_class(
             split=str(dataset.get("split") or ("transcripts" if transcripts else "public")),
             name=name,

@@ -18,7 +18,7 @@ feature_config:
     device: cuda:0
     quantization: int8
   generation:
-    batch_size: 4
+    batch_size: 12
     max_new_tokens: 8
     truncation_length: 512
   prompt:
