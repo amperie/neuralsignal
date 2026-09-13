@@ -49,6 +49,8 @@ dataset:
   split: public
   config_name: default
   max_examples: 500
+  load_kwargs:
+    streaming: true
 
 features:
   materialize:
