@@ -17,7 +17,7 @@ def training_data(tmp_path):
 
 
 def test_s1_trains_xgboost_with_configured_parameters(tmp_path):
-    result = train_s1(training_data(tmp_path), 'label', model_config={'params': {'n_estimators': 12, 'max_depth': 2}})
+    result = train_s1(training_data(tmp_path), 'label', model_config={'params': {'n_estimators': 12, 'max_depth': 2}}, mlflow_config={'enabled': False}, output_root=tmp_path / 's1')
     assert isinstance(result.model, XGBClassifier)
     assert result.model.get_params()['n_estimators'] == 12
     assert result.model.get_params()['tree_method'] == 'hist'
@@ -25,7 +25,7 @@ def test_s1_trains_xgboost_with_configured_parameters(tmp_path):
 
 
 def test_training_config_targets_remote_mlflow():
-    config = load_config('configs/training/sabotage_s1.yaml')
+    config = load_config('configs/training/s1.yaml')
     assert config['model']['type'] == 'xgboost'
     assert config['mlflow']['tracking_uri'] == 'http://z440.lan:5000'
     assert config['features']['include_sets'] == ['zones', 'layer_distribution']

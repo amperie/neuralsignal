@@ -68,6 +68,7 @@ class RemoteCollectResult:
     bundle_uri: str
     target_dir: str
     training_metrics: dict | None
+    training_output_dir: str | None = None
 
 
 def remote_collect_lifecycle(
@@ -122,6 +123,7 @@ def remote_collect_lifecycle(
     pod_id = str(runpod_api.launch(payload)["id"])
     logger.info("RunPod pod launched pod_id=%s", pod_id)
     training_metrics = None
+    training_output_dir = None
     interrupted = False
     try:
         _wait_for_bundle(store, bundle_uri, poll_seconds, timeout_seconds,
@@ -163,10 +165,12 @@ def remote_collect_lifecycle(
         upload_directory(minio_store, target, minio_uri)
     if train_config_path:
         logger.info("starting local S1 training config=%s dataset=%s", train_config_path, target)
-        training_metrics = _train_s1_from_config(train_config_path, target, minio_uri)
+        training_result = _train_s1_from_config(train_config_path, target, minio_uri)
+        training_metrics = training_result.metrics
+        training_output_dir = training_result.output_dir
         logger.info("local S1 training completed metrics=%s", training_metrics)
     logger.info("remote collect lifecycle completed run_id=%s target=%s", run_id, target)
-    return RemoteCollectResult(run_id, pod_id, bundle_uri, str(target), training_metrics)
+    return RemoteCollectResult(run_id, pod_id, bundle_uri, str(target), training_metrics, training_output_dir)
 
 
 
@@ -266,21 +270,24 @@ def _forwarded_hf_env() -> dict[str, str]:
     keys = ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN")
     return {key: os.environ[key] for key in keys if os.environ.get(key)}
 
-def _train_s1_from_config(config_path: str | Path, dataset_dir: str | Path, minio_uri: str | None) -> dict:
+def _train_s1_from_config(config_path: str | Path, dataset_dir: str | Path, minio_uri: str | None):
     config = load_config(config_path)
     mlflow = dict(config.get("mlflow") or {})
     extra = dict(mlflow.get("extra_params") or {})
     if minio_uri:
         extra["feature_dataset_uri"] = minio_uri
     mlflow["extra_params"] = extra
+    from neuralsignal.cli.targets import select_target
+    target = select_target(dataset_dir, config)
     result = train_s1(
         dataset_dir,
-        label_column=(config.get("dataset") or {}).get("label_column", "label"),
+        label_column=(config.get("dataset") or {}).get("label_column"),
+        target_config=target,
         feature_config=config.get("features") or {},
         mlflow_config=mlflow,
         model_config=config.get("model") or {},
     )
-    return result.metrics
+    return result
 
 
 def _bundle_available(store: ObjectStore, bundle_uri: str) -> bool:

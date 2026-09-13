@@ -24,6 +24,8 @@ def _example_from_row(row: dict) -> DatasetExample:
         input=str(row["input"]),
         output=str(row["output"]),
         labels=list(row.get("labels") or []),
-        metadata=dict(row.get("metadata") or {}),
+        metadata={**{key: value for key, value in row.items()
+                     if key not in {"id", "example_id", "input", "output", "labels", "metadata"}},
+                  **dict(row.get("metadata") or {})},
     )
 

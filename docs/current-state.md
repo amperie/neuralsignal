@@ -5,7 +5,7 @@ These documents describe the repository implementation, not a deployment guarant
 
 ## Verified locally
 
-`uv run pytest neuralsignal/tests -q` passed **175 tests**. Coverage includes
+`uv run pytest neuralsignal/tests -q` passed **177 tests**. Coverage includes
 JSONL/MALT normalization, local feature writing, training, mocked RunPod/S3 flows,
 checksum failures, configuration errors, and cleanup. Tiny randomly initialized
 T5 and LongT5 models run real CPU generation with real instrumentation. The T5

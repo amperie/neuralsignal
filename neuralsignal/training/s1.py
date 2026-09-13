@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import json
 import math
+import logging
+import os
+from datetime import datetime, timezone
+from uuid import uuid4
+from contextlib import contextmanager
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,6 +14,8 @@ from typing import Any
 
 import pandas as pd
 from neuralsignal.storage.manifests import local_shard_path, sha256_file
+
+from neuralsignal.training.targets import prepare_training_data
 
 from xgboost import XGBClassifier
 from sklearn.metrics import (average_precision_score, f1_score, precision_score, recall_score,
@@ -22,6 +29,7 @@ class S1TrainingResult:
     model: Any
     metrics: dict[str, float]
     feature_columns: list[str]
+    output_dir: str | None = None
 
 
 def select_feature_columns(
@@ -53,11 +61,13 @@ def select_feature_columns(
 
 def train_s1(
     dataset_path: str | Path,
-    label_column: str,
+    label_column: str | None = None,
     feature_config: dict[str, Any] | None = None,
     mlflow_config: dict[str, Any] | None = None,
     random_state: int = 42,
     model_config: dict[str, Any] | None = None,
+    output_root: str | Path = "runs/s1",
+    target_config: dict[str, Any] | None = None,
 ) -> S1TrainingResult:
     data = _read_features(dataset_path)
     features = select_feature_columns(
@@ -68,19 +78,11 @@ def train_s1(
     )
     if not features:
         raise ValueError("No feature columns selected")
-    if "metadata_json" in data.columns:
-        metadata = [json.loads(value) for value in data["metadata_json"]]
-        if any(meta.get("source") == "metr-evals/malt-public" for meta in metadata):
-            from neuralsignal.features.malt_runs import aggregate_malt_runs
-            data = aggregate_malt_runs(data, features, label_column)
-    if label_column not in data.columns:
-        raise ValueError(f"Missing label column: {label_column}")
-
+    data, features, target_column, target_definition, target_summary = prepare_training_data(
+        data, features, target_config, label_column)
+    logging.getLogger(__name__).info("Training target: %s; data: %s", target_definition, target_summary)
     x = data[features].astype(float)
-    labels = pd.to_numeric(data[label_column], errors="raise")
-    if labels.isna().any() or not labels.isin([0, 1]).all():
-        raise ValueError("Binary labels must contain only 0 and 1")
-    y = labels.astype(int)
+    y = data[target_column].astype(int)
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25, random_state=random_state, stratify=y)
     model_config = model_config or {}
     if model_config.get("type", "xgboost") != "xgboost":
@@ -116,8 +118,38 @@ def train_s1(
             metrics[f"{condition}_test_runs"] = float(mask.sum())
             metrics.update({f"{condition}_{key}": value for key, value in
                             _classification_metrics(y_test.iloc[mask], scores[mask]).items()})
-    _log_mlflow(model, metrics, features, dataset_path, mlflow_config or {}, y_test, scores)
-    return S1TrainingResult(model=model, metrics=metrics, feature_columns=features)
+    output = Path(output_root) / (datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S") + "-" + uuid4().hex[:8])
+    output.mkdir(parents=True, exist_ok=False)
+    model.save_model(output / "model.ubj")
+    _write_json(output / "metrics.json", metrics)
+    _write_json(output / "selected_features.json", features)
+    _write_json(output / "training.json", {
+        "dataset_path": str(Path(dataset_path).resolve()), "label_column": label_column,
+        "random_state": random_state, "test_size": 0.25, "threshold": 0.5,
+        "target": target_definition, "target_summary": target_summary,
+        "model_params": model.get_params(), "features": feature_config or {},
+    })
+    split_rows = {"train": x_train.index.tolist(), "test": x_test.index.tolist()}
+    if "group_id" in data:
+        split_rows["train_groups"] = data.loc[x_train.index, "group_id"].tolist()
+        split_rows["test_groups"] = data.loc[x_test.index, "group_id"].tolist()
+    _write_json(output / "split.json", split_rows)
+    preds = (scores >= 0.5).astype(int)
+    _write_json(output / "confusion_matrix.json", {
+        "labels": [0, 1], "rows": "actual", "columns": "predicted",
+        "threshold": 0.5, "matrix": confusion_matrix(y_test, preds, labels=[0, 1]).tolist(),
+    })
+    _write_json(output / "classification_report.json", classification_report(
+        y_test, preds, labels=[0, 1], output_dict=True, zero_division=0))
+    pd.DataFrame({"row_index": x_test.index, "label": y_test.to_numpy(),
+                  "score": scores, "prediction": preds}).to_csv(output / "predictions.csv", index=False)
+    logging.getLogger(__name__).info("S1 outputs saved to %s", output)
+    try:
+        with _mlflow_request_limits():
+            _log_mlflow(model, metrics, features, dataset_path, mlflow_config or {}, y_test, scores)
+    except Exception as error:
+        logging.getLogger(__name__).warning("MLflow reporting failed: %s. Training completed; outputs saved to %s", error, output)
+    return S1TrainingResult(model=model, metrics=metrics, feature_columns=features, output_dir=str(output))
 
 
 def _classification_metrics(y_true, scores) -> dict[str, float]:
@@ -182,10 +214,13 @@ def _safe_metric(fn, y_true, y_score, **kwargs) -> float:
 
 
 def _log_mlflow(model, metrics: dict[str, float], features: list[str], dataset_path: str | Path, config: dict[str, Any], y_true, scores) -> None:
-    if not config:
+    if config.get("enabled", True) is False:
         return
 
+    config = {"tracking_uri": os.environ.get("MLFLOW_TRACKING_URI", "http://z440.lan:5000"),
+              "experiment_name": "neuralsignal-s1", **config}
     import mlflow
+    import mlflow.xgboost
 
     if config.get("tracking_uri"):
         mlflow.set_tracking_uri(config["tracking_uri"])
@@ -228,3 +263,29 @@ def _log_mlflow(model, metrics: dict[str, float], features: list[str], dataset_p
             figure.savefig(Path(tmp) / "confusion_matrix.png", dpi=150)
             mlflow.log_artifact(str(Path(tmp) / "confusion_matrix.png"))
         mlflow.xgboost.log_model(model, artifact_path="model", registered_model_name=config.get("registered_model_name"))
+
+
+def _write_json(path: Path, value) -> None:
+    def clean(item):
+        if isinstance(item, float) and not math.isfinite(item):
+            return None
+        if isinstance(item, dict):
+            return {key: clean(val) for key, val in item.items()}
+        if isinstance(item, list):
+            return [clean(val) for val in item]
+        return item
+    path.write_text(json.dumps(clean(value), indent=2, allow_nan=False, default=str) + "\n", encoding="utf-8")
+
+
+@contextmanager
+def _mlflow_request_limits():
+    # Avoid MLflow's long default retries when the tracking service is offline.
+    defaults = {"MLFLOW_HTTP_REQUEST_TIMEOUT": "5", "MLFLOW_HTTP_REQUEST_MAX_RETRIES": "0"}
+    added = [key for key in defaults if key not in os.environ]
+    for key in added:
+        os.environ[key] = defaults[key]
+    try:
+        yield
+    finally:
+        for key in added:
+            os.environ.pop(key, None)

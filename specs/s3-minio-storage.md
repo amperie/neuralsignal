@@ -19,7 +19,7 @@ Versioned S3 buckets may retain noncurrent object versions until lifecycle expir
 
 ## Prefix sync
 
-`ns remote sync S3_PREFIX LOCAL_DIR` expects an expanded `manifest.json` and
+`ns download S3_PREFIX --out LOCAL_DIR` expects an expanded `manifest.json` and
 relative shard paths, such as a separately uploaded directory. It does not accept
 a ZIP despite the CLI argument's broad help wording. It uses default boto3
 configuration; that command does not load `.env` or wire the MinIO endpoint.

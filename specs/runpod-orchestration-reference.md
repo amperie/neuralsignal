@@ -28,7 +28,7 @@ launch YAML or CLI options. There is no network-volume ID support in this builde
 
 ## GPU selection
 
-`-gb N`/`--gpu-vram-gb N` lists available GPUs within ±25% of N, sorted by known
+`--gpu-vram-gb N` lists available GPUs within ±25% of N, sorted by known
 price then capacity/name. `--yes` chooses the cheapest known-price match.
 `--gpu-id` bypasses interactive selection. CLI GPU choice overrides the other
 launch-YAML selection mode. Dry-run can still call the provider for these queries.
