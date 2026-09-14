@@ -122,7 +122,7 @@ def test_mlflow_failures_keep_model_metrics_and_console_results(tmp_path, monkey
     assert result['metrics']['accuracy'] == 1.0
     assert tracking == ['http://tracking.test:5000']
     output = Path(result['out'])
-    assert {'model.ubj', 'metrics.json', 'training.json', 'selected_features.json',
+    assert {'model.ubj', 'metrics.json', 'training.json', 'selected_features.json', 'feature_importance_top20.json',
             'predictions.csv', 'confusion_matrix.json', 'classification_report.json'} <= {p.name for p in output.iterdir()}
     assert json.loads((output / 'metrics.json').read_text()) == result['metrics']
     restored = XGBClassifier()

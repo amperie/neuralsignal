@@ -376,9 +376,14 @@ def _train_s1(args) -> int:
         feature_config=config.get("features") or {},
         mlflow_config=config.get("mlflow") or {},
         model_config=config.get("model") or {},
+        progress=_train_progress,
     )
     print(json.dumps({"metrics": result.metrics, "features": result.feature_columns, "out": result.output_dir}, indent=2))
     return 0
+
+
+def _train_progress(message: str) -> None:
+    print(f"[train] {message}", file=sys.stderr, flush=True)
 
 
 def _remote(args) -> int:

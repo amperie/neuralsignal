@@ -10,7 +10,7 @@ from contextlib import contextmanager
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 from neuralsignal.storage.manifests import local_shard_path, sha256_file
@@ -68,8 +68,11 @@ def train_s1(
     model_config: dict[str, Any] | None = None,
     output_root: str | Path = "runs/s1",
     target_config: dict[str, Any] | None = None,
+    progress: Callable[[str], None] | None = None,
 ) -> S1TrainingResult:
-    data = _read_features(dataset_path)
+    _progress(progress, f"Reading features from {dataset_path}...")
+    data = _read_features(dataset_path, progress)
+    _progress(progress, f"Loaded {len(data):,} rows and {len(data.columns):,} columns.")
     features = select_feature_columns(
         list(data.columns),
         include_sets=(feature_config or {}).get("include_sets"),
@@ -78,12 +81,17 @@ def train_s1(
     )
     if not features:
         raise ValueError("No feature columns selected")
+    _progress(progress, f"Selected {len(features):,} feature column(s).")
+    _progress(progress, "Preparing target labels and training units...")
     data, features, target_column, target_definition, target_summary = prepare_training_data(
         data, features, target_config, label_column)
     logging.getLogger(__name__).info("Training target: %s; data: %s", target_definition, target_summary)
     x = data[features].astype(float)
     y = data[target_column].astype(int)
+    counts = y.value_counts().sort_index().to_dict()
+    _progress(progress, f"Prepared {len(x):,} training units: target counts {counts}.")
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25, random_state=random_state, stratify=y)
+    _progress(progress, f"Split train/test rows: {len(x_train):,}/{len(x_test):,}.")
     model_config = model_config or {}
     if model_config.get("type", "xgboost") != "xgboost":
         raise ValueError("S1 model.type must be xgboost")
@@ -102,8 +110,14 @@ def train_s1(
         raise ValueError("S1 requires objective binary:logistic")
     params["objective"] = "binary:logistic"
     model = XGBClassifier(**params)
+    _progress(
+        progress,
+        "Fitting XGBoost "
+        f"(n_estimators={params.get('n_estimators')}, max_depth={params.get('max_depth')}, n_jobs={params.get('n_jobs')})...",
+    )
     model.fit(x_train, y_train)
 
+    _progress(progress, "Scoring held-out test rows...")
     scores = model.predict_proba(x_test)[:, 1]
     metrics = _classification_metrics(y_test, scores)
     metrics.update({
@@ -120,9 +134,12 @@ def train_s1(
                             _classification_metrics(y_test.iloc[mask], scores[mask]).items()})
     output = Path(output_root) / (datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S") + "-" + uuid4().hex[:8])
     output.mkdir(parents=True, exist_ok=False)
+    _progress(progress, f"Saving model and reports to {output}...")
+    feature_importance = _feature_importance(model, features, limit=20)
     model.save_model(output / "model.ubj")
     _write_json(output / "metrics.json", metrics)
     _write_json(output / "selected_features.json", features)
+    _write_json(output / "feature_importance_top20.json", feature_importance)
     _write_json(output / "training.json", {
         "dataset_path": str(Path(dataset_path).resolve()), "label_column": label_column,
         "random_state": random_state, "test_size": 0.25, "threshold": 0.5,
@@ -144,11 +161,17 @@ def train_s1(
     pd.DataFrame({"row_index": x_test.index, "label": y_test.to_numpy(),
                   "score": scores, "prediction": preds}).to_csv(output / "predictions.csv", index=False)
     logging.getLogger(__name__).info("S1 outputs saved to %s", output)
+    if (mlflow_config or {}).get("enabled", True) is False:
+        _progress(progress, "MLflow reporting disabled; local outputs are saved.")
+        return S1TrainingResult(model=model, metrics=metrics, feature_columns=features, output_dir=str(output))
+    _progress(progress, "Reporting metrics and artifacts to MLflow...")
     try:
         with _mlflow_request_limits():
-            _log_mlflow(model, metrics, features, dataset_path, mlflow_config or {}, y_test, scores)
+            _log_mlflow(model, metrics, features, feature_importance, dataset_path, mlflow_config or {}, y_test, scores)
+        _progress(progress, "MLflow reporting complete.")
     except Exception as error:
         logging.getLogger(__name__).warning("MLflow reporting failed: %s. Training completed; outputs saved to %s", error, output)
+        _progress(progress, "MLflow reporting failed; local outputs are still saved.")
     return S1TrainingResult(model=model, metrics=metrics, feature_columns=features, output_dir=str(output))
 
 
@@ -177,7 +200,7 @@ def _classification_metrics(y_true, scores) -> dict[str, float]:
     }
 
 
-def _read_features(path: str | Path) -> pd.DataFrame:
+def _read_features(path: str | Path, progress: Callable[[str], None] | None = None) -> pd.DataFrame:
     path = Path(path)
     if path.is_dir():
         manifest_path = path / "manifest.json"
@@ -187,11 +210,15 @@ def _read_features(path: str | Path) -> pd.DataFrame:
                 raise ValueError("Feature run is not completed")
             frames = []
             seen = set()
-            for shard in manifest.get("shards", []):
+            shards = manifest.get("shards", [])
+            _progress(progress, f"Found manifest with {len(shards):,} shard(s); verifying checksums and loading parquet.")
+            for idx, shard in enumerate(shards, start=1):
                 item = local_shard_path(path, shard["path"])
                 if item in seen:
                     raise ValueError(f"Duplicate shard path: {shard['path']}")
                 seen.add(item)
+                if _report_shard(idx, len(shards)):
+                    _progress(progress, f"Reading shard {idx:,}/{len(shards):,}: {shard['path']}")
                 if sha256_file(item) != shard["sha256"]:
                     raise ValueError(f"Shard checksum mismatch: {shard['path']}")
                 frame = pd.read_parquet(item)
@@ -199,11 +226,27 @@ def _read_features(path: str | Path) -> pd.DataFrame:
                     raise ValueError(f"Shard row count mismatch: {shard['path']}")
                 frames.append(frame)
         else:
-            frames = [pd.read_parquet(item) for item in sorted((path / "features").glob("part-*.parquet"))]
+            items = sorted((path / "features").glob("part-*.parquet"))
+            _progress(progress, f"Found {len(items):,} parquet shard(s) under {path / 'features'}.")
+            frames = []
+            for idx, item in enumerate(items, start=1):
+                if _report_shard(idx, len(items)):
+                    _progress(progress, f"Reading shard {idx:,}/{len(items):,}: {item.name}")
+                frames.append(pd.read_parquet(item))
         if not frames:
             raise ValueError(f"No feature shards found under {path / 'features'}")
         return pd.concat(frames, ignore_index=True)
+    _progress(progress, f"Reading parquet file {path}.")
     return pd.read_parquet(path)
+
+
+def _progress(callback: Callable[[str], None] | None, message: str) -> None:
+    if callback:
+        callback(message)
+
+
+def _report_shard(index: int, total: int) -> bool:
+    return total <= 10 or index in {1, total} or index % 10 == 0
 
 
 def _safe_metric(fn, y_true, y_score, **kwargs) -> float:
@@ -213,7 +256,19 @@ def _safe_metric(fn, y_true, y_score, **kwargs) -> float:
         return float("nan")
 
 
-def _log_mlflow(model, metrics: dict[str, float], features: list[str], dataset_path: str | Path, config: dict[str, Any], y_true, scores) -> None:
+def _feature_importance(model, features: list[str], limit: int = 20) -> dict[str, Any]:
+    importances = getattr(model, "feature_importances_", None)
+    if importances is None:
+        return {"features": [], "ranked": []}
+    ranked = sorted(zip(features, importances), key=lambda item: float(item[1]), reverse=True)[:limit]
+    rows = [
+        {"rank": rank, "feature": feature, "importance": float(importance)}
+        for rank, (feature, importance) in enumerate(ranked, start=1)
+    ]
+    return {"features": [row["feature"] for row in rows], "ranked": rows}
+
+
+def _log_mlflow(model, metrics: dict[str, float], features: list[str], feature_importance: dict[str, Any], dataset_path: str | Path, config: dict[str, Any], y_true, scores) -> None:
     if config.get("enabled", True) is False:
         return
 
@@ -240,6 +295,7 @@ def _log_mlflow(model, metrics: dict[str, float], features: list[str], dataset_p
         mlflow.log_params(params)
         mlflow.log_metrics({key: value for key, value in metrics.items() if math.isfinite(value)})
         mlflow.log_dict({key: value if math.isfinite(value) else None for key, value in metrics.items()}, "metrics.json")
+        mlflow.log_dict(feature_importance, "feature_importance_top20.json")
         preds = (scores >= 0.5).astype(int)
         matrix = confusion_matrix(y_true, preds, labels=[0, 1])
         mlflow.log_dict({"labels": [0, 1], "rows": "actual", "columns": "predicted",

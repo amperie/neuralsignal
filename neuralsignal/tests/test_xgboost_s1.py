@@ -55,7 +55,7 @@ def test_xgboost_mlflow_roundtrip(tmp_path, monkeypatch):
         assert run.data.params['xgboost.n_estimators'] == '10'
         assert run.data.metrics['auroc'] == result.metrics['auroc']
         artifacts = {item.path for item in client.list_artifacts(run.info.run_id)}
-        assert {'selected_features.json', 'metrics.json', 'confusion_matrix.json',
+        assert {'selected_features.json', 'feature_importance_top20.json', 'metrics.json', 'confusion_matrix.json',
                 'confusion_matrix.csv', 'confusion_matrix.png', 'classification_report.json'} <= artifacts
         assert {'auc', 'auroc', 'auprc', 'accuracy', 'precision', 'recall', 'f1',
                 'specificity', 'false_positive_rate', 'false_negative_rate', 'mcc',

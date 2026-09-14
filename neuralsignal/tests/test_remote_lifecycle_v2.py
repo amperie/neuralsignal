@@ -313,3 +313,31 @@ def test_remote_collect_dry_run_forwards_worker_env_from_env_file(tmp_path, monk
     assert env["NEURALSIGNAL_S3_BUCKET"] == "handoff"
     assert env["NEURALSIGNAL_S3_ENDPOINT_URL"] == "https://s3.test"
     assert "RUNPOD_API_KEY" not in env
+
+
+def test_remote_collect_ignores_expanded_shards_until_bundle_exists(tmp_path):
+    import pytest
+
+    feature_config = tmp_path / "feature.yaml"
+    feature_config.write_text("run:\n  s3_output_uri: s3://handoff/feature-runs\n", encoding="utf-8")
+    runpod_manifest = tmp_path / "runpod.yaml"
+    runpod_manifest.write_text("runpod:\n  image: image:latest\n", encoding="utf-8")
+    handoff = FakeStore()
+    handoff.objects[("handoff", "feature-runs/run-1/manifest.json")] = json.dumps({"state": "running"}).encode("utf-8")
+    handoff.objects[("handoff", "feature-runs/run-1/features/part-00000.parquet")] = b"partial"
+    runpod = FakeRunPod(statuses=["RUNNING", "EXITED"])
+
+    with pytest.raises(PodExitedError, match="pod-1.*EXITED"):
+        remote_collect_lifecycle(
+            feature_config,
+            runpod_manifest,
+            "run-1",
+            tmp_path / "downloads",
+            env_file=None,
+            terraform_dir=None,
+            poll_seconds=0,
+            runpod_api=runpod,
+            store=handoff,
+        )
+
+    assert runpod.terminated == ["pod-1"]

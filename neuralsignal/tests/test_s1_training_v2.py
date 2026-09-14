@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -40,6 +43,11 @@ def test_train_s1_from_feature_directory(tmp_path):
     assert result.metrics["feature_count"] == 1
     assert result.metrics["train_rows"] == 6
     assert result.metrics["test_rows"] == 2
+    importance = json.loads((tmp_path / "s1" / Path(result.output_dir).name / "feature_importance_top20.json").read_text())
+    assert importance["features"] == ["zones__a"]
+    assert importance["ranked"][0]["rank"] == 1
+    assert importance["ranked"][0]["feature"] == "zones__a"
+    assert isinstance(importance["ranked"][0]["importance"], float)
 
 
 def test_train_s1_fails_when_no_features_selected(tmp_path):

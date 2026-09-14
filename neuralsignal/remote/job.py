@@ -16,11 +16,49 @@ from neuralsignal.features.selection import extraction_mode
 from neuralsignal.features.runner import collect_features, collect_features_batched
 from neuralsignal.storage.bundle import create_bundle, upload_bundle
 from neuralsignal.storage.local import LocalFeatureShardWriter
-from neuralsignal.storage.manifests import RunManifest
-from neuralsignal.storage.s3 import Boto3ObjectStore, download_file, s3_join
+from neuralsignal.storage.manifests import RunManifest, ShardManifest, local_shard_path
+from neuralsignal.storage.s3 import Boto3ObjectStore, ObjectStore, download_file, s3_join, upload_file
 
 logger = logging.getLogger(__name__)
 
+
+class RemoteShardUploader:
+    def __init__(self, run_dir: Path, run_uri: str, store: ObjectStore, manifest: RunManifest) -> None:
+        self.run_dir = run_dir
+        self.run_uri = run_uri
+        self.store = store
+        self.manifest = manifest
+
+    def upload_shard(self, shard: ShardManifest) -> None:
+        local_path = local_shard_path(self.run_dir, shard.path)
+        shard_uri = s3_join(self.run_uri, shard.path)
+        upload_file(self.store, local_path, shard_uri)
+        shard.state = "uploaded"
+        self._upload_manifest()
+        logger.info("uploaded feature shard uri=%s rows=%s", shard_uri, shard.rows)
+
+    def upload_recoverable(self) -> None:
+        for shard in self.manifest.shards:
+            if shard.state != "uploaded":
+                self.upload_shard(shard)
+        self._upload_manifest()
+        self.upload_log()
+
+    def complete(self) -> None:
+        self.upload_recoverable()
+        self.manifest.state = "completed"
+        self._upload_manifest()
+
+    def upload_log(self) -> None:
+        log_path = self.run_dir / "runpod.log"
+        if log_path.exists():
+            upload_file(self.store, log_path, s3_join(self.run_uri, "runpod.log"))
+
+    def _upload_manifest(self) -> None:
+        self.manifest.rows["uploaded"] = sum(shard.rows for shard in self.manifest.shards if shard.state == "uploaded")
+        path = self.run_dir / "manifest.json"
+        self.manifest.write_json(path)
+        upload_file(self.store, path, s3_join(self.run_uri, "manifest.json"))
 
 def main() -> None:
     _configure_logging()
@@ -44,24 +82,32 @@ def main() -> None:
         features={"schema_version": "features.v1", "materialized_sets": (config.get("features") or {}).get("materialize", [])},
         state="running",
     )
-    writer = LocalFeatureShardWriter(run_dir, manifest)
-    source = _dataset_source(config).iter_examples()
-    max_examples = (config.get("dataset") or {}).get("max_examples")
-    if max_examples is not None:
-        if isinstance(max_examples, bool) or not isinstance(max_examples, int) or max_examples <= 0:
-            raise ValueError("dataset.max_examples must be a positive integer")
-        source = islice(source, max_examples)
-    logger.info("feature collection starting")
-    if mode == "model":
-        logger.info("model extractor initializing")
-        extractor = ModelFeatureExtractor(config)
-        logger.info("model extractor ready")
-        collect_features_batched(source, config, writer, extractor.extract_batch)
-    else:
-        collect_features(source, config, writer, _placeholder_extractor)
+    store = _s3_store()
+    run_uri = _run_uri(config, args.run_id)
+    uploader = RemoteShardUploader(run_dir, run_uri, store, manifest)
+    writer = LocalFeatureShardWriter(run_dir, manifest, on_shard_written=uploader.upload_shard)
+    try:
+        source = _dataset_source(config).iter_examples()
+        max_examples = (config.get("dataset") or {}).get("max_examples")
+        if max_examples is not None:
+            if isinstance(max_examples, bool) or not isinstance(max_examples, int) or max_examples <= 0:
+                raise ValueError("dataset.max_examples must be a positive integer")
+            source = islice(source, max_examples)
+        logger.info("feature collection starting")
+        if mode == "model":
+            logger.info("model extractor initializing")
+            extractor = ModelFeatureExtractor(config)
+            logger.info("model extractor ready")
+            collect_features_batched(source, config, writer, extractor.extract_batch)
+        else:
+            collect_features(source, config, writer, _placeholder_extractor)
+    except Exception:
+        logger.exception("remote job failed; uploading recoverable shards before exit")
+        manifest.state = "failed"
+        uploader.upload_recoverable()
+        raise
     logger.info("feature collection completed rows=%s shards=%s", manifest.rows["written"], len(manifest.shards))
-    manifest.state = "completed"
-    manifest.write_json(run_dir / "manifest.json")
+    uploader.complete()
     logger.info("manifest written path=%s", run_dir / "manifest.json")
 
     bundle_uri = _bundle_uri(config, args.run_id)
@@ -69,7 +115,7 @@ def main() -> None:
     bundle = create_bundle(run_dir, run_dir.parent / f"{args.run_id}.zip")
     logger.info("bundle created path=%s bytes=%s", bundle, bundle.stat().st_size)
     logger.info("uploading bundle to s3")
-    upload_bundle(_s3_store(), bundle, bundle_uri)
+    upload_bundle(store, bundle, bundle_uri)
     logger.info("bundle upload completed uri=%s", bundle_uri)
     print(json.dumps({"run_id": args.run_id, "bundle_uri": bundle_uri, "rows": manifest.rows["written"]}))
 
@@ -108,12 +154,19 @@ def _dataset_source(config: dict):
     return source_from_config(config)
 
 
+def _run_uri(config: dict, run_id: str) -> str:
+    run = config.get("run") or {}
+    if run.get("bundle_uri"):
+        return str(run["bundle_uri"]).rsplit("/", 1)[0]
+    base = run.get("s3_output_uri") or f"s3://{os.environ['NEURALSIGNAL_S3_BUCKET']}/feature-runs"
+    return s3_join(str(base), run_id)
+
+
 def _bundle_uri(config: dict, run_id: str) -> str:
     run = config.get("run") or {}
     if run.get("bundle_uri"):
         return str(run["bundle_uri"])
-    base = run.get("s3_output_uri") or f"s3://{os.environ['NEURALSIGNAL_S3_BUCKET']}/feature-runs"
-    return s3_join(str(base), run_id, "bundle.zip")
+    return s3_join(_run_uri(config, run_id), "bundle.zip")
 
 
 def _s3_store() -> Boto3ObjectStore:

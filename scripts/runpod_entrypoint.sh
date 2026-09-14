@@ -43,11 +43,11 @@ wait_for_session() {
 
 if [[ -f "$STATUS_FILE" ]]; then
   status="$(read_status)"
-  echo "Run ${RUN_ID} already finished with exit code ${status}; refusing to restart the job." | tee -a "$LOG_FILE"
+  echo "Run ${RUN_ID} already finished with exit code ${status}; stopping container instead of restarting the job." | tee -a "$LOG_FILE"
   echo "log file: ${LOG_FILE}" | tee -a "$LOG_FILE"
   echo "Previous log follows:"
   cat "$LOG_FILE"
-  exit 0
+  exit "$status"
 fi
 
 if tmux has-session -t "$SESSION" 2>/dev/null; then

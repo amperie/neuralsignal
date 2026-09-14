@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -11,10 +11,17 @@ from neuralsignal.storage.manifests import RunManifest, ShardManifest, sha256_fi
 
 
 class LocalFeatureShardWriter:
-    def __init__(self, root: str | Path, manifest: RunManifest, compression: str = "zstd") -> None:
+    def __init__(
+        self,
+        root: str | Path,
+        manifest: RunManifest,
+        compression: str = "zstd",
+        on_shard_written: Callable[[ShardManifest], None] | None = None,
+    ) -> None:
         self.root = Path(root)
         self.manifest = manifest
         self.compression = compression
+        self.on_shard_written = on_shard_written
         self.features_dir = self.root / "features"
         if any(self.features_dir.glob("part-*.parquet")):
             raise FileExistsError(f"Feature shards already exist under {self.features_dir}; use a new run directory")
@@ -33,6 +40,8 @@ class LocalFeatureShardWriter:
         )
         self.manifest.add_shard(shard)
         self.manifest.write_json(self.root / "manifest.json")
+        if self.on_shard_written is not None:
+            self.on_shard_written(shard)
         return shard
 
 
