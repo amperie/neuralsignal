@@ -9,7 +9,7 @@ remote_collect:
   timeout_seconds: 43200
 feature_config:
   run:
-    name: malt-full-normal-bs20
+    name: malt-full-normal-bs8
     s3_output_uri: s3://${NEURALSIGNAL_S3_BUCKET}/feature-runs
   extraction:
     mode: model
@@ -18,7 +18,7 @@ feature_config:
     device: cuda:0
     quantization: int8
   generation:
-    batch_size: 20
+    batch_size: 8
     max_new_tokens: 8
     truncation_length: 512
   prompt:
@@ -118,4 +118,4 @@ training_config:
   mlflow:
     tracking_uri: http://z440.lan:5000
     experiment_name: neuralsignal-s1
-    run_name: malt-normal-full-bs20-s1
+    run_name: malt-normal-full-bs8-s1
