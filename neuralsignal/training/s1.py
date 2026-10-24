@@ -69,6 +69,7 @@ def train_s1(
     output_root: str | Path = "runs/s1",
     target_config: dict[str, Any] | None = None,
     progress: Callable[[str], None] | None = None,
+    evaluation_config: dict[str, Any] | None = None,
 ) -> S1TrainingResult:
     _progress(progress, f"Reading features from {dataset_path}...")
     data = _read_features(dataset_path, progress)
@@ -90,8 +91,19 @@ def train_s1(
     y = data[target_column].astype(int)
     counts = y.value_counts().sort_index().to_dict()
     _progress(progress, f"Prepared {len(x):,} training units: target counts {counts}.")
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25, random_state=random_state, stratify=y)
-    _progress(progress, f"Split train/test rows: {len(x_train):,}/{len(x_test):,}.")
+    fibs = "fibs_split" in data.columns
+    if fibs:
+        from neuralsignal.training import fibs_eval
+        fibs_config = fibs_eval.fibs_options(evaluation_config)
+        train_idx, val_idx, test_idx, split_info = fibs_eval.split_fibs(data, target_column, fibs_config, random_state)
+        x_train, y_train = x.iloc[train_idx], y.iloc[train_idx]
+        x_val, y_val = x.iloc[val_idx], y.iloc[val_idx]
+        x_test, y_test = x.iloc[test_idx], y.iloc[test_idx]
+        _progress(progress, f"FIBS {fibs_config['mode']} episode split train/validation/test rows: "
+                            f"{len(x_train):,}/{len(x_val):,}/{len(x_test):,}.")
+    else:
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25, random_state=random_state, stratify=y)
+        _progress(progress, f"Split train/test rows: {len(x_train):,}/{len(x_test):,}.")
     model_config = model_config or {}
     if model_config.get("type", "xgboost") != "xgboost":
         raise ValueError("S1 model.type must be xgboost")
@@ -125,6 +137,15 @@ def train_s1(
         "test_rows": float(len(x_test)),
         "feature_count": float(len(features)),
     })
+    if fibs:
+        val_scores = model.predict_proba(x_val)[:, 1]
+        targets = fibs_config["fpr_targets"]
+        metrics["validation_rows"] = float(len(x_val))
+        metrics.update(fibs_eval.fixed_fpr_metrics(y_val, val_scores, y_test, scores, targets))
+        metrics.update(fibs_eval.per_split_metrics(data, test_idx, y_test, scores))
+        if fibs_config["baselines"]:
+            _progress(progress, "Fitting transcript-length and step-position baselines...")
+            metrics.update(fibs_eval.baseline_metrics(data, target_column, train_idx, val_idx, test_idx, targets))
     if "run_source" in data.columns:
         conditions = data.loc[x_test.index, "run_source"]
         for condition in conditions.unique():
@@ -145,8 +166,12 @@ def train_s1(
         "random_state": random_state, "test_size": 0.25, "threshold": 0.5,
         "target": target_definition, "target_summary": target_summary,
         "model_params": model.get_params(), "features": feature_config or {},
+        **({"fibs_evaluation": {**fibs_config, **split_info}} if fibs else {}),
     })
     split_rows = {"train": x_train.index.tolist(), "test": x_test.index.tolist()}
+    if fibs:
+        split_rows["validation"] = x_val.index.tolist()
+        split_rows["validation_groups"] = data.loc[x_val.index, "group_id"].tolist()
     if "group_id" in data:
         split_rows["train_groups"] = data.loc[x_train.index, "group_id"].tolist()
         split_rows["test_groups"] = data.loc[x_test.index, "group_id"].tolist()
