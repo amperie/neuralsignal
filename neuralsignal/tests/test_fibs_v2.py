@@ -110,6 +110,37 @@ def test_source_iterates_selected_splits_via_factory(monkeypatch):
     assert [e.metadata["fibs_split"] for e in examples] == ["honest_honest"] * 2 + ["honest_deceptive"] * 2
 
 
+def test_capped_streaming_split_iterators_are_released(monkeypatch):
+    # Regression: early-stopped streaming HF datasets live in reference cycles; left
+    # for interpreter shutdown they aborted the process (exit 134) after collection.
+    import weakref
+
+    rows = fixture_rows()
+    released = []
+
+    class StreamingSplit:
+        def __init__(self, split):
+            self.split = split
+            self.cycle = self  # like HF IterableDataset internals
+            weakref.finalize(self, released.append, split)
+
+        def __iter__(self):
+            for i in range(100):
+                yield {**rows[0], "quadrant": self.split, "completion": f"c{i}"}
+
+    monkeypatch.setattr("neuralsignal.datasets.sources.hf._load_dataset",
+                        lambda dataset_name, split, **kwargs: StreamingSplit(split))
+    import gc
+    gc.disable()
+    try:
+        examples = list(FibsSource(split=["honest_honest", "deceptive_honest"],
+                                   max_examples_per_split=2).iter_examples())
+        assert len(examples) == 4
+        assert sorted(released) == ["deceptive_honest", "honest_honest"]
+    finally:
+        gc.enable()
+
+
 def synthetic_features(n_episodes=60, seed=0, chunks=1):
     """Four rows per episode (one per quadrant, sharing a content md5) like FIBS."""
     rng = np.random.default_rng(seed)

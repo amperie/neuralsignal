@@ -13,6 +13,8 @@ are kept in metadata and are never inserted into the judge prompt.
 """
 from __future__ import annotations
 
+import gc
+
 import hashlib
 import json
 from typing import Iterable
@@ -66,16 +68,29 @@ class FibsSource:
                                        config_name=self.config_name, **self.load_kwargs)
             rows = 0
             last_row = None
-            for example in source.iter_examples():
-                row_id = example.metadata["fibs_row_id"]
-                if row_id != last_row:
-                    if self.max_examples_per_split and rows >= self.max_examples_per_split:
-                        break
-                    rows, last_row = rows + 1, row_id
-                yield example
+            examples = source.iter_examples()
+            try:
+                for example in examples:
+                    row_id = example.metadata["fibs_row_id"]
+                    if row_id != last_row:
+                        if self.max_examples_per_split and rows >= self.max_examples_per_split:
+                            break
+                        rows, last_row = rows + 1, row_id
+                    yield example
+            finally:
+                # Stopping a streaming HF iterator early and leaving it to interpreter
+                # shutdown aborts the process (SIGABRT, exit 134), so close it now.
+                _close_iterator(examples)
 
     def __iter__(self):
         return iter(self.iter_examples())
+
+
+def _close_iterator(iterator) -> None:
+    close = getattr(iterator, "close", None)
+    if close is not None:
+        close()
+    gc.collect()
 
 
 def resolve_fibs_splits(split) -> list[str]:
