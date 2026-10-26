@@ -1,0 +1,53 @@
+# FIBS S1, cross-split evaluation with stronger regularization for many features.
+# S1 on FIBS: target `deceptive` from the AI-judge `judge_verdict` column.
+# Rows with an empty or unrecognised verdict are excluded.
+dataset: {}
+
+target:
+  source: fibs_verdict
+  column: judge_verdict
+  name: deceptive
+  unmatched: exclude
+
+evaluation:
+  fibs:
+    # grouped: episode-grouped random split across all collected splits.
+    # cross_split: train on train_splits, test on held-out test_splits.
+    mode: cross_split
+    test_size: 0.25
+    validation_size: 0.2   # share of the training portion used to pick FPR thresholds
+    fpr_targets: [0.01, 0.05]
+    baselines: true
+    # Each FIBS split is (almost) single-class for the final response, so both
+    # sides need an honest and a deceptive split, e.g. train on matched
+    # quadrants and test on flipped ones:
+    train_splits: [honest_honest, deceptive_deceptive]
+    test_splits: [deceptive_honest, honest_deceptive]
+
+features:
+  include_sets:
+    - zones
+    - layer_distribution
+  include_columns: []
+  exclude_columns: []
+
+model:
+  type: xgboost
+  params:
+    n_estimators: 300
+    max_depth: 3
+    min_child_weight: 5
+    subsample: 0.8
+    colsample_bytree: 0.1
+    reg_lambda: 5
+    learning_rate: 0.1
+    tree_method: hist
+    device: cpu
+    n_jobs: 4
+    objective: binary:logistic
+    eval_metric: logloss
+
+mlflow:
+  tracking_uri: http://z440.lan:5000
+  experiment_name: neuralsignal-s1
+  run_name: fibs-deceptive-s1-cross
