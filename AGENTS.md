@@ -1,5 +1,9 @@
 # NeuralSignal — AGENTS.md
 
+## GPU provisioning constraint
+
+Never provision NVIDIA H200 GPUs, including H200 NVL variants. This is an explicit user restriction.
+
 ## Project Overview
 
 NeuralSignal is a Python SDK for detecting behavioral anomalies in LLM outputs through real-time model instrumentation. It wraps a "judge" LLM (default: `google/flan-t5-large`) with PyTorch hooks to capture internal activation tensors ("scans"), featurizes them, and runs trained S1 classifiers to score behaviors such as hallucination, toxicity, and identity attack.

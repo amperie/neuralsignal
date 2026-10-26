@@ -43,13 +43,15 @@ def select_feature_columns(
     exclude = set(exclude_columns or [])
     selected: list[str] = []
 
-    for column in columns:
-        if include_sets and any(column.startswith(f"{name}__") for name in include_sets):
-            selected.append(column)
-        if column in include_columns:
-            selected.append(column)
-
-    if not include_sets and not include_columns:
+    if include_columns:
+        selected = [column for column in columns if column in include_columns]
+    elif include_sets:
+        selected = [
+            column
+            for column in columns
+            if any(column.startswith(f"{name}__") for name in include_sets)
+        ]
+    else:
         selected = [column for column in columns if "__" in column]
 
     deduped = []

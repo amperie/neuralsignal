@@ -43,9 +43,10 @@ entries; local CLI manifests currently record only the feature schema version.
 There is no automatic column inventory/config hash or feature-version compatibility
 validation, even though `FeatureSetSpec` has version/manifest helper methods.
 
-Training selects the union of matching `include_sets` and explicit
-`include_columns`, removes `exclude_columns`, and deduplicates names. With no
-inclusions it selects columns containing `__`. Missing requested columns/sets
-are silently unmatched unless the final selection is empty. Changing feature
-calculations requires recollection and separately recorded provenance; the
-current version strings alone do not identify that change.
+Training treats explicit `include_columns` as a whitelist when present. If no
+explicit columns are configured, it selects matching `include_sets`; with no
+inclusions it selects columns containing `__`. `exclude_columns` are removed
+from the selected names and duplicates are ignored. Missing requested
+columns/sets are silently unmatched unless the final selection is empty.
+Changing feature calculations requires recollection and separately recorded
+provenance; the current version strings alone do not identify that change.

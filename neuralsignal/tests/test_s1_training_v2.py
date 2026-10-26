@@ -15,7 +15,7 @@ def test_select_feature_columns_filters_by_feature_set():
     assert selected == ["zones__a", "zones__b"]
 
 
-def test_select_feature_columns_supports_explicit_include_and_exclude():
+def test_select_feature_columns_prefers_explicit_include_columns():
     columns = ["zones__a", "zones__b", "layer_distribution__x", "label"]
 
     selected = select_feature_columns(
@@ -25,7 +25,7 @@ def test_select_feature_columns_supports_explicit_include_and_exclude():
         exclude_columns=["zones__b"],
     )
 
-    assert selected == ["zones__a", "layer_distribution__x"]
+    assert selected == ["layer_distribution__x"]
 
 
 def test_train_s1_from_feature_directory(tmp_path):

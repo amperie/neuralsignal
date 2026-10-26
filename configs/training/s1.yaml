@@ -6,7 +6,7 @@ features:
   include_sets:
     - zones
     - layer_distribution
-  include_columns: []
+  include_columns: ["zones__512_encoder.T5Block.T5LayerFF.DenseReluDense.wi_0_95_95_0", "zones__512_encoder.T5Block.T5LayerFF.DenseReluDense.wi_1_115_115_4"]
   exclude_columns: []
 
 model:
