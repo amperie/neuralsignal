@@ -198,3 +198,14 @@ print(result.to_json())
 - [Remote workflow](specs/remote-feature-collection-workflow.md), [provider reference](specs/runpod-orchestration-reference.md), [image](specs/runpod-image.md), [storage](specs/s3-minio-storage.md)
 - [Training and MLflow](specs/local-s1-mlflow.md), [evaluation](specs/s1-evaluation.md), [tests](specs/testing-strategy.md)
 - [Secrets](specs/required-secrets.md), [security](specs/security-and-secrets.md), [Terraform resources](specs/terraform-s3-handoff.md)
+
+## FIBS (deception in agent transcripts)
+
+Load `AlignmentResearch/fibs-v1` (note: no license declared on the dataset card) with `source: fibs`, collect features with a T5-family judge (LongT5 example), and train an S1 `deceptive` detector with grouped or cross-split evaluation:
+
+```bash
+ns collect configs/feature_collection/example_runpod_fibs.yaml --remote
+ns train configs/training/s1_fibs_deceptive.yaml --run runs/<fibs-run>
+```
+
+Labels are AI-judge verdicts on the final response. Reports recall at 1%/5% FPR (validation-chosen thresholds), per-split AUROC/AUPRC, and length/step baselines. See `specs/fibs-evaluation.md`.

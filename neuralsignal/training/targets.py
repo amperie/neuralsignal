@@ -19,6 +19,16 @@ def is_malt(data):
     return any(row.get('source') == 'metr-evals/malt-public' for row in metadata_rows(data))
 
 
+def is_fibs(data):
+    from neuralsignal.datasets.sources.fibs import FIBS_DATASET
+    return any(row.get('source') == FIBS_DATASET for row in metadata_rows(data))
+
+
+# FIBS labels come from an AI judge (``judge_verdict``), not human annotation.
+FIBS_DECEPTIVE_TARGET = {'source': 'fibs_verdict', 'column': 'judge_verdict', 'name': 'deceptive',
+                         'unmatched': 'exclude'}
+
+
 def target_values(data, definition):
     source = definition.get('source', 'column')
     column = definition.get('column')
@@ -34,7 +44,10 @@ def target_values(data, definition):
         return [json.loads(value) for value in data['labels_json']]
     if source == 'run_labels':
         return [row.get('run_labels') for row in metadata_rows(data)]
-    raise TargetError(f'Unsupported target source: {source}. Use column, metadata, labels, or run_labels.')
+    if source == 'fibs_verdict':
+        from neuralsignal.datasets.sources.fibs import fibs_verdict_label
+        return [fibs_verdict_label(row.get(column or 'judge_verdict')) for row in metadata_rows(data)]
+    raise TargetError(f'Unsupported target source: {source}. Use column, metadata, labels, run_labels, or fibs_verdict.')
 
 
 def resolve_definition(data, target=None, label_column=None):
@@ -48,6 +61,8 @@ def resolve_definition(data, target=None, label_column=None):
         # Existing Parquet targets take precedence over dataset-specific conversion.
         if label_column in data:
             return {'source': 'column', 'column': label_column}
+        if label_column == 'deceptive' and is_fibs(data):
+            return dict(FIBS_DECEPTIVE_TARGET)
         if is_malt(data):
             return {'source': 'run_labels', 'positive_labels': [label_column], 'unmatched': 'negative'}
         raise TargetError(f'Missing target column: {label_column}. Configure target or choose one interactively.')
@@ -129,6 +144,9 @@ def prepare_training_data(data, features, target=None, label_column=None):
         except ValueError as error:
             raise TargetError(str(error)) from error
         unit = 'run'
+    elif is_fibs(data):
+        prepared = _prepare_fibs_rows(data, features, target_name, values)
+        unit = 'transcript'
     elif definition.get('group_by'):
         group_key = definition['group_by']
         groups = target_values(data, {'source': 'metadata' if group_key.startswith('metadata.') else 'column',
@@ -163,3 +181,28 @@ def prepare_training_data(data, features, target=None, label_column=None):
                           'Need both classes with at least two units each and enough units for the 75/25 split. '
                           'Collect more complete labeled data.')
     return prepared, features, target_name, definition, summary
+
+
+def _prepare_fibs_rows(data, features, target_name, values):
+    """One unit per FIBS transcript: mean-pool chunk rows, keep episode/split metadata."""
+    from neuralsignal.training.fibs_eval import BASELINE_COLUMNS, episode_groups
+    metadata = metadata_rows(data)
+    frame = data[features].astype(float).copy()
+    frame[target_name] = values
+    frame['_ns_row'] = [row.get('fibs_row_id') or row.get('group_id') for row in metadata]
+    if frame['_ns_row'].isna().any():
+        raise TargetError('FIBS row is missing fibs_row_id; recollect with the fibs dataset source.')
+    rows = []
+    for row_id, chunk in frame.groupby('_ns_row', sort=False):
+        first = metadata[chunk.index[0]]
+        if chunk[target_name].nunique(dropna=False) > 1:
+            raise TargetError(f'Conflicting targets across chunks of FIBS row {row_id}.')
+        row = {**chunk[features].mean().to_dict(), target_name: chunk[target_name].iloc[0],
+               'fibs_split': first.get('fibs_split'), 'fibs_row_id': row_id,
+               '_ns_group_keys': first.get('group_keys') or [], '_ns_fallback_group': first.get('group_id') or row_id}
+        for key, column in BASELINE_COLUMNS.items():
+            row[column] = float(first.get(key) or 0)
+        rows.append(row)
+    prepared = pd.DataFrame(rows)
+    prepared['group_id'] = episode_groups(prepared['_ns_group_keys'].tolist(), prepared['_ns_fallback_group'].tolist())
+    return prepared.drop(columns=['_ns_group_keys', '_ns_fallback_group'])
