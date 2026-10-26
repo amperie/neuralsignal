@@ -113,6 +113,15 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
             f"Loaded {model_config['model_name']} unquantized")
 
     tokenizer = AutoTokenizer.from_pretrained(model_config["model_name"])
+    if getattr(tokenizer, "pad_token", "") is None:
+        # Some checkpoints (e.g. google/long-t5-*) ship a tokenizer without a
+        # pad token set. T5 models use id 0 ("<pad>") for padding.
+        pad_id = getattr(model.config, "pad_token_id", None)
+        if pad_id is not None:
+            tokenizer.pad_token = tokenizer.convert_ids_to_tokens(pad_id)
+        else:
+            tokenizer.pad_token = tokenizer.eos_token
+        logging.info(f"Tokenizer had no pad token; set to {tokenizer.pad_token!r}")
     logging.info(
         f"Loaded {model_config['model_name']} tokenizer")
 
