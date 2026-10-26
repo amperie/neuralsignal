@@ -13,7 +13,7 @@ model:
   # with chunking (chunk_chars ~1500) and truncation_length 512.
   model_name: google/long-t5-tglobal-large
   device: cuda:0
-  quantization: int8
+  quantization: no_quantization  # int8 (bitsandbytes) crashed with CUDA launch failure on LongT5
 
 generation:
   batch_size: 2
