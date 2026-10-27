@@ -17,7 +17,7 @@ import gc
 
 import hashlib
 import json
-from typing import Iterable
+from typing import Iterable, Iterator
 
 from neuralsignal.datasets.sources.hf import HuggingFaceSource
 from neuralsignal.datasets.v2 import DatasetExample
@@ -44,7 +44,8 @@ class FibsSource:
 
     def __init__(self, split: str | list[str] | tuple[str, ...] = "all", name: str = FIBS_DATASET,
                  config_name: str | None = "default", chunk_chars: int = 0, chunk_overlap_chars: int = 0,
-                 max_examples_per_split: int | None = None, **load_kwargs) -> None:
+                 max_examples_per_split: int | None = None, interleave_splits: bool = True,
+                 **load_kwargs) -> None:
         self.splits = resolve_fibs_splits(split)
         self.name = name
         self.config_name = config_name
@@ -58,29 +59,60 @@ class FibsSource:
                                                    or int(max_examples_per_split) <= 0):
             raise ValueError("dataset.max_examples_per_split must be a positive integer")
         self.max_examples_per_split = max_examples_per_split
+        self.interleave_splits = bool(interleave_splits)
         self.load_kwargs = load_kwargs
 
     def iter_examples(self) -> Iterable[DatasetExample]:
-        for split in self.splits:
-            normalizer = lambda row, split=split: normalize_fibs_row(
-                row, split=split, chunk_chars=self.chunk_chars, chunk_overlap_chars=self.chunk_overlap_chars)
-            source = HuggingFaceSource(self.name, split=split, normalizer=normalizer,
-                                       config_name=self.config_name, **self.load_kwargs)
-            rows = 0
-            last_row = None
-            examples = source.iter_examples()
-            try:
-                for example in examples:
-                    row_id = example.metadata["fibs_row_id"]
-                    if row_id != last_row:
+        if not self.interleave_splits or len(self.splits) == 1:
+            for split in self.splits:
+                for group in self._iter_split_rows(split):
+                    yield from group
+            return
+        # Round-robin whole rows (a row's chunks stay together) across the splits, so a
+        # run cut off early still holds every split. Exhausted splits drop out.
+        active = [self._iter_split_rows(split) for split in self.splits]
+        try:
+            while active:
+                still_active = []
+                for rows in active:
+                    group = next(rows, None)
+                    if group is None:
+                        continue
+                    still_active.append(rows)
+                    yield from group
+                active = still_active
+        finally:
+            # Also runs when the consumer stops early: close every split iterator cleanly.
+            for rows in active:
+                rows.close()
+
+    def _iter_split_rows(self, split: str) -> Iterator[list[DatasetExample]]:
+        """Yield one list of examples per source row of ``split``, honoring the per-split cap."""
+        normalizer = lambda row, split=split: normalize_fibs_row(
+            row, split=split, chunk_chars=self.chunk_chars, chunk_overlap_chars=self.chunk_overlap_chars)
+        source = HuggingFaceSource(self.name, split=split, normalizer=normalizer,
+                                   config_name=self.config_name, **self.load_kwargs)
+        rows = 0
+        last_row = None
+        group: list[DatasetExample] = []
+        examples = source.iter_examples()
+        try:
+            for example in examples:
+                row_id = example.metadata["fibs_row_id"]
+                if row_id != last_row:
+                    if group:
+                        yield group
+                        group = []
                         if self.max_examples_per_split and rows >= self.max_examples_per_split:
-                            break
-                        rows, last_row = rows + 1, row_id
-                    yield example
-            finally:
-                # Stopping a streaming HF iterator early and leaving it to interpreter
-                # shutdown aborts the process (SIGABRT, exit 134), so close it now.
-                _close_iterator(examples)
+                            return
+                    rows, last_row = rows + 1, row_id
+                group.append(example)
+            if group:
+                yield group
+        finally:
+            # Stopping a streaming HF iterator early and leaving it to interpreter
+            # shutdown aborts the process (SIGABRT, exit 134), so close it now.
+            _close_iterator(examples)
 
     def __iter__(self):
         return iter(self.iter_examples())

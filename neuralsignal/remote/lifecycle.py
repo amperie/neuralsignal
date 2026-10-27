@@ -14,6 +14,7 @@ from neuralsignal.console import color
 from neuralsignal.config import load_config
 from neuralsignal.config.env import apply_env, load_env_file
 from neuralsignal.remote.runpod import RunPodGpuType, RunPodJob, build_pod_payload, launch, list_gpu_types, load_secrets, redacted, terminate, get_pod, ssh_command
+from neuralsignal.remote.sync import recover_partial_run
 from neuralsignal.remote.terraform import s3_settings_from_terraform
 from neuralsignal.storage.bundle import delete_bundle, download_bundle, unpack_bundle
 from neuralsignal.storage.s3 import Boto3ObjectStore, ObjectStore, exists, s3_join, upload_directory, upload_file
@@ -79,6 +80,8 @@ class RemoteCollectResult:
     target_dir: str
     training_metrics: dict | None
     training_output_dir: str | None = None
+    partial: bool = False
+    partial_rows: int | None = None
 
 
 def remote_collect_lifecycle(
@@ -140,12 +143,17 @@ def remote_collect_lifecycle(
     training_metrics = None
     training_output_dir = None
     interrupted = False
+    wait_error: Exception | None = None
     try:
         _wait_for_bundle(store, bundle_uri, poll_seconds, timeout_seconds,
                          monitor=PodProgress(runpod_api, pod_id, identity_file=_ssh_identity_file(manifest, ssh_key_path)))
     except KeyboardInterrupt:
         logger.warning("Interrupted; cleaning up pod %s", pod_id)
         interrupted = True
+    except (TimeoutError, PodExitedError) as error:
+        # Shards uploaded so far may still be usable; decide after the pod is terminated.
+        logger.error("Remote collection stopped for pod %s (%s); attempting termination", pod_id, error)
+        wait_error = error
     except Exception:
         logger.error("Remote collection failed for pod %s; attempting termination", pod_id)
         raise
@@ -162,17 +170,23 @@ def remote_collect_lifecycle(
     if interrupted:
         raise RemoteCollectCancelled(pod_id, terminated=True)
 
-    if not _bundle_available(store, bundle_uri):
-        raise RuntimeError(f"Remote run finished without bundle; bundle is not available: {bundle_uri}")
-
     target = Path(target_dir) / run_id
-    zip_path = Path(target_dir) / f"{run_id}.zip"
-    logger.info("downloading bundle uri=%s path=%s", bundle_uri, zip_path)
-    download_bundle(store, bundle_uri, zip_path)
-    logger.info("deleting remote handoff bundle uri=%s", bundle_uri)
-    delete_bundle(store, bundle_uri)
-    logger.info("unpacking bundle path=%s target=%s", zip_path, target)
-    unpack_bundle(zip_path, target)
+    partial_rows = None
+    if wait_error is not None or not _bundle_available(store, bundle_uri):
+        error = wait_error or RuntimeError(f"Remote run finished without bundle; bundle is not available: {bundle_uri}")
+        partial_rows = _recover_partial(store, bundle_uri, target)
+        if not partial_rows:
+            raise error
+        logger.warning("partial run: %s rows recovered from %s (no bundle was produced); results are incomplete",
+                       partial_rows, bundle_uri.rsplit("/", 1)[0])
+    else:
+        zip_path = Path(target_dir) / f"{run_id}.zip"
+        logger.info("downloading bundle uri=%s path=%s", bundle_uri, zip_path)
+        download_bundle(store, bundle_uri, zip_path)
+        logger.info("deleting remote handoff bundle uri=%s", bundle_uri)
+        delete_bundle(store, bundle_uri)
+        logger.info("unpacking bundle path=%s target=%s", zip_path, target)
+        unpack_bundle(zip_path, target)
     if minio_uri:
         (target / "minio-dataset-uri.txt").write_text(minio_uri, encoding="utf-8")
         minio_store = minio_store or _minio_store()
@@ -185,7 +199,8 @@ def remote_collect_lifecycle(
         training_output_dir = training_result.output_dir
         logger.info("local S1 training completed metrics=%s", training_metrics)
     logger.info("remote collect lifecycle completed run_id=%s target=%s", run_id, target)
-    return RemoteCollectResult(run_id, pod_id, bundle_uri, str(target), training_metrics, training_output_dir)
+    return RemoteCollectResult(run_id, pod_id, bundle_uri, str(target), training_metrics, training_output_dir,
+                               partial=partial_rows is not None, partial_rows=partial_rows)
 
 
 
@@ -321,6 +336,17 @@ def _train_s1_from_config(config_path: str | Path, dataset_dir: str | Path, mini
         evaluation_config=config.get("evaluation") or {},
     )
     return result
+
+
+def _recover_partial(store: ObjectStore, bundle_uri: str, target: Path) -> int:
+    """Rows recovered from the run's uploaded shards, or 0 if there are none (or recovery fails)."""
+    run_uri = bundle_uri.rsplit("/", 1)[0]
+    logger.info("no bundle; looking for already-uploaded shards uri=%s", run_uri)
+    try:
+        return recover_partial_run(store, run_uri, target)
+    except Exception as error:
+        logger.error("partial run recovery failed (%s: %s)", type(error).__name__, error)
+        return 0
 
 
 def _bundle_available(store: ObjectStore, bundle_uri: str) -> bool:

@@ -29,6 +29,10 @@ Status: implemented (CPU unit-tested; no GPU collection run yet).
 - AUROC/AUPRC overall and per FIBS split.
 - Baselines (logistic regression): `length` (log transcript chars), `step` (step position), `length_step`.
 
+## Collection order and partial runs
+- `dataset.interleave_splits` (default `true`) round-robins whole transcripts across splits, each capped at `max_examples_per_split`; an exhausted split drops out and the rest continue. `false` restores sequential split order. Early-stopped streaming iterators are still closed explicitly (SIGABRT fix).
+- If `remote_collect_lifecycle` times out or the pod exits without a bundle, it terminates the pod, then downloads the manifest and shards marked `uploaded` (checksum-verified) from the run's S3 prefix into `<target>/<run_id>`. With rows > 0 it logs `partial run: N rows`, trains as normal, and returns `RemoteCollectResult(partial=True, partial_rows=N)`; the local manifest is marked `completed` with `partial: true`. With 0 rows the original error is raised. Cross-split training still needs all four splits present, which interleaving makes likely.
+
 ## Limitations
 - No GPU collection or detector-quality claim yet; MLflow remote logging untested for new metrics.
 - `max_examples_per_split` counts transcripts, but a global `max_examples` cap counts chunks.

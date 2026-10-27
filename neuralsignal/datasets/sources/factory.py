@@ -34,6 +34,7 @@ def source_from_config(config: dict[str, Any]):
             chunk_chars=int(dataset.get("chunk_chars") or 0),
             chunk_overlap_chars=int(dataset.get("chunk_overlap_chars") or 0),
             max_examples_per_split=dataset.get("max_examples_per_split"),
+            interleave_splits=bool(dataset.get("interleave_splits", True)),
             **dict(dataset.get("load_kwargs") or {}),
         )
     if source in {"hf", "huggingface"}:

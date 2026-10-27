@@ -1,4 +1,5 @@
 import json
+from itertools import islice
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -101,8 +102,10 @@ def test_source_iterates_selected_splits_via_factory(monkeypatch):
 
     monkeypatch.setattr("neuralsignal.datasets.sources.hf._load_dataset", fake_load)
     source = source_from_config({"dataset": {"source": "fibs", "split": ["honest_honest", "honest_deceptive"],
-                                             "max_examples_per_split": 2, "load_kwargs": {"streaming": True}}})
+                                             "max_examples_per_split": 2, "interleave_splits": False,
+                                             "load_kwargs": {"streaming": True}}})
     assert isinstance(source, FibsSource)
+    assert source.interleave_splits is False
     examples = list(source.iter_examples())
     assert [c[:2] for c in calls] == [("AlignmentResearch/fibs-v1", "honest_honest"),
                                       ("AlignmentResearch/fibs-v1", "honest_deceptive")]
@@ -139,6 +142,77 @@ def test_capped_streaming_split_iterators_are_released(monkeypatch):
         assert sorted(released) == ["deceptive_honest", "honest_honest"]
     finally:
         gc.enable()
+
+
+def _fake_splits(monkeypatch, sizes, closed=None):
+    rows = fixture_rows()
+
+    class Split:
+        def __init__(self, split):
+            self.split = split
+
+        def __iter__(self):
+            try:
+                for i in range(sizes[self.split]):
+                    yield {**rows[0], "quadrant": self.split, "completion": f"{self.split} {i}"}
+            finally:
+                if closed is not None:
+                    closed.append(self.split)
+
+    monkeypatch.setattr("neuralsignal.datasets.sources.hf._load_dataset",
+                        lambda dataset_name, split, **kwargs: Split(split))
+
+
+def test_interleave_is_default_and_round_robins_rows_across_splits(monkeypatch):
+    _fake_splits(monkeypatch, {"honest_honest": 5, "honest_deceptive": 5, "deceptive_honest": 5})
+    source = source_from_config({"dataset": {"source": "fibs", "split": ["honest_honest", "honest_deceptive",
+                                                                          "deceptive_honest"],
+                                             "max_examples_per_split": 2}})
+    assert source.interleave_splits is True
+    order = [e.metadata["fibs_split"] for e in source.iter_examples()]
+    assert order == ["honest_honest", "honest_deceptive", "deceptive_honest"] * 2
+    # A run cut off after k rows still has every split represented.
+    partial = [e.metadata["fibs_split"] for e in islice(source.iter_examples(), 3)]
+    assert sorted(partial) == sorted(["honest_honest", "honest_deceptive", "deceptive_honest"])
+
+
+def test_interleave_continues_with_remaining_splits_when_one_is_exhausted(monkeypatch):
+    closed = []
+    _fake_splits(monkeypatch, {"honest_honest": 1, "deceptive_deceptive": 4}, closed)
+    source = FibsSource(split=["honest_honest", "deceptive_deceptive"], max_examples_per_split=3)
+    order = [e.metadata["fibs_split"] for e in source.iter_examples()]
+    assert order == ["honest_honest", "deceptive_deceptive", "deceptive_deceptive", "deceptive_deceptive"]
+    assert sorted(closed) == ["deceptive_deceptive", "honest_honest"]
+
+
+def test_interleave_keeps_chunks_of_a_row_together_and_caps_rows(monkeypatch):
+    _fake_splits(monkeypatch, {"honest_honest": 4, "honest_deceptive": 4})
+    source = FibsSource(split=["honest_honest", "honest_deceptive"], chunk_chars=60, max_examples_per_split=2)
+    examples = list(source.iter_examples())
+    assert len(examples) > 4  # chunking produced several examples per row
+    row_splits = []  # (row_id, split) in order of first appearance
+    for example in examples:
+        key = (example.metadata["fibs_row_id"], example.metadata["fibs_split"])
+        if not row_splits or row_splits[-1] != key:
+            row_splits.append(key)
+    assert len(row_splits) == 4 and len({row for row, _ in row_splits}) == 4  # chunks contiguous, 2 rows per split
+    assert [split for _, split in row_splits] == ["honest_honest", "honest_deceptive"] * 2
+
+
+def test_sequential_order_is_kept_when_interleave_disabled(monkeypatch):
+    _fake_splits(monkeypatch, {"honest_honest": 3, "honest_deceptive": 3})
+    source = FibsSource(split=["honest_honest", "honest_deceptive"], max_examples_per_split=2,
+                        interleave_splits=False)
+    assert [e.metadata["fibs_split"] for e in source.iter_examples()] == ["honest_honest"] * 2 + ["honest_deceptive"] * 2
+
+
+def test_interleaved_early_stop_closes_every_split_iterator(monkeypatch):
+    closed = []
+    _fake_splits(monkeypatch, {"honest_honest": 50, "deceptive_deceptive": 50}, closed)
+    iterator = FibsSource(split=["honest_honest", "deceptive_deceptive"]).iter_examples()
+    assert len(list(islice(iterator, 3))) == 3
+    iterator.close()
+    assert sorted(closed) == ["deceptive_deceptive", "honest_honest"]
 
 
 def synthetic_features(n_episodes=60, seed=0, chunks=1):

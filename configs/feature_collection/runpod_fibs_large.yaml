@@ -58,6 +58,8 @@ dataset:
   # deceptive_deceptive, a list of them, or all.
   split: all
   max_examples_per_split: 5000
+  # Round-robin transcripts across splits so partial runs stay balanced.
+  interleave_splits: true
   # Overlapping chunking of the history (characters); 0 disables it. Chunk
   # feature rows are mean-pooled back to one row per transcript in training.
   chunk_chars: 12000

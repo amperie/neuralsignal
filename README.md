@@ -209,3 +209,5 @@ ns train configs/training/s1_fibs_deceptive.yaml --run runs/<fibs-run>
 ```
 
 Labels are AI-judge verdicts on the final response. Reports recall at 1%/5% FPR (validation-chosen thresholds), per-split AUROC/AUPRC, and length/step baselines. See `specs/fibs-evaluation.md`.
+
+With several splits, `dataset.interleave_splits: true` (default) round-robins transcripts across splits so a run cut short still holds all of them; `false` reads splits one after another. If a remote run times out or the pod dies before producing its bundle, `ns run` downloads the shards already uploaded to S3, logs `partial run: N rows`, trains on them if a train config was given, and marks the result `partial: true` (zero rows re-raises the original error). The pod is always terminated.
