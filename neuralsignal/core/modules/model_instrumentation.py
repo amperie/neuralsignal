@@ -112,6 +112,10 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
         logging.info(
             f"Loaded {model_config['model_name']} unquantized")
 
+    if model_type in {"t5", "longt5"}:
+        tie_seq2seq_embeddings(model)
+        check_embeddings_nonzero(model, model_config["model_name"])
+
     tokenizer = AutoTokenizer.from_pretrained(model_config["model_name"])
     if getattr(tokenizer, "pad_token", "") is None:
         # Some checkpoints (e.g. google/long-t5-*) ship a tokenizer without a
@@ -126,6 +130,40 @@ def load_model(model_config: dict) -> tuple[AutoTokenizer, AutoModel]:
         f"Loaded {model_config['model_name']} tokenizer")
 
     return (tokenizer, model)
+
+
+def tie_seq2seq_embeddings(model) -> None:
+    """Point encoder/decoder token embeddings at ``model.shared``.
+
+    Some checkpoints (e.g. google/long-t5-tglobal-*) store only ``shared``;
+    transformers>=5 then leaves encoder/decoder ``embed_tokens`` as separate
+    zero-initialised tensors, which silently zeroes every activation.
+    """
+    shared = getattr(model, "shared", None)
+    if shared is None:
+        return
+    for stack_name in ("encoder", "decoder"):
+        stack = getattr(model, stack_name, None)
+        if stack is None or not hasattr(stack, "embed_tokens"):
+            continue
+        if stack.embed_tokens is not shared:
+            stack.embed_tokens = shared
+
+
+def check_embeddings_nonzero(model, model_name: str = "") -> None:
+    """Raise if any token-embedding matrix of a seq2seq model is all zeros."""
+    candidates = {"shared": getattr(model, "shared", None)}
+    for stack_name in ("encoder", "decoder"):
+        stack = getattr(model, stack_name, None)
+        candidates[stack_name + ".embed_tokens"] = getattr(stack, "embed_tokens", None)
+    for name, module in candidates.items():
+        weight = getattr(module, "weight", None)
+        if weight is None:
+            continue
+        if not bool(torch.any(weight.detach() != 0)):
+            raise RuntimeError(
+                f"Embedding matrix {name} of {model_name or 'model'} is all zeros after load; "
+                "the checkpoint's tied embeddings were not restored. Refusing to collect features.")
 
 
 def generate_from_batch(

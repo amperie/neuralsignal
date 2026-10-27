@@ -14,6 +14,13 @@ class ModelFeatureExtractor:
         self.config = config
         self.tokenizer = None
         self.model = None
+        hc = config.get("health_check") or {}
+        self._hc_enabled = bool(hc.get("enabled", True))
+        self._hc_rows = int(hc.get("rows", 100))
+        self._hc_max_constant = float(hc.get("max_constant_fraction", 0.5))
+        self._hc_rows_seen: list[dict[str, float]] = []
+        self._hc_texts: list[str] = []
+        self._hc_done = not self._hc_enabled
 
     def extract_batch(self, examples: list[DatasetExample], specs: list[FeatureSetSpec]) -> list[dict[str, float]]:
         if not examples:
@@ -31,7 +38,15 @@ class ModelFeatureExtractor:
         )
         if len(scans) != len(examples):
             raise RuntimeError(f"generation returned {len(scans)} scans for {len(examples)} examples")
-        return [self._featurize(scan.data, example, specs) for scan, example in zip(scans, examples)]
+        rows = [self._featurize(scan.data, example, specs) for scan, example in zip(scans, examples)]
+        if not self._hc_done:
+            self._hc_rows_seen.extend(rows)
+            self._hc_texts.extend(str(scan.data.get("decoded_output") or "") for scan in scans)
+            if len(self._hc_rows_seen) >= self._hc_rows:
+                check_feature_health(self._hc_rows_seen, self._hc_texts, self._hc_max_constant)
+                self._hc_done = True
+                self._hc_rows_seen, self._hc_texts = [], []
+        return rows
 
     def _load(self) -> None:
         if self.model is not None and self.tokenizer is not None:
@@ -60,3 +75,38 @@ class ModelFeatureExtractor:
             row.update({column: float(value) for column, value in zip(names, values)})
         return row
 
+
+
+class FeatureHealthError(RuntimeError):
+    pass
+
+
+def check_feature_health(rows: list[dict[str, float]], texts: list[str], max_constant_fraction: float = 0.5) -> dict[str, float]:
+    """Fail fast when collected features look broken (e.g. zeroed activations).
+
+    Raises FeatureHealthError if more than ``max_constant_fraction`` of feature
+    columns are constant across ``rows`` or every generated text is empty.
+    """
+    import logging
+
+    if not rows:
+        return {}
+    columns = sorted(set().union(*rows))
+    constant = 0
+    for column in columns:
+        values = {row.get(column) for row in rows}
+        if len(values) <= 1:
+            constant += 1
+    fraction = constant / len(columns) if columns else 1.0
+    empty = all(not text.strip() for text in texts) if texts else False
+    logging.getLogger(__name__).info(
+        "feature health check rows=%s columns=%s constant_fraction=%.3f all_generated_empty=%s",
+        len(rows), len(columns), fraction, empty)
+    problems = []
+    if len(rows) > 1 and fraction > max_constant_fraction:
+        problems.append(f"{fraction:.1%} of {len(columns)} feature columns are constant across the first {len(rows)} rows")
+    if empty:
+        problems.append(f"all {len(texts)} generated texts are empty")
+    if problems:
+        raise FeatureHealthError("Feature health check failed: " + "; ".join(problems) + ". Aborting collection.")
+    return {"constant_fraction": fraction}
