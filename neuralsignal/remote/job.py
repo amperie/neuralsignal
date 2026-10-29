@@ -151,6 +151,13 @@ def _load_config_from_env() -> dict:
 
 
 def _dataset_source(config: dict):
+    dataset = config.get("dataset") or {}
+    path = str(dataset.get("path") or "")
+    if dataset.get("source") == "jsonl" and path.startswith("s3://"):
+        local = Path(os.environ.get("NEURALSIGNAL_RUN_WORKDIR", "/workspace/neuralsignal-runs")) / "inputs" / Path(path).name
+        logger.info("downloading jsonl input uri=%s path=%s", path, local)
+        download_file(_s3_store(), path, local)
+        config = {**config, "dataset": {**dataset, "path": str(local)}}
     return source_from_config(config)
 
 
